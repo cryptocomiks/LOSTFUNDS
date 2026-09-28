@@ -2,6 +2,7 @@ import { decodeEventLog, parseAbiItem, toEventSelector, type Address, type Hex }
 import { addressTopic, getLogs } from "../explorer";
 import { L1 } from "../networks";
 import { accountsData, accountsExist, findProgramAddress, hexBytes } from "../solana";
+import { mapLimit } from "../tokens";
 import type { Asset } from "../types";
 import { DAY, makeFinding, now, type CheckOutput, type FindingSource } from "./common";
 
@@ -37,6 +38,7 @@ const V2 = {
 const enc = (s: string) => new TextEncoder().encode(s);
 const usdc = (amount: bigint): Asset => ({ symbol: "USDC", decimals: 6, amount, token: USDC, tokenChain: "ethereum" });
 const ZERO32 = `0x${"0".repeat(64)}`;
+const MAX_V2_TXS = 300;
 
 interface Burn {
   tx: Hex;
@@ -121,10 +123,14 @@ export async function checkCctp(user: Address): Promise<CheckOutput> {
   const minted1 = await v1Minted(v1.map((b) => b.nonce!));
   v1.forEach((b, i) => (minted1[i] ? out.completed++ : report(b, `v1-${b.nonce}`)));
 
-  for (const b of v2) {
-    const msgs = await v2Nonces(b.tx);
-    const done = await accountsExist(msgs.map((m) => findProgramAddress([enc("used_nonce"), hexBytes(m.nonce)], V2.solanaTransmitter)));
-    msgs.forEach((m, i) => (done[i] ? out.completed++ : report(b, `v2-${m.nonce}`)));
-  }
+  // v2 nonces come from Circle's API, one call per burn transaction.
+  const byTx = new Map<Hex, Burn>();
+  for (const b of v2) byTx.set(b.tx, b);
+  if (byTx.size > MAX_V2_TXS)
+    throw new Error(`${byTx.size} CCTP v2 transfers: too many to verify automatically, check them in the app you used`);
+  const perTx = await mapLimit([...byTx.values()], 8, async (b) => ({ b, msgs: await v2Nonces(b.tx) }));
+  const all = perTx.flatMap(({ b, msgs }) => msgs.map((m) => ({ b, m })));
+  const done = await accountsExist(all.map(({ m }) => findProgramAddress([enc("used_nonce"), hexBytes(m.nonce)], V2.solanaTransmitter)));
+  all.forEach(({ b, m }, i) => (done[i] ? out.completed++ : report(b, `v2-${m.nonce}`)));
   return out;
 }

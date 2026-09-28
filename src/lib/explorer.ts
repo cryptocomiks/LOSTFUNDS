@@ -11,7 +11,10 @@ import type { ApiLog } from "./types";
  *   - Etherscan V2, only if NEXT_PUBLIC_ETHERSCAN_API_KEY is set
  */
 
-export type ExplorerTarget = Pick<Network, "name" | "chain" | "blockscout" | "logsRpcs">;
+export type ExplorerTarget = Pick<Network, "name" | "chain" | "blockscout" | "logsRpcs"> & {
+  /** Try the RPC nodes before the explorer (much faster for busy contracts). */
+  preferRpc?: boolean;
+};
 export type Topics = [Hex, (Hex | null)?, (Hex | null)?, (Hex | null)?];
 
 const ETHERSCAN_KEY = process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY ?? "";
@@ -187,7 +190,12 @@ async function logsFromRpc(rpc: string, address: Address | undefined, topics: To
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
       })) as { result?: unknown; error?: { message?: string } };
-      if (json.error) throw new Error(json.error.message ?? "RPC error");
+      if (json.error) {
+        const msg = json.error.message ?? "RPC error";
+        // Busy / rate-limited nodes are worth a retry; other errors (range limits…) aren't.
+        if (/temporar|rate|too many|busy|try again|capacity/i.test(msg)) throw new RetryableError(msg);
+        throw new Error(msg);
+      }
       return json.result;
     });
   const logs = (await call("eth_getLogs", [
@@ -225,8 +233,8 @@ export function getLogs(net: ExplorerTarget, address: Address | undefined, topic
     name: src.name,
     run: () => logsFromApi(src.url, address, topics),
   }));
-  for (const rpc of net.logsRpcs ?? []) attempts.push({ name: `rpc ${new URL(rpc).host}`, run: () => logsFromRpc(rpc, address, topics) });
-  return firstSuccess(attempts);
+  const rpcs = (net.logsRpcs ?? []).map((rpc) => ({ name: `rpc ${new URL(rpc).host}`, run: () => logsFromRpc(rpc, address, topics) }));
+  return firstSuccess(net.preferRpc ? [...rpcs, ...attempts] : [...attempts, ...rpcs]);
 }
 
 /* ───────────── Transactions sent by an address ───────────── */

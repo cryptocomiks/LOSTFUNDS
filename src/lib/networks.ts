@@ -43,6 +43,8 @@ export const L1 = {
   chain: mainnet as Chain,
   blockscout: "https://eth.blockscout.com",
   logsRpcs: ["https://rpc.mevblocker.io", "https://gateway.tenderly.co/public/mainnet"],
+  // On Ethereum these RPC nodes answer full-history event searches in ~1s; Blockscout can take >40s.
+  preferRpc: true,
   rpcs: [
     "https://ethereum-rpc.publicnode.com",
     "https://eth.llamarpc.com",
