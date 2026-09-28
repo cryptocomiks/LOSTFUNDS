@@ -60,7 +60,7 @@ export async function tokenAsset(
 /** Best-effort USD prices from DefiLlama (keyless, CORS-enabled). Never throws. */
 export async function addPrices(assets: Asset[]): Promise<void> {
   const keyOf = (a: Asset) =>
-    a.token ? `${a.tokenChain ?? "ethereum"}:${a.token.toLowerCase()}` : "coingecko:ethereum";
+    a.priceKey ?? (a.token ? `${a.tokenChain ?? "ethereum"}:${a.token.toLowerCase()}` : "coingecko:ethereum");
   const keys = [...new Set(assets.map(keyOf))];
   if (!keys.length) return;
   try {

@@ -18,6 +18,8 @@ export interface Asset {
   token?: Address;
   /** Chain the token address lives on, used for prices. */
   tokenChain?: string;
+  /** Explicit DefiLlama price key (e.g. "solana:<mint>"), overrides token/tokenChain. */
+  priceKey?: string;
   usd?: number;
 }
 
@@ -28,7 +30,7 @@ export interface Finding {
   guideId: string;
   status: WithdrawalStatus;
   asset: Asset;
-  txHash: Hex;
+  txHash: string;
   txUrl: string;
   /** Unix seconds of the withdrawal tx on the source chain. */
   timestamp: number;

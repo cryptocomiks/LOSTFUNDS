@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Address } from "viem";
-import { checkNetwork, InputError, resolveInput, runChecks } from "@/lib/checker";
+import { checkSource, InputError, resolveInput, runChecks } from "@/lib/checker";
 import { NETWORK_COLORS } from "@/lib/brand";
 import { formatAmount, formatDate, formatUsd, shortAddress } from "@/lib/format";
-import { NETWORKS, networkById } from "@/lib/networks";
+import { GROUPS, SOURCES, sourceById, type Group } from "@/lib/sources";
 import type { Finding, NetworkResult, WithdrawalStatus } from "@/lib/types";
 import { CopyButton } from "./CopyButton";
 import {
@@ -57,7 +57,7 @@ function openGuide(id: string) {
 
 function FindingRow({ f, index }: { f: Finding; index: number }) {
   const s = STATUS[f.status];
-  const net = networkById(f.networkId)!;
+  const net = sourceById(f.networkId)!;
   return (
     <li className="animate-fade-up px-5 py-5 sm:px-6" style={{ animationDelay: `${index * 50}ms` }}>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -118,42 +118,49 @@ function NetworkGrid({
   onRetry: (id: string) => void;
 }) {
   return (
-    <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-      {NETWORKS.map((n) => {
-        const r = results[n.id];
-        const state = r?.state ?? "queued";
-        const found = r?.findings.filter((f) => f.status !== "recent").length ?? 0;
-        return (
-          <li
-            key={n.id}
-            className="flex items-center justify-between gap-2 rounded-2xl border border-line bg-surface px-3.5 py-3 text-[14px]"
-          >
-            <span className="flex min-w-0 items-center gap-2">
-              <NetDot id={n.id} />
-              <span className="truncate">{n.name}</span>
-            </span>
-            {state === "running" || state === "queued" ? (
-              <Spinner className="text-text-3" />
-            ) : state === "error" ? (
-              <button
-                type="button"
-                onClick={() => onRetry(n.id)}
-                className="flex items-center gap-1 rounded-full bg-red-soft px-2 py-0.5 text-[12px] font-medium text-red"
-                title={r?.error}
-              >
-                <Refresh width={13} height={13} /> Retry
-              </button>
-            ) : found > 0 ? (
-              <span className="rounded-full bg-orange-soft px-2 py-0.5 text-[12px] font-semibold text-orange tabular-nums">
-                {found}
-              </span>
-            ) : (
-              <CheckCircle width={18} height={18} className="text-green" />
-            )}
-          </li>
-        );
-      })}
-    </ul>
+    <div className="space-y-5">
+      {(Object.keys(GROUPS) as Group[]).map((g) => (
+        <div key={g}>
+          <p className="mb-2 px-1 text-[13px] font-medium text-text-2">{GROUPS[g]}</p>
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+            {SOURCES.filter((n) => n.group === g).map((n) => {
+              const r = results[n.id];
+              const state = r?.state ?? "queued";
+              const found = r?.findings.filter((f) => f.status !== "recent").length ?? 0;
+              return (
+                <li
+                  key={n.id}
+                  className="flex items-center justify-between gap-2 rounded-2xl border border-line bg-surface px-3.5 py-3 text-[14px]"
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <NetDot id={n.id} />
+                    <span className="truncate">{n.name}</span>
+                  </span>
+                  {state === "running" || state === "queued" ? (
+                    <Spinner className="text-text-3" />
+                  ) : state === "error" ? (
+                    <button
+                      type="button"
+                      onClick={() => onRetry(n.id)}
+                      className="flex items-center gap-1 rounded-full bg-red-soft px-2 py-0.5 text-[12px] font-medium text-red"
+                      title={r?.error}
+                    >
+                      <Refresh width={13} height={13} /> Retry
+                    </button>
+                  ) : found > 0 ? (
+                    <span className="rounded-full bg-orange-soft px-2 py-0.5 text-[12px] font-semibold text-orange tabular-nums">
+                      {found}
+                    </span>
+                  ) : (
+                    <CheckCircle width={18} height={18} className="text-green" />
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -201,7 +208,7 @@ export function Checker() {
           failed.map(async (id) => {
             if (ctrl.signal.aborted) return;
             setResults((prev) => ({ ...prev, [id]: { networkId: id, state: "running", findings: [], completed: 0 } }));
-            const r = await checkNetwork(networkById(id)!, resolved.address);
+            const r = await checkSource(sourceById(id)!, resolved.address);
             if (!ctrl.signal.aborted) setResults((prev) => ({ ...prev, [id]: r }));
           }),
         );
@@ -216,10 +223,10 @@ export function Checker() {
 
   const retry = useCallback(
     async (id: string) => {
-      const net = networkById(id);
+      const net = sourceById(id);
       if (!net || !target) return;
       setResults((prev) => ({ ...prev, [id]: { networkId: id, state: "running", findings: [], completed: 0 } }));
-      const r = await checkNetwork(net, target.address);
+      const r = await checkSource(net, target.address);
       setResults((prev) => ({ ...prev, [id]: r }));
     },
     [target],
@@ -320,7 +327,7 @@ export function Checker() {
             ) : (
               <p className="mt-4 flex items-center justify-center gap-2 text-[13px] text-text-3">
                 <Lock width={14} height={14} />
-                Read-only. No wallet connection, no signatures. EVM addresses and ENS names.
+                Read-only. No wallet connection, no signatures. Paste your Ethereum address or ENS name.
               </p>
             )}
           </div>
@@ -341,7 +348,7 @@ export function Checker() {
                   </div>
                   <div className="flex items-center gap-2 text-[13px] text-text-3 tabular-nums">
                     {busy && <Spinner className="text-accent" />}
-                    {finished}/{NETWORKS.length} networks checked
+                    {finished}/{SOURCES.length} checks done
                   </div>
                 </div>
 
@@ -349,13 +356,13 @@ export function Checker() {
                   <div className="mt-6">
                     <p className="text-[28px] font-semibold tracking-tight sm:text-[34px]">Checking bridges…</p>
                     <p className="mt-2 text-[15px] text-text-2">
-                      Searching each network&apos;s history for withdrawals and asking Ethereum whether they were completed.
+                      Finding your withdrawals and cross-chain transfers, then asking Ethereum and Solana whether each one was completed.
                     </p>
                   </div>
                 ) : stuck.length > 0 ? (
                   <div className="mt-6">
                     <p className="text-[15px] font-medium text-orange">
-                      {stuck.length} unclaimed withdrawal{stuck.length > 1 ? "s" : ""} found
+                      {stuck.length} unclaimed transfer{stuck.length > 1 ? "s" : ""} found
                     </p>
                     <p className="mt-1 text-[44px] leading-none font-semibold tracking-[-0.03em] tabular-nums sm:text-[56px]">
                       {totalUsd > 0 ? formatUsd(totalUsd) : `${stuck.length} to claim`}
@@ -371,7 +378,7 @@ export function Checker() {
                     <div>
                       <p className="text-[28px] font-semibold tracking-tight sm:text-[34px]">Check incomplete</p>
                       <p className="mt-2 text-[15px] text-text-2">
-                        {errors} network{errors > 1 ? "s" : ""} couldn&apos;t be checked right now, so we can&apos;t say
+                        {errors} check{errors > 1 ? "s" : ""} couldn&apos;t run right now, so we can&apos;t say
                         yet. Nothing was found on the {finished - errors} others. Retry the missing ones below.
                       </p>
                     </div>
@@ -410,7 +417,7 @@ export function Checker() {
             {/* Networks */}
             <div className="mt-10">
               <div className="mb-3 flex items-center justify-between px-1">
-                <h3 className="text-[13px] font-semibold tracking-wide text-text-3 uppercase">Networks checked</h3>
+                <h3 className="text-[13px] font-semibold tracking-wide text-text-3 uppercase">What we checked</h3>
                 {phase === "done" && (
                   <span className="flex items-center gap-1.5 text-[13px] text-text-3">
                     <Clock width={14} height={14} /> Live data, just now
@@ -420,20 +427,20 @@ export function Checker() {
               <NetworkGrid results={results} onRetry={retry} />
               {Object.values(results).some((r) => r.state === "error") && (
                 <details className="mt-3 rounded-2xl border border-line bg-surface px-4 py-3 text-[13px] text-text-2">
-                  <summary className="cursor-pointer font-medium text-text">Why did some networks fail?</summary>
+                  <summary className="cursor-pointer font-medium text-text">Why did some checks fail?</summary>
                   <ul className="mt-2 space-y-1 font-mono text-[12px] break-all">
                     {Object.values(results)
                       .filter((r) => r.state === "error")
                       .map((r) => (
                         <li key={r.networkId}>
-                          {networkById(r.networkId)?.name}: {r.error}
+                          {sourceById(r.networkId)?.name}: {r.error}
                         </li>
                       ))}
                   </ul>
                 </details>
               )}
               <p className="mt-4 px-1 text-[13px] leading-relaxed text-text-3">
-                Other bridges (Polygon, ZKsync, Starknet, CCTP, LayerZero, Wormhole…) aren&apos;t checked automatically
+                Other bridges (ZKsync, Starknet, LayerZero, Gnosis…) aren&apos;t checked automatically
                 yet. If you used one, follow its guide below.
               </p>
             </div>

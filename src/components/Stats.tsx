@@ -1,12 +1,12 @@
 import { GUIDES } from "@/content/guides";
-import { NETWORKS } from "@/lib/networks";
+import { SOURCES } from "@/lib/sources";
 import { Reveal } from "./Reveal";
 
 const STATS = [
   {
-    value: String(NETWORKS.length),
-    label: "networks checked live",
-    detail: "OP Stack, Arbitrum, Scroll and Linea, read straight from the chains.",
+    value: String(SOURCES.length),
+    label: "bridges checked live",
+    detail: "L2 withdrawals to Ethereum, and Solana ↔ Ethereum transfers, verified on-chain.",
   },
   { value: String(GUIDES.length), label: "bridges with a claim guide", detail: "Rollups, cross-chain bridges and shut-down apps." },
   { value: "0", label: "addresses stored", detail: "Everything runs in your browser. No accounts, no tracking." },

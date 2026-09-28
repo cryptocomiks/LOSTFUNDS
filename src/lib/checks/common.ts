@@ -1,4 +1,3 @@
-import type { Hex } from "viem";
 import type { Network } from "../networks";
 import type { Asset, Finding, WithdrawalStatus } from "../types";
 
@@ -10,27 +9,34 @@ export interface CheckOutput {
   completed: number;
 }
 
+/** What a finding needs to know about where it was found (a network or a bridge route). */
+export type FindingSource = Pick<Network, "id" | "name" | "guideId"> & { explorer?: string };
+
 export function makeFinding(
-  net: Network,
+  net: FindingSource,
   p: {
     key: string;
     status: WithdrawalStatus;
     asset: Asset;
-    txHash: Hex;
+    txHash: string;
     timestamp: number;
     readyAt?: number;
     note?: string;
+    /** Overrides the default `${explorer}/tx/${txHash}` link. */
+    txUrl?: string;
+    /** Overrides the source's display name (e.g. "Wormhole · Solana → Ethereum"). */
+    label?: string;
   },
 ): Finding {
   return {
     id: `${net.id}:${p.txHash}:${p.key}`,
     networkId: net.id,
-    networkName: net.name,
+    networkName: p.label ?? net.name,
     guideId: net.guideId,
     status: p.status,
     asset: p.asset,
     txHash: p.txHash,
-    txUrl: `${net.explorer}/tx/${p.txHash}`,
+    txUrl: p.txUrl ?? `${net.explorer}/tx/${p.txHash}`,
     timestamp: p.timestamp,
     readyAt: p.readyAt,
     note: p.note,

@@ -11,7 +11,7 @@ import type { ApiLog } from "./types";
  *   - Etherscan V2, only if NEXT_PUBLIC_ETHERSCAN_API_KEY is set
  */
 
-export type ExplorerTarget = Pick<Network, "name" | "chain" | "blockscout" | "logsRpc">;
+export type ExplorerTarget = Pick<Network, "name" | "chain" | "blockscout" | "logsRpcs">;
 export type Topics = [Hex, (Hex | null)?, (Hex | null)?, (Hex | null)?];
 
 const ETHERSCAN_KEY = process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY ?? "";
@@ -110,7 +110,7 @@ type Attempt<R> = { name: string; run: () => Promise<R> };
 
 /** Tries each source in order until one succeeds; otherwise reports every failure. */
 async function firstSuccess<R>(attempts: Attempt<R>[]): Promise<R> {
-  if (!attempts.length) throw new Error("no data source for this network");
+  if (!attempts.length) throw new NoSource("no data source for this network");
   const errors: string[] = [];
   for (const a of attempts) {
     try {
@@ -125,6 +125,8 @@ async function firstSuccess<R>(attempts: Attempt<R>[]): Promise<R> {
 
 /** The wallet has too many transactions to page through: use event search instead. */
 class TooManyTxs extends Error {}
+/** This network has no source for that kind of query. */
+class NoSource extends Error {}
 
 /* ───────────── Logs ───────────── */
 
@@ -140,8 +142,9 @@ interface RawLog {
 const PAGE = 1000;
 const MAX_PAGES = 10;
 
-function logParams(address: Address, topics: Topics, fromBlock: bigint) {
-  const p = new URLSearchParams({ module: "logs", action: "getLogs", fromBlock: fromBlock.toString(), toBlock: "latest", address });
+function logParams(address: Address | undefined, topics: Topics, fromBlock: bigint) {
+  const p = new URLSearchParams({ module: "logs", action: "getLogs", fromBlock: fromBlock.toString(), toBlock: "latest" });
+  if (address) p.set("address", address);
   const set = topics.map((t, i) => [t, i] as const).filter(([t]) => t);
   for (const [t, i] of set) p.set(`topic${i}`, t!);
   // Explorers need an explicit operator between each pair of topics.
@@ -150,7 +153,7 @@ function logParams(address: Address, topics: Topics, fromBlock: bigint) {
   return p;
 }
 
-async function logsFromApi(url: (p: URLSearchParams) => string, address: Address, topics: Topics): Promise<ApiLog[]> {
+async function logsFromApi(url: (p: URLSearchParams) => string, address: Address | undefined, topics: Topics): Promise<ApiLog[]> {
   const out: ApiLog[] = [];
   const seen = new Set<string>();
   let from = 0n;
@@ -176,7 +179,7 @@ async function logsFromApi(url: (p: URLSearchParams) => string, address: Address
 }
 
 /** eth_getLogs over the whole history, on RPC nodes that allow it. */
-async function logsFromRpc(rpc: string, address: Address, topics: Topics): Promise<ApiLog[]> {
+async function logsFromRpc(rpc: string, address: Address | undefined, topics: Topics): Promise<ApiLog[]> {
   const call = (method: string, params: unknown[]) =>
     polite(rpc, async () => {
       const json = (await fetchJson(rpc, {
@@ -190,12 +193,22 @@ async function logsFromRpc(rpc: string, address: Address, topics: Topics): Promi
   const logs = (await call("eth_getLogs", [
     { fromBlock: "0x0", toBlock: "latest", address, topics: topics.map((t) => t ?? null) },
   ])) as { transactionHash: Hex; blockNumber: Hex; address: Address; topics: Hex[]; data: Hex }[];
-  // RPC logs carry no timestamp: read it from each block.
+  // RPC logs carry no timestamp: read the blocks' timestamps, 50 per batched request.
   const times = new Map<string, number>();
-  for (const bn of new Set(logs.map((l) => l.blockNumber))) {
-    const block = (await call("eth_getBlockByNumber", [bn, false])) as { timestamp: Hex };
-    times.set(bn, Number(BigInt(block.timestamp)));
+  const blocks = [...new Set(logs.map((l) => l.blockNumber))];
+  for (let i = 0; i < blocks.length; i += 50) {
+    const chunk = blocks.slice(i, i + 50);
+    const replies = (await polite(rpc, () =>
+      fetchJson(rpc, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(chunk.map((bn, id) => ({ jsonrpc: "2.0", id, method: "eth_getBlockByNumber", params: [bn, false] }))),
+      }),
+    )) as { id: number; result?: { timestamp: Hex } }[];
+    if (!Array.isArray(replies)) throw new Error("RPC batch not supported");
+    for (const r of replies) if (r.result) times.set(chunk[r.id], Number(BigInt(r.result.timestamp)));
   }
+  if (times.size < blocks.length) throw new Error("missing block timestamps");
   return logs.map((l) => ({
     address: l.address.toLowerCase() as Address,
     topics: l.topics,
@@ -206,13 +219,13 @@ async function logsFromRpc(rpc: string, address: Address, topics: Topics): Promi
   }));
 }
 
-/** All logs of `address` matching `topics`, over the chain's whole history. */
-export function getLogs(net: ExplorerTarget, address: Address, topics: Topics): Promise<ApiLog[]> {
+/** All logs of `address` (any contract if undefined) matching `topics`, over the chain's whole history. */
+export function getLogs(net: ExplorerTarget, address: Address | undefined, topics: Topics): Promise<ApiLog[]> {
   const attempts: Attempt<ApiLog[]>[] = apiSources(net).map((src) => ({
     name: src.name,
     run: () => logsFromApi(src.url, address, topics),
   }));
-  if (net.logsRpc) attempts.push({ name: `rpc ${new URL(net.logsRpc).host}`, run: () => logsFromRpc(net.logsRpc!, address, topics) });
+  for (const rpc of net.logsRpcs ?? []) attempts.push({ name: `rpc ${new URL(rpc).host}`, run: () => logsFromRpc(rpc, address, topics) });
   return firstSuccess(attempts);
 }
 
@@ -313,6 +326,7 @@ export async function findBridgeTxs(
       for (const l of logs) m.set(l.transactionHash, l.timestamp);
       return m;
     } catch (logErr) {
+      if (txErr instanceof NoSource) throw logErr;
       const why = txErr instanceof TooManyTxs ? "very active wallet" : (txErr as Error).message;
       throw new Error(`${why} | events: ${(logErr as Error).message}`);
     }

@@ -52,6 +52,7 @@ export const GUIDES: Guide[] = [
     id: "polygon-pos",
     title: "Polygon PoS",
     subtitle: "Withdrawals burned on Polygon, never exited on Ethereum",
+    live: true,
     steps: [
       "Open the official Polygon Portal and connect the wallet that made the withdrawal.",
       "Open the transaction history and find the withdrawal.",
@@ -99,6 +100,7 @@ export const GUIDES: Guide[] = [
     id: "debridge",
     title: "deBridge (DLN orders)",
     subtitle: "Cross-chain orders that were never filled",
+    live: true,
     steps: [
       "Open the official deBridge app and connect your wallet.",
       "Find the unfilled order in your order history.",
@@ -175,11 +177,13 @@ export const GUIDES: Guide[] = [
     id: "cctp",
     title: "Circle CCTP (USDC)",
     subtitle: "USDC burned and attested, never minted on the destination chain",
+    live: true,
     steps: [
-      "Reopen the bridge app you used. Many have a Resume or Redeem option for unfinished transfers.",
-      "Otherwise, get the message and attestation for your burn transaction from Circle's attestation API.",
-      "Call receiveMessage on the destination chain's MessageTransmitter. The USDC is minted to the recipient.",
+      "Reopen the app you used for the transfer (Circle, Jupiter, Mayan, Portal…). Many have a Resume or Redeem option for unfinished transfers.",
+      "If the app set itself as the only allowed relayer, only that app can finish the transfer.",
+      "Otherwise anyone can finish it: fetch the message and attestation for your burn transaction from Circle's attestation API, then submit them to the destination chain's MessageTransmitter (receiveMessage). The USDC is minted to the recipient set at burn time.",
     ],
+    note: "The USDC can only be minted to the recipient chosen when it was burned. Nobody else can receive it.",
   },
   {
     id: "layerzero",
@@ -195,11 +199,13 @@ export const GUIDES: Guide[] = [
     id: "wormhole",
     title: "Wormhole",
     subtitle: "Transfers that were never redeemed on the destination",
+    live: true,
     steps: [
-      "Open the official Wormhole Portal and choose the redeem / resume option.",
-      "Paste the source transaction hash. The signed message (VAA) is fetched automatically.",
-      "Connect your wallet on the destination chain and redeem.",
+      "Open the official Wormhole Portal and choose the redeem / resume transaction option.",
+      "Paste the source transaction hash (or open it from Wormholescan). The signed message (VAA) is fetched automatically.",
+      "Connect your wallet on the destination chain and redeem. Signed transfers don't expire.",
     ],
+    note: "Redeeming to Solana needs a little SOL for fees; redeeming to Ethereum needs ETH for gas.",
   },
   {
     id: "rainbow",

@@ -11,4 +11,8 @@ export const NETWORK_COLORS: Record<string, string> = {
   "arbitrum-nova": "#EF8220",
   scroll: "#EBC28E",
   linea: "#61DFFF",
+  polygon: "#8247E5",
+  wormhole: "linear-gradient(135deg,#1b1b1b,#8a8a8a)",
+  debridge: "#FBFF3A",
+  cctp: "#2775CA",
 };

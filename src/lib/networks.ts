@@ -25,8 +25,8 @@ export interface Network {
   rpcs: string[];
   /** Blockscout API base (no key needed). Absent when the chain's explorer isn't Blockscout. */
   blockscout?: string;
-  /** Official RPC node that accepts eth_getLogs over the whole history (checked live). */
-  logsRpc?: string;
+  /** RPC nodes that accept eth_getLogs over the whole history (checked live), tried in order. */
+  logsRpcs?: string[];
   /** Chain slug on DefiLlama's price API. */
   llama: string;
   explorer: string;
@@ -42,6 +42,7 @@ export const L1 = {
   name: "Ethereum",
   chain: mainnet as Chain,
   blockscout: "https://eth.blockscout.com",
+  logsRpcs: ["https://rpc.mevblocker.io", "https://gateway.tenderly.co/public/mainnet"],
   rpcs: [
     "https://ethereum-rpc.publicnode.com",
     "https://eth.llamarpc.com",
@@ -76,7 +77,7 @@ const OP_STACK: Network[] = [
     name: "Zora",
     chain: zora,
     rpcs: ["https://rpc.zora.energy", "https://zora.drpc.org"],
-    logsRpc: "https://rpc.zora.energy", // Zora's explorer is no longer Blockscout
+    logsRpcs: ["https://rpc.zora.energy"], // Zora's explorer is no longer Blockscout
     llama: "zora",
     explorer: "https://explorer.zora.energy",
     bridgeUrl: "superbridge.app/zora",
@@ -87,7 +88,7 @@ const OP_STACK: Network[] = [
     chain: mode,
     rpcs: ["https://mainnet.mode.network", "https://mode.drpc.org"],
     blockscout: "https://explorer.mode.network",
-    logsRpc: "https://mainnet.mode.network",
+    logsRpcs: ["https://mainnet.mode.network"],
     llama: "mode",
     explorer: "https://explorer.mode.network",
     bridgeUrl: "superbridge.app/mode",
@@ -143,7 +144,7 @@ export const NETWORKS: Network[] = [
     chain: arbitrum,
     rpcs: ["https://arb1.arbitrum.io/rpc", "https://arbitrum-one-rpc.publicnode.com", "https://arbitrum.drpc.org", "https://1rpc.io/arb"],
     blockscout: "https://arbitrum.blockscout.com",
-    logsRpc: "https://arb1.arbitrum.io/rpc",
+    logsRpcs: ["https://arb1.arbitrum.io/rpc"],
     llama: "arbitrum",
     explorer: "https://arbiscan.io",
     guideId: "arbitrum",
@@ -185,7 +186,7 @@ export const NETWORKS: Network[] = [
     family: "scroll",
     chain: scroll,
     rpcs: ["https://rpc.scroll.io", "https://scroll-rpc.publicnode.com", "https://scroll.drpc.org", "https://1rpc.io/scroll"],
-    logsRpc: "https://rpc.scroll.io", // Scroll's Blockscout now redirects to Scrollscan (key required)
+    logsRpcs: ["https://rpc.scroll.io"], // Scroll's Blockscout now redirects to Scrollscan (key required)
     llama: "scroll",
     explorer: "https://scrollscan.com",
     guideId: "scroll",

@@ -47,6 +47,12 @@ export class MockChain {
   contracts = new Map<string, { abi: Abi; fns: Record<string, ContractFn> }>();
   prices: Record<string, number> = {};
   requests: string[] = [];
+  /** Wormholescan: transactions by (lowercase) address, VAAs by id. */
+  wormhole = { transactions: {} as Record<string, object[]>, vaas: {} as Record<string, { vaa: string; txHash?: string }> };
+  /** deBridge API: listed orders and their details. */
+  debridge = { orders: [] as Record<string, unknown>[], details: {} as Record<string, object> };
+  /** Solana accounts (base58 → raw data), missing = doesn't exist. */
+  solana: Record<string, Uint8Array> = {};
 
   addTx(p: {
     chainId: number;
@@ -161,7 +167,7 @@ export class MockChain {
         const logs = this.logs.filter(
           (l) =>
             l.chainId === chainId &&
-            l.address === f.address.toLowerCase() &&
+            (!f.address || l.address === f.address.toLowerCase()) &&
             f.topics.every((t, i) => !t || l.topics[i]?.toLowerCase() === t.toLowerCase()),
         );
         return reply(
@@ -240,6 +246,44 @@ export class MockChain {
       return json({ coins });
     }
 
+    if (url.host === "api.wormholescan.io") {
+      const tx = url.pathname.match(/^\/api\/v1\/transactions$/);
+      if (tx) return json({ transactions: this.wormhole.transactions[(url.searchParams.get("address") ?? "").toLowerCase()] ?? [] });
+      const vaa = url.pathname.match(/^\/api\/v1\/vaas\/(.+)$/);
+      if (vaa && this.wormhole.vaas[vaa[1]]) return json({ data: this.wormhole.vaas[vaa[1]] });
+      return new Response(JSON.stringify({ message: "not found" }), { status: 404 });
+    }
+    if (url.host === "stats-api.dln.trade") {
+      if (url.pathname === "/api/Orders/filteredList") {
+        const b = JSON.parse(String(init?.body)) as { giveChainIds?: number[]; takeChainIds?: number[]; orderStates?: string[]; filter?: string };
+        const chain = (o: Record<string, unknown>, k: string) => Number((o[k] as { chainId: { stringValue: string } }).chainId.stringValue);
+        const orders = this.debridge.orders.filter(
+          (o) =>
+            (!b.giveChainIds || b.giveChainIds.includes(chain(o, "giveOfferWithMetadata"))) &&
+            (!b.takeChainIds || b.takeChainIds.includes(chain(o, "takeOfferWithMetadata"))) &&
+            (!b.orderStates || b.orderStates.includes(o.state as string)),
+        );
+        return json({ orders, totalCount: orders.length });
+      }
+      const d = url.pathname.match(/^\/api\/Orders\/(0x[0-9a-f]+)$/i);
+      if (d && this.debridge.details[d[1]]) return json(this.debridge.details[d[1]]);
+      return new Response("{}", { status: 404 });
+    }
+    if (url.host === "iris-api.circle.com") return new Response(JSON.stringify({ error: "Message not found" }), { status: 404 });
+    if (url.host === "solana-rpc.publicnode.com" || url.host === "api.mainnet-beta.solana.com") {
+      const body = JSON.parse(String(init?.body)) as { id: number; method: string; params: [string[]] };
+      if (body.method !== "getMultipleAccounts") return json({ jsonrpc: "2.0", id: body.id, error: { message: "unsupported" } });
+      const b64 = (d: Uint8Array) => btoa(String.fromCharCode(...d));
+      const value = body.params[0].map((k) => (this.solana[k] ? { data: [b64(this.solana[k]), "base64"] } : null));
+      return json({ jsonrpc: "2.0", id: body.id, result: { context: { slot: 1 }, value } });
+    }
+    if (url.href.startsWith("https://gateway.tenderly.co/public/polygon") || url.host === "polygon-bor-rpc.publicnode.com") {
+      const body = JSON.parse(String(init?.body));
+      const out = Array.isArray(body) ? body.map((r) => this.rpc(137, r)) : this.rpc(137, body);
+      return json(out);
+    }
+    if (url.host === "proof-generator.polygon.technology") return new Response(JSON.stringify({ error: true, message: "Burn transaction has not been checkpointed yet" }), { status: 404 });
+
     const scout = [...NETWORKS, { ...L1, id: "l1" }].find((n) => n.blockscout && new URL(n.blockscout).host === url.host);
     if (scout && url.pathname === "/api") return json(this.explorer(scout.chain.id, url));
     const v2 = scout && url.pathname.match(/^\/api\/v2\/addresses\/(0x[0-9a-fA-F]{40})\/transactions$/);
@@ -258,7 +302,7 @@ export class MockChain {
     }
 
     const rpcNet = [...NETWORKS, L1].find((n) =>
-      [...n.rpcs, "logsRpc" in n ? n.logsRpc : undefined].some((r) => r && r.replace(/\/$/, "") === url.href.replace(/\/$/, "")),
+      [...n.rpcs, ...(("logsRpcs" in n && n.logsRpcs) || [])].some((r) => r && r.replace(/\/$/, "") === url.href.replace(/\/$/, "")),
     );
     if (rpcNet) {
       const body = JSON.parse(String(init?.body));

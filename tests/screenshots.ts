@@ -56,7 +56,7 @@ async function shoot(name: string, opts: { width: number; height: number; dark?:
 }
 
 const waitResults = async (page: import("playwright").Page) => {
-  await page.waitForFunction(() => /11\/11 networks checked/.test(document.body.innerText), null, { timeout: 30000 });
+  await page.waitForFunction(() => /15\/15 checks done/.test(document.body.innerText), null, { timeout: 30000 });
 };
 
 await shoot("desktop-hero", { width: 1280, height: 860 });
@@ -82,7 +82,7 @@ await shoot("results-incomplete", {
   action: async (p) => {
     await waitResults(p);
     await p.getByText("Check incomplete").waitFor({ timeout: 60000 });
-    await p.getByText("Why did some networks fail?").click();
+    await p.getByText("Why did some checks fail?").click();
   },
 });
 await shoot("guide-open", {
