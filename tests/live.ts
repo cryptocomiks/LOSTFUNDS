@@ -1,17 +1,23 @@
-/** Runs every network check against the real chains. Usage: npx tsx tests/live.ts 0xADDRESS */
-import { checkNetwork } from "../src/lib/checker.ts";
-import { NETWORKS } from "../src/lib/networks.ts";
+/**
+ * Runs the checks against the real chains.
+ *   npx tsx tests/live.ts 0xADDRESS [checkId…]
+ * Behind a proxy, set NODE_USE_ENV_PROXY=1.
+ */
+import { checkSource } from "../src/lib/checker.ts";
+import { SOURCES } from "../src/lib/sources.ts";
 
-const user = process.argv[2] as `0x${string}`;
+const [user, ...only] = process.argv.slice(2) as [`0x${string}`, ...string[]];
 const t0 = Date.now();
 await Promise.all(
-  NETWORKS.map(async (n) => {
-    const s = Date.now();
-    const r = await checkNetwork(n, user);
+  SOURCES.filter((s) => !only.length || only.includes(s.id)).map(async (s) => {
+    const t = Date.now();
+    const r = await checkSource(s, user);
     console.log(
-      `${n.name.padEnd(14)} ${r.state.padEnd(6)} ${((Date.now() - s) / 1000).toFixed(1)}s  completed=${r.completed} found=${r.findings.length}` +
+      `${s.name.padEnd(14)} ${r.state.padEnd(6)} ${((Date.now() - t) / 1000).toFixed(1)}s  completed=${r.completed} found=${r.findings.length}` +
         (r.error ? `  ERROR: ${r.error}` : "") +
-        r.findings.map((f) => `\n    - ${f.status} ${f.asset.amount} ${f.asset.symbol} ${f.txUrl}`).join(""),
+        r.findings
+          .map((f) => `\n    - ${f.status} ${Number(f.asset.amount) / 10 ** f.asset.decimals} ${f.asset.symbol} (${f.networkName}) ${f.txUrl}`)
+          .join(""),
     );
   }),
 );
