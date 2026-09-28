@@ -66,7 +66,7 @@ const OP_STACK: Network[] = [
     name: "OP Mainnet",
     chain: optimism,
     rpcs: ["https://mainnet.optimism.io", "https://optimism-rpc.publicnode.com", "https://optimism.drpc.org", "https://1rpc.io/op"],
-    blockscout: "https://optimism.blockscout.com",
+    blockscout: "https://explorer.optimism.io", // optimism.blockscout.com redirects here
     llama: "optimism",
     explorer: "https://optimistic.etherscan.io",
     bridgeUrl: "superbridge.app/optimism",
@@ -185,8 +185,7 @@ export const NETWORKS: Network[] = [
     family: "scroll",
     chain: scroll,
     rpcs: ["https://rpc.scroll.io", "https://scroll-rpc.publicnode.com", "https://scroll.drpc.org", "https://1rpc.io/scroll"],
-    blockscout: "https://scroll.blockscout.com",
-    logsRpc: "https://rpc.scroll.io",
+    logsRpc: "https://rpc.scroll.io", // Scroll's Blockscout now redirects to Scrollscan (key required)
     llama: "scroll",
     explorer: "https://scrollscan.com",
     guideId: "scroll",

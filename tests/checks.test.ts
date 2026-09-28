@@ -89,7 +89,7 @@ describe("Rate limits", () => {
     let busy = 2;
     globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input instanceof Request ? input.url : input);
-      if (url.includes("scroll.blockscout.com") && busy > 0) {
+      if (url.includes("rpc.scroll.io") && busy > 0) {
         busy--;
         return new Response("Too Many Requests", { status: 429 });
       }

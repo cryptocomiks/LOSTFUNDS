@@ -78,7 +78,7 @@ await shoot("results-incomplete", {
   width: 1280,
   height: 900,
   path: `/?address=0x3333333333333333333333333333333333333333`,
-  failHost: ["scroll.blockscout.com", "evm/534352/"],
+  failHost: ["rpc.scroll.io"],
   action: async (p) => {
     await waitResults(p);
     await p.getByText("Check incomplete").waitFor({ timeout: 60000 });
