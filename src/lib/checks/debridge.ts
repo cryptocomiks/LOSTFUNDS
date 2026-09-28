@@ -81,7 +81,8 @@ function assetOf(o: Offer): Asset {
 /** Symbols made to look like well-known tokens (e.g. "USⅮΤ") are a common scam. */
 const looksFake = (symbol?: string) => !!symbol && /[^\x20-\x7e]/.test(symbol);
 
-export async function checkDebridge(user: Address): Promise<CheckOutput> {
+/** `user` is an EVM or a Solana address (maker, or order authority on the destination). */
+export async function checkDebridge(user: string): Promise<CheckOutput> {
   // `filter` matches the address as maker, receiver, or order authority (who can cancel);
   // the API also narrows down to stuck states on the Solana ↔ Ethereum routes.
   const candidates: ListedOrder[] = [];

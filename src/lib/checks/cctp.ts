@@ -1,7 +1,8 @@
-import { decodeEventLog, parseAbiItem, toEventSelector, type Address, type Hex } from "viem";
 import { addressTopic, getLogs } from "../explorer";
 import { L1 } from "../networks";
-import { accountsData, accountsExist, findProgramAddress, hexBytes } from "../solana";
+import { decodeEventLog, encodePacked, keccak256, parseAbi, parseAbiItem, toEventSelector, type Address, type Hex } from "viem";
+import { l1Client } from "../clients";
+import { accountsData, accountsExist, associatedTokenAddress, findProgramAddress, hexBytes, rpc as solanaRpc, rpcBatch } from "../solana";
 import { mapLimit } from "../tokens";
 import type { Asset } from "../types";
 import { DAY, makeFinding, now, type CheckOutput, type FindingSource } from "./common";
@@ -132,5 +133,120 @@ export async function checkCctp(user: Address): Promise<CheckOutput> {
   const all = perTx.flatMap(({ b, msgs }) => msgs.map((m) => ({ b, m })));
   const done = await accountsExist(all.map(({ m }) => findProgramAddress([enc("used_nonce"), hexBytes(m.nonce)], V2.solanaTransmitter)));
   all.forEach(({ b, m }, i) => (done[i] ? out.completed++ : report(b, `v2-${m.nonce}`)));
+  return out;
+}
+
+/* ───────────── Solana → Ethereum ───────────── */
+
+const SOLANA_USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+/** CCTP TokenMessengerMinter programs on Solana (v1, v2). */
+const SOLANA_BURN_PROGRAMS = new Set(["CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3", "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe"]);
+const ETH_TRANSMITTER_V1: Address = "0x0a992d191DEeC32aFe36203Ad87D7d289a738F81";
+const ETH_TRANSMITTER_V2: Address = "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64";
+const usedNoncesAbi = parseAbi(["function usedNonces(bytes32) view returns (uint256)"]);
+const MAX_USDC_TXS = 3000;
+const MAX_IRIS_LOOKUPS = 400;
+
+interface SolanaTx {
+  blockTime?: number;
+  meta?: { err: unknown; loadedAddresses?: { writable: string[]; readonly: string[] } };
+  transaction?: { message?: { accountKeys?: string[] } };
+}
+
+interface IrisMessage {
+  cctpVersion: number;
+  eventNonce: string;
+  status: string;
+  decodedMessage?: {
+    destinationDomain?: string;
+    nonce?: string;
+    decodedMessageBody?: { amount?: string };
+  };
+}
+
+/**
+ * USDC the user burned on Solana for Ethereum that was never minted there.
+ * The burns debit the user's USDC account, so its history is scanned for CCTP
+ * transactions; Circle's API gives each message's nonce, and Ethereum's
+ * MessageTransmitter records the nonces it has processed.
+ */
+export async function checkCctpFromSolana(owner: string): Promise<CheckOutput> {
+  const ata = associatedTokenAddress(owner, SOLANA_USDC);
+
+  const sigs: { signature: string; err: unknown; blockTime?: number }[] = [];
+  let before: string | undefined;
+  while (sigs.length < MAX_USDC_TXS) {
+    const page = await solanaRpc<{ signature: string; err: unknown; blockTime?: number }[]>("getSignaturesForAddress", [ata, { limit: 1000, before }]);
+    sigs.push(...page);
+    if (page.length < 1000) break;
+    before = page[page.length - 1].signature;
+  }
+  if (sigs.length >= MAX_USDC_TXS) throw new Error("more than 3,000 USDC transactions: too many to scan automatically");
+
+  // Keep the transactions that went through Circle's burn program.
+  const ok = sigs.filter((s) => !s.err);
+  let burns: { sig: string; time: number }[] = [];
+  try {
+    for (let i = 0; i < ok.length; i += 5) {
+      // Small, spaced batches: public Solana nodes rate-limit getTransaction.
+      if (i) await new Promise((r) => setTimeout(r, 400));
+      const chunk = ok.slice(i, i + 5);
+      const txs = await rpcBatch<SolanaTx>(
+        chunk.map((s) => ({ method: "getTransaction", params: [s.signature, { encoding: "json", maxSupportedTransactionVersion: 1 }] })),
+      );
+      txs.forEach((tx, j) => {
+        const keys = [
+          ...(tx?.transaction?.message?.accountKeys ?? []),
+          ...(tx?.meta?.loadedAddresses?.writable ?? []),
+          ...(tx?.meta?.loadedAddresses?.readonly ?? []),
+        ];
+        if (keys.some((k) => SOLANA_BURN_PROGRAMS.has(k))) burns.push({ sig: chunk[j].signature, time: tx?.blockTime ?? chunk[j].blockTime ?? 0 });
+      });
+    }
+  } catch (e) {
+    // Solana node busy: ask Circle's API about every USDC transaction instead (404 = not a burn).
+    if (ok.length > MAX_IRIS_LOOKUPS) throw e;
+    burns = ok.map((s) => ({ sig: s.signature, time: s.blockTime ?? 0 }));
+  }
+
+  const out: CheckOutput = { findings: [], completed: 0 };
+  await mapLimit(burns, 5, async ({ sig, time }) => {
+    const res = await fetch(`https://iris-api.circle.com/v2/messages/5?transactionHash=${sig}`, { signal: AbortSignal.timeout(20_000) });
+    if (res.status === 404) return; // not a burn (e.g. a mint into this account)
+    if (!res.ok) throw new Error(`Circle API: HTTP ${res.status}`);
+    const { messages = [] } = (await res.json()) as { messages?: IrisMessage[] };
+    for (const m of messages) {
+      if (m.decodedMessage?.destinationDomain !== "0") continue;
+      const key =
+        m.cctpVersion === 1
+          ? keccak256(encodePacked(["uint32", "uint64"], [SOLANA_DOMAIN, BigInt(m.decodedMessage.nonce ?? m.eventNonce)]))
+          : (m.eventNonce as Hex);
+      const used = await l1Client().readContract({
+        address: m.cctpVersion === 1 ? ETH_TRANSMITTER_V1 : ETH_TRANSMITTER_V2,
+        abi: usedNoncesAbi,
+        functionName: "usedNonces",
+        args: [key],
+      });
+      if (used !== 0n) {
+        out.completed++;
+        continue;
+      }
+      out.findings.push(
+        makeFinding(CCTP, {
+          key: `sol-${key}`,
+          label: "Circle CCTP · Solana → Ethereum",
+          status: now() - time < DAY ? "recent" : "ready",
+          asset: usdc(BigInt(m.decodedMessage.decodedMessageBody?.amount ?? "0")),
+          txHash: sig,
+          txUrl: `https://solscan.io/tx/${sig}`,
+          timestamp: time,
+          note:
+            m.status === "complete"
+              ? "USDC was burned on Solana and attested by Circle, but never minted on Ethereum. Finish it with the app you used, or submit the attestation to Ethereum's MessageTransmitter."
+              : "Burned on Solana; Circle's attestation isn't ready yet.",
+        }),
+      );
+    }
+  });
   return out;
 }

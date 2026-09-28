@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Address } from "viem";
-import { checkSource, InputError, resolveInput, runChecks } from "@/lib/checker";
+import { checkSource, InputError, resolveInput, runChecks, sourcesFor, type Target, type WalletKind } from "@/lib/checker";
 import { NETWORK_COLORS } from "@/lib/brand";
 import { formatAmount, formatDate, formatUsd, shortAddress } from "@/lib/format";
-import { GROUPS, SOURCES, sourceById, type Group } from "@/lib/sources";
+import { GROUPS, sourceById, type Group } from "@/lib/sources";
 import type { Finding, NetworkResult, WithdrawalStatus } from "@/lib/types";
 import { CopyButton } from "./CopyButton";
 import {
@@ -113,17 +113,20 @@ function FindingRow({ f, index }: { f: Finding; index: number }) {
 function NetworkGrid({
   results,
   onRetry,
+  kind,
 }: {
   results: Record<string, NetworkResult>;
   onRetry: (id: string) => void;
+  kind: WalletKind;
 }) {
+  const sources = sourcesFor(kind);
   return (
     <div className="space-y-5">
-      {(Object.keys(GROUPS) as Group[]).map((g) => (
+      {(Object.keys(GROUPS) as Group[]).filter((g) => sources.some((s) => s.group === g)).map((g) => (
         <div key={g}>
           <p className="mb-2 px-1 text-[13px] font-medium text-text-2">{GROUPS[g]}</p>
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-            {SOURCES.filter((n) => n.group === g).map((n) => {
+            {sources.filter((n) => n.group === g).map((n) => {
               const r = results[n.id];
               const state = r?.state ?? "queued";
               const found = r?.findings.filter((f) => f.status !== "recent").length ?? 0;
@@ -170,7 +173,7 @@ export function Checker() {
   const [input, setInput] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [target, setTarget] = useState<{ address: Address; ens?: string } | null>(null);
+  const [target, setTarget] = useState<Target | null>(null);
   const [results, setResults] = useState<Record<string, NetworkResult>>({});
   const abortRef = useRef<AbortController | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -194,7 +197,7 @@ export function Checker() {
       requestAnimationFrame(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
       const failed: string[] = [];
       await runChecks(
-        resolved.address,
+        resolved,
         (r) => {
           if (r.state === "error") failed.push(r.networkId);
           setResults((prev) => ({ ...prev, [r.networkId]: r }));
@@ -302,8 +305,8 @@ export function Checker() {
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Paste a wallet address or ENS name"
-                aria-label="Wallet address or ENS name"
+                placeholder="Paste an Ethereum or Solana address, or ENS name"
+                aria-label="Ethereum or Solana address, or ENS name"
                 spellCheck={false}
                 autoComplete="off"
                 autoCapitalize="off"
@@ -327,7 +330,7 @@ export function Checker() {
             ) : (
               <p className="mt-4 flex items-center justify-center gap-2 text-[13px] text-text-3">
                 <Lock width={14} height={14} />
-                Read-only. No wallet connection, no signatures. Paste your Ethereum address or ENS name.
+                Read-only. No wallet connection, no signatures. Ethereum and Solana addresses, ENS names.
               </p>
             )}
           </div>
@@ -348,7 +351,7 @@ export function Checker() {
                   </div>
                   <div className="flex items-center gap-2 text-[13px] text-text-3 tabular-nums">
                     {busy && <Spinner className="text-accent" />}
-                    {finished}/{SOURCES.length} checks done
+                    {finished}/{sourcesFor(target.kind).length} checks done
                   </div>
                 </div>
 
@@ -424,7 +427,7 @@ export function Checker() {
                   </span>
                 )}
               </div>
-              <NetworkGrid results={results} onRetry={retry} />
+              <NetworkGrid results={results} onRetry={retry} kind={target.kind} />
               {Object.values(results).some((r) => r.state === "error") && (
                 <details className="mt-3 rounded-2xl border border-line bg-surface px-4 py-3 text-[13px] text-text-2">
                   <summary className="cursor-pointer font-medium text-text">Why did some checks fail?</summary>

@@ -1,6 +1,6 @@
 import type { Address } from "viem";
 import { checkArbitrum } from "./checks/arbitrum";
-import { checkCctp } from "./checks/cctp";
+import { checkCctp, checkCctpFromSolana } from "./checks/cctp";
 import type { CheckOutput } from "./checks/common";
 import { checkDebridge } from "./checks/debridge";
 import { checkLinea } from "./checks/linea";
@@ -23,7 +23,10 @@ export interface CheckSource {
   group: Group;
   /** Official app, shown as text (users should type it themselves). */
   bridgeUrl: string;
-  run: (user: Address) => Promise<CheckOutput>;
+  /** Wallet kinds this check works with. */
+  accepts: ("evm" | "solana")[];
+  /** `user` is a checksummed EVM address or a base58 Solana address, per `accepts`. */
+  run: (user: string) => Promise<CheckOutput>;
 }
 
 const FAMILY: Record<Family, (net: Network, user: Address) => Promise<CheckOutput>> = {
@@ -39,13 +42,21 @@ export const SOURCES: CheckSource[] = [
     name: n.name,
     group: "l2" as const,
     bridgeUrl: n.bridgeUrl,
-    run: (user: Address) => FAMILY[n.family](n, user),
+    accepts: ["evm" as const],
+    run: (user: string) => FAMILY[n.family](n, user as Address),
   })),
   // Polygon PoS (checks/polygon.ts) is implemented and unit-tested, but not enabled until it has been
   // validated against real withdrawals: its only full-history source (Tenderly) rate-limits heavily.
-  { id: "wormhole", name: "Wormhole", group: "solana", bridgeUrl: "portalbridge.com", run: checkWormhole },
-  { id: "debridge", name: "deBridge", group: "solana", bridgeUrl: "app.debridge.finance", run: checkDebridge },
-  { id: "cctp", name: "Circle CCTP", group: "solana", bridgeUrl: "the app you used, or a CCTP relayer", run: checkCctp },
+  { id: "wormhole", name: "Wormhole", group: "solana", bridgeUrl: "portalbridge.com", accepts: ["evm", "solana"], run: checkWormhole },
+  { id: "debridge", name: "deBridge", group: "solana", bridgeUrl: "app.debridge.finance", accepts: ["evm", "solana"], run: checkDebridge },
+  {
+    id: "cctp",
+    name: "Circle CCTP",
+    group: "solana",
+    bridgeUrl: "the app you used, or a CCTP relayer",
+    accepts: ["evm", "solana"],
+    run: (user) => (user.startsWith("0x") ? checkCctp(user as Address) : checkCctpFromSolana(user)),
+  },
 ];
 
 export const sourceById = (id: string) => SOURCES.find((s) => s.id === id);

@@ -15,6 +15,8 @@ Free, read-only, no wallet connection. Everything runs in the browser.
 Data sources, all keyless: Blockscout's v2 API (transactions the wallet sent), then its Etherscan-compatible API, then full-history event search on RPC nodes that allow it (Zora, Mode, Arbitrum One, Scroll); several public RPC nodes per network; DefiLlama for USD prices. `npx tsx tests/live.ts 0x…` runs every check against the real chains (set NODE_USE_ENV_PROXY=1 behind a proxy).
 Optionally set `NEXT_PUBLIC_ETHERSCAN_API_KEY` to use Etherscan V2 as a fallback for history search.
 
+Solana addresses are accepted too: they run the Wormhole, deBridge and Circle CCTP (Solana → Ethereum) checks.
+
 Another 20+ bridges (Polygon, ZKsync, Starknet, CCTP, LayerZero, Wormhole…) have step-by-step claim guides.
 
 ## Develop

@@ -10,3 +10,7 @@ export const CLAIM_PDA_ETH_691205 = "9pbEdXMughNdYGkHmAmPjTQW7hkWGRTEZV4EinEjqFi
 
 /** Solana CCTP v1 used-nonces account for nonces 499201–505600 from Ethereum (domain 0). */
 export const CCTP_V1_USED_NONCES_499201 = "B4dZdmoVwQ5WZ5iaxkF4e9gtMgSBh3XG75XTZ3kgwt7u";
+
+/** USDC associated token account of a Solana wallet (checked with getAccountInfo: owner + mint match). */
+export const SOL_WALLET = "HRfHmwYMpaQM3MoWZVPQWjXppYv2upi4L2KBsqHhY6R6";
+export const SOL_WALLET_USDC_ATA = "Bvva79i9YwB4pkmZ24c1SnJm8jab4GqEpjpxAthiWsZp";

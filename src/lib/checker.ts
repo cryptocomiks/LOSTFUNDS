@@ -1,6 +1,7 @@
 import { getAddress, isAddress, type Address } from "viem";
 import { normalize } from "viem/ens";
 import { l1Client } from "./clients";
+import { isSolanaAddress } from "./solana";
 import type { Network } from "./networks";
 import { SOURCES, sourceById, type CheckSource } from "./sources";
 import { addPrices } from "./tokens";
@@ -9,10 +10,19 @@ import type { NetworkResult } from "./types";
 export class InputError extends Error {}
 
 /** Accepts a 0x address or an ENS name. Returns a checksummed address. */
-export async function resolveInput(raw: string): Promise<{ address: Address; ens?: string }> {
+export type WalletKind = "evm" | "solana";
+export interface Target {
+  kind: WalletKind;
+  address: string;
+  ens?: string;
+}
+
+/** Accepts an Ethereum address, an ENS name or a Solana address. */
+export async function resolveInput(raw: string): Promise<Target> {
   const input = raw.trim();
   if (!input) throw new InputError("Paste a wallet address or ENS name.");
-  if (isAddress(input, { strict: false })) return { address: getAddress(input) };
+  if (isAddress(input, { strict: false })) return { kind: "evm", address: getAddress(input) };
+  if (isSolanaAddress(input)) return { kind: "solana", address: input };
   if (/^[^\s]+\.[a-z]{2,}$/i.test(input)) {
     let name: string;
     try {
@@ -22,10 +32,9 @@ export async function resolveInput(raw: string): Promise<{ address: Address; ens
     }
     const address = await l1Client().getEnsAddress({ name });
     if (!address) throw new InputError(`${input} doesn't resolve to an address.`);
-    return { address, ens: name };
+    return { kind: "evm", address, ens: name };
   }
-  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(input) || /^0x[0-9a-f]{64}$/i.test(input))
-    throw new InputError("Only EVM addresses (0x…) and ENS names are supported for now.");
+  if (/^0x[0-9a-f]{64}$/i.test(input)) throw new InputError("That's a transaction hash, not a wallet address.");
   throw new InputError("That doesn't look like a wallet address.");
 }
 
@@ -36,7 +45,7 @@ function describeError(e: unknown): string {
 }
 
 /** Runs one check. Never throws: failures come back as an "error" result. */
-export async function checkSource(src: CheckSource, user: Address): Promise<NetworkResult> {
+export async function checkSource(src: CheckSource, user: string): Promise<NetworkResult> {
   try {
     const out = await src.run(user);
     await addPrices(out.findings.map((f) => f.asset));
@@ -50,10 +59,14 @@ export async function checkSource(src: CheckSource, user: Address): Promise<Netw
 /** Checks one L2 network's withdrawals. */
 export const checkNetwork = (net: Network, user: Address) => checkSource(sourceById(net.id)!, user);
 
-/** Runs every check in parallel, reporting each result as soon as it lands. */
-export async function runChecks(user: Address, onUpdate: (r: NetworkResult) => void, signal?: AbortSignal) {
+/** The checks that apply to this kind of wallet. */
+export const sourcesFor = (kind: WalletKind) => SOURCES.filter((s) => s.accepts.includes(kind));
+
+/** Runs every applicable check in parallel, reporting each result as soon as it lands. */
+export async function runChecks(target: Target, onUpdate: (r: NetworkResult) => void, signal?: AbortSignal) {
+  const user = target.address;
   await Promise.all(
-    SOURCES.map(async (src) => {
+    sourcesFor(target.kind).map(async (src) => {
       onUpdate({ networkId: src.id, state: "running", findings: [], completed: 0 });
       const result = await checkSource(src, user);
       if (!signal?.aborted) onUpdate(result);

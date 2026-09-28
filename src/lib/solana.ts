@@ -44,7 +44,24 @@ export function u64be(n: bigint): Uint8Array {
 }
 export const hexBytes = (hex: string) => Uint8Array.from((hex.replace(/^0x/, "").match(/../g) ?? []).map((h) => parseInt(h, 16)));
 
-async function rpc<T>(method: string, params: unknown[]): Promise<T> {
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const isRateLimit = (e: unknown) => /too many|rate|429|limit/i.test(String((e as Error)?.message ?? e));
+
+/** Retries a Solana call a few times when the public nodes rate-limit us. */
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (attempt >= 4 || !isRateLimit(e)) throw e;
+      await sleep(2000 * 2 ** attempt + Math.random() * 1000);
+    }
+  }
+}
+
+export const rpc = <T>(method: string, params: unknown[]) => withRetry(() => rpcOnce<T>(method, params));
+
+async function rpcOnce<T>(method: string, params: unknown[]): Promise<T> {
   let last: unknown;
   for (const url of SOLANA_RPCS) {
     try {
@@ -90,3 +107,47 @@ export async function accountsData(pubkeys: string[]): Promise<(Uint8Array | nul
   }
   return out;
 }
+
+/** Several calls in one JSON-RPC batch request; results in the same order. */
+export const rpcBatch = <T>(calls: { method: string; params: unknown[] }[]) => withRetry(() => rpcBatchOnce<T>(calls));
+
+async function rpcBatchOnce<T>(calls: { method: string; params: unknown[] }[]): Promise<(T | null)[]> {
+  let last: unknown;
+  for (const url of SOLANA_RPCS) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(calls.map((c, id) => ({ jsonrpc: "2.0", id, ...c }))),
+        signal: AbortSignal.timeout(30_000),
+      });
+      const replies = (await res.json()) as { id: number; result?: T; error?: { message?: string } }[];
+      if (!Array.isArray(replies)) throw new Error(`HTTP ${res.status}`);
+      const errors = replies.filter((r) => r.error);
+      if (errors.length) throw new Error(errors[0].error?.message ?? "error");
+      const out: (T | null)[] = new Array(calls.length).fill(null);
+      for (const r of replies) out[r.id] = r.result ?? null;
+      return out;
+    } catch (e) {
+      last = e;
+    }
+  }
+  throw new Error(`Solana RPC: ${(last as Error)?.message ?? "unavailable"}`);
+}
+
+/** A base58 string that decodes to 32 bytes (a Solana public key). */
+export function isSolanaAddress(s: string): boolean {
+  if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s)) return false;
+  try {
+    return base58.decode(s).length === 32;
+  } catch {
+    return false;
+  }
+}
+
+const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+const ATA_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
+
+/** The owner's associated token account for `mint`. */
+export const associatedTokenAddress = (owner: string, mint: string) =>
+  findProgramAddress([base58.decode(owner), base58.decode(TOKEN_PROGRAM), base58.decode(mint)], ATA_PROGRAM);

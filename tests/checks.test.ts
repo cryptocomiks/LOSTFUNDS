@@ -73,11 +73,16 @@ describe("Networks with nothing to report", () => {
 
 describe("Input", () => {
   test("accepts lowercase addresses and checksums them", async () => {
-    const { address } = await resolveInput("  0xd8da6bf26964af9d7eed9e03e53415d37aa96045 ");
+    const { address, kind } = await resolveInput("  0xd8da6bf26964af9d7eed9e03e53415d37aa96045 ");
     assert.equal(address, "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045");
+    assert.equal(kind, "evm");
   });
-  test("rejects Solana addresses with a clear message", async () => {
-    await assert.rejects(resolveInput("9VpXTJ3YuA4Rvt1seDY4BaYiNpf5LZrxRKopGjgytgCG"), InputError);
+  test("accepts Solana addresses", async () => {
+    const t = await resolveInput("9VpXTJ3YuA4Rvt1seDY4BaYiNpf5LZrxRKopGjgytgCG");
+    assert.deepEqual(t, { kind: "solana", address: "9VpXTJ3YuA4Rvt1seDY4BaYiNpf5LZrxRKopGjgytgCG" });
+  });
+  test("rejects transaction hashes with a clear message", async () => {
+    await assert.rejects(resolveInput(`0x${"ab".repeat(32)}`), /transaction hash/);
   });
   test("rejects garbage", async () => {
     await assert.rejects(resolveInput("hello"), InputError);

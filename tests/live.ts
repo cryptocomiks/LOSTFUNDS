@@ -1,15 +1,15 @@
 /**
  * Runs the checks against the real chains.
- *   npx tsx tests/live.ts 0xADDRESS [checkId…]
+ *   npx tsx tests/live.ts <Ethereum or Solana address> [checkId…]
  * Behind a proxy, set NODE_USE_ENV_PROXY=1.
  */
 import { checkSource } from "../src/lib/checker.ts";
-import { SOURCES } from "../src/lib/sources.ts";
+import { sourcesFor } from "../src/lib/checker.ts";
 
-const [user, ...only] = process.argv.slice(2) as [`0x${string}`, ...string[]];
+const [user, ...only] = process.argv.slice(2);
 const t0 = Date.now();
 await Promise.all(
-  SOURCES.filter((s) => !only.length || only.includes(s.id)).map(async (s) => {
+  sourcesFor(user.startsWith("0x") ? "evm" : "solana").filter((s) => !only.length || only.includes(s.id)).map(async (s) => {
     const t = Date.now();
     const r = await checkSource(s, user);
     console.log(

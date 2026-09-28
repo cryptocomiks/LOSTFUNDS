@@ -5,11 +5,14 @@ import { checkCctp } from "../src/lib/checks/cctp.ts";
 import { checkDebridge } from "../src/lib/checks/debridge.ts";
 import { checkPolygon } from "../src/lib/checks/polygon.ts";
 import { checkWormhole, decodeTransferVaa } from "../src/lib/checks/wormhole.ts";
-import { findProgramAddress, hexBytes, u16be, u64be } from "../src/lib/solana.ts";
+import { associatedTokenAddress, findProgramAddress, hexBytes, u16be, u64be } from "../src/lib/solana.ts";
+import { sourcesFor } from "../src/lib/checker.ts";
 import { MockChain } from "./mockchain.ts";
 import {
   CCTP_V1_USED_NONCES_499201,
   CLAIM_PDA_ETH_691205,
+  SOL_WALLET,
+  SOL_WALLET_USDC_ATA,
   WORMHOLE_VAA_242189,
   WORMHOLE_VAA_242189_RECIPIENT,
 } from "./real-data.ts";
@@ -34,6 +37,9 @@ describe("Solana derivations (checked against mainnet)", () => {
       "wormDTUJ6AWPNvk59vGQbDvGJmqbDTdgWgAqcLBCgUb",
     );
     assert.equal(pda, CLAIM_PDA_ETH_691205);
+  });
+  test("USDC associated token account", () => {
+    assert.equal(associatedTokenAddress(SOL_WALLET, "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"), SOL_WALLET_USDC_ATA);
   });
   test("CCTP v1 used-nonces account", () => {
     const pda = findProgramAddress([enc("used_nonces"), enc("0"), enc("499201")], "CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd");
@@ -220,5 +226,17 @@ describe("Polygon PoS", () => {
   test("comes back clean when the wallet never burned bridged tokens", async () => {
     const r = await checkPolygon(STRANGER);
     assert.deepEqual(r, { findings: [], completed: 0 });
+  });
+});
+
+describe("Wallet kinds", () => {
+  test("a Solana address runs only the Solana ↔ Ethereum checks", () => {
+    assert.deepEqual(
+      sourcesFor("solana").map((s) => s.id),
+      ["wormhole", "debridge", "cctp"],
+    );
+  });
+  test("an Ethereum address runs everything", () => {
+    assert.equal(sourcesFor("evm").length, 14);
   });
 });

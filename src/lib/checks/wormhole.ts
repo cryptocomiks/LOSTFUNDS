@@ -113,7 +113,7 @@ async function getJson<T>(url: string): Promise<T> {
  * Every Token Bridge message involving `user` (as sender or recipient), with its signed VAA.
  * Uses /transactions?address=, which, unlike /operations, also covers old transfers.
  */
-async function findTransfers(user: Address): Promise<Found[]> {
+async function findTransfers(user: string): Promise<Found[]> {
   const ids: { id: string; timestamp: number }[] = [];
   for (let page = 0; page < 20; page++) {
     const { transactions = [] } = await getJson<{ transactions?: { id: string; timestamp: string; emitterChain: number; emitterAddress: string }[] }>(
@@ -161,8 +161,14 @@ async function assetFor(t: Transfer): Promise<Asset> {
   };
 }
 
-export async function checkWormhole(user: Address): Promise<CheckOutput> {
+/**
+ * `user` is an EVM address or a Solana address. Wormholescan's index matches the
+ * address as sender or recipient; for an EVM user the Solana → Ethereum recipient is
+ * checked against the VAA, for a Solana user both directions are the user's.
+ */
+export async function checkWormhole(user: string): Promise<CheckOutput> {
   const found = await findTransfers(user);
+  const isEvm = user.startsWith("0x");
   const me = user.toLowerCase();
 
   const toEthereum: { t: Transfer; f: Found }[] = [];
@@ -170,8 +176,8 @@ export async function checkWormhole(user: Address): Promise<CheckOutput> {
   for (const f of found) {
     const t = decodeTransferVaa(f.vaa);
     if (!t || EMITTERS[t.emitterChain] !== t.emitterAddress) continue; // not an official Token Bridge transfer
-    if (t.emitterChain === SOLANA && t.toChain === ETHEREUM && `0x${t.to.slice(26)}` === me) toEthereum.push({ t, f });
-    // A Solana recipient can't be an EVM address, so the user is the Ethereum sender.
+    if (t.emitterChain === SOLANA && t.toChain === ETHEREUM && (!isEvm || `0x${t.to.slice(26)}` === me)) toEthereum.push({ t, f });
+    // For an EVM user a Solana recipient can't be theirs, so they are the Ethereum sender.
     else if (t.emitterChain === ETHEREUM && t.toChain === SOLANA) toSolana.push({ t, f });
   }
 
