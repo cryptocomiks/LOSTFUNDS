@@ -63,12 +63,13 @@ export function buildWorld(): MockChain {
       data: "0x",
     },
   });
-  m.addTx({ chainId: ARB, hash: h(0xa1), from: USER, blockNumber: 200_000_000n, timestamp: now - 60 * DAY, logs: [arbMsg(1234n, USER, parseEther("1.5"))] });
-  m.addTx({ chainId: ARB, hash: h(0xa2), from: USER, blockNumber: 200_000_001n, timestamp: now - 90 * DAY, logs: [arbMsg(99n, USER, parseEther("4"))] });
+  m.addTx({ chainId: ARB, hash: h(0xa1), from: USER, to: ARBSYS, blockNumber: 200_000_000n, timestamp: now - 60 * DAY, logs: [arbMsg(1234n, USER, parseEther("1.5"))] });
+  m.addTx({ chainId: ARB, hash: h(0xa2), from: USER, to: ARBSYS, blockNumber: 200_000_001n, timestamp: now - 90 * DAY, logs: [arbMsg(99n, USER, parseEther("4"))] });
   m.addTx({
     chainId: ARB,
     hash: h(0xa3),
     from: USER,
+    to: "0x5288c571Fd7aD117beA99bF60FE0846C4E84F933",
     blockNumber: 200_000_002n,
     timestamp: now - 40 * DAY,
     logs: [
@@ -100,6 +101,7 @@ export function buildWorld(): MockChain {
     chainId: SCROLL,
     hash: h(0x51),
     from: USER,
+    to: "0x4C0926FF5252A435FD19e10ED15e5a249Ba19d79",
     blockNumber: 5_000_000n,
     timestamp: now - 20 * DAY,
     logs: [
@@ -131,10 +133,10 @@ export function buildWorld(): MockChain {
     event: ev.lineaMessageSent,
     args: { _from: USER, _to: USER, _fee: 0n, _value: value, _nonce: nonce, _calldata: "0x", _messageHash: hash },
   });
-  m.addTx({ chainId: LINEA, hash: h(0x11), from: USER, blockNumber: 9_000_000n, timestamp: now - 30 * DAY, logs: [lineaMsg(5n, parseEther("2"), h(0xbeef))] });
-  m.addTx({ chainId: LINEA, hash: h(0x12), from: USER, blockNumber: 1_000_000n, timestamp: now - 700 * DAY, logs: [lineaMsg(1n, parseEther("9"), h(0xcafe))] });
+  m.addTx({ chainId: LINEA, hash: h(0x11), from: USER, to: MSG_SERVICE, blockNumber: 9_000_000n, timestamp: now - 30 * DAY, logs: [lineaMsg(5n, parseEther("2"), h(0xbeef))] });
+  m.addTx({ chainId: LINEA, hash: h(0x12), from: USER, to: MSG_SERVICE, blockNumber: 1_000_000n, timestamp: now - 700 * DAY, logs: [lineaMsg(1n, parseEther("9"), h(0xcafe))] });
   // The old message was claimed through the V1 path: no bitmap entry, but a MessageClaimed event on L1.
-  m.addTx({ chainId: 1, hash: h(0xe1), from: OTHER, blockNumber: 19_000_000n, timestamp: now - 690 * DAY, logs: [{ address: ROLLUP, event: ev.lineaMessageClaimed, args: { _messageHash: h(0xcafe) } }] });
+  m.addTx({ chainId: 1, hash: h(0xe1), from: OTHER, to: ROLLUP, blockNumber: 19_000_000n, timestamp: now - 690 * DAY, logs: [{ address: ROLLUP, event: ev.lineaMessageClaimed, args: { _messageHash: h(0xcafe) } }] });
   m.addContract(1, ROLLUP, parseAbi(["function isMessageClaimed(uint256) view returns (bool)"]), { isMessageClaimed: () => false });
 
   // ───── OP Mainnet, pre-Bedrock ─────
@@ -145,6 +147,7 @@ export function buildWorld(): MockChain {
     chainId: OP,
     hash: h(0x0b),
     from: USER,
+    to: L2_BRIDGE,
     blockNumber: 50_000_000n,
     timestamp: now - 1300 * DAY,
     logs: [

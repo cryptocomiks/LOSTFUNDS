@@ -10,7 +10,7 @@ import {
   type TransactionReceipt,
 } from "viem";
 import { l1Client, l2Client } from "../clients";
-import { addressTopic, getLogs, uniqueTxs } from "../logs";
+import { addressTopic, findBridgeTxs } from "../explorer";
 import type { Network } from "../networks";
 import { ethAsset, mapLimit, tokenAsset } from "../tokens";
 import { DAY, makeFinding, unclaimedStatus, type CheckOutput } from "./common";
@@ -91,16 +91,18 @@ async function checkReceipt(net: Network, receipt: TransactionReceipt, user: Add
 export async function checkScroll(net: Network, user: Address): Promise<CheckOutput> {
   const u = addressTopic(user);
   const c = net.contracts;
-  const logs = (
-    await Promise.all([
-      getLogs(net, c.l2Messenger as Address, [T.sentMessage, u]), // direct messages
-      getLogs(net, c.ethGateway as Address, [T.withdrawEth, u]),
-      ...(c.erc20Gateways as Address[]).map((g) => getLogs(net, g, [T.withdrawErc20, null, null, u])),
-    ])
-  ).flat();
+  const erc20 = c.erc20Gateways as Address[];
+  const txs = await findBridgeTxs(net, user, {
+    targets: [c.gatewayRouter as Address, c.l2Messenger as Address, c.ethGateway as Address, ...erc20],
+    logs: [
+      [c.l2Messenger as Address, [T.sentMessage, u]], // direct messages
+      [c.ethGateway as Address, [T.withdrawEth, u]],
+      ...erc20.map((g) => [g, [T.withdrawErc20, null, null, u]] as [Address, [Hex, null, null, Hex]]),
+    ],
+  });
 
   const out: CheckOutput = { findings: [], completed: 0 };
-  await mapLimit([...uniqueTxs(logs)], 3, async ([hash, timestamp]: [Hex, number]) => {
+  await mapLimit([...txs], 3, async ([hash, timestamp]: [Hex, number]) => {
     const receipt = await l2Client(net).getTransactionReceipt({ hash });
     if (receipt.status !== "success") return;
     await checkReceipt(net, receipt, user, timestamp, out);

@@ -32,6 +32,8 @@ interface StoredTx {
   chainId: number;
   hash: Hex;
   from: Address;
+  to: Address;
+  timestamp: number;
   blockNumber: bigint;
   logs: StoredLog[];
 }
@@ -50,6 +52,7 @@ export class MockChain {
     chainId: number;
     hash: Hex;
     from: Address;
+    to: Address;
     blockNumber: bigint;
     timestamp: number;
     logs: { address: Address; event: AbiEvent; args: Record<string, unknown> }[];
@@ -72,7 +75,15 @@ export class MockChain {
       };
     });
     this.logs.push(...logs);
-    this.txs.set(`${p.chainId}:${p.hash}`, { chainId: p.chainId, hash: p.hash, from: p.from, blockNumber: p.blockNumber, logs });
+    this.txs.set(`${p.chainId}:${p.hash}`, {
+      chainId: p.chainId,
+      hash: p.hash,
+      from: p.from,
+      to: p.to,
+      timestamp: p.timestamp,
+      blockNumber: p.blockNumber,
+      logs,
+    });
   }
 
   addContract(chainId: number, address: Address, abi: Abi, fns: Record<string, ContractFn>) {
@@ -150,8 +161,24 @@ export class MockChain {
     }
   }
 
-  private blockscout(chainId: number, url: URL) {
+  private explorer(chainId: number, url: URL) {
     const q = url.searchParams;
+    if (q.get("action") === "txlist") {
+      const me = q.get("address")!.toLowerCase();
+      const result = [...this.txs.values()]
+        .filter((t) => t.chainId === chainId && (t.from.toLowerCase() === me || t.to.toLowerCase() === me))
+        .map((t) => ({
+          hash: t.hash,
+          from: t.from.toLowerCase(),
+          to: t.to.toLowerCase(),
+          isError: "0",
+          txreceipt_status: "1",
+          timeStamp: String(t.timestamp),
+          blockNumber: String(t.blockNumber),
+        }));
+      if (!result.length) return { status: "0", message: "No transactions found", result: [] };
+      return { status: "1", message: "OK", result };
+    }
     const address = q.get("address")!.toLowerCase();
     const topics = [0, 1, 2, 3].map((i) => q.get(`topic${i}`)?.toLowerCase());
     const result = this.logs
@@ -191,7 +218,9 @@ export class MockChain {
     }
 
     const scout = [...NETWORKS, { ...L1, id: "l1" }].find((n) => new URL(n.blockscout).host === url.host);
-    if (scout && url.pathname === "/api") return json(this.blockscout(scout.chain.id, url));
+    if (scout && url.pathname === "/api") return json(this.explorer(scout.chain.id, url));
+    const routescan = url.host === "api.routescan.io" && url.pathname.match(/\/evm\/(\d+)\/etherscan\/api$/);
+    if (routescan) return json(this.explorer(Number(routescan[1]), url));
 
     const rpcNet = [...NETWORKS, L1].find((n) => n.rpcs.some((r) => r.replace(/\/$/, "") === url.href.replace(/\/$/, "")));
     if (rpcNet) {

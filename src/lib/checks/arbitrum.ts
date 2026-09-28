@@ -8,7 +8,7 @@ import {
   type TransactionReceipt,
 } from "viem";
 import { l1Client, l2Client } from "../clients";
-import { addressTopic, getLogs, uniqueTxs } from "../logs";
+import { addressTopic, findBridgeTxs } from "../explorer";
 import type { Network } from "../networks";
 import { ethAsset, mapLimit, tokenAsset } from "../tokens";
 import { DAY, makeFinding, unclaimedStatus, type CheckOutput } from "./common";
@@ -100,15 +100,17 @@ async function checkReceipt(net: Network, receipt: TransactionReceipt, user: Add
 
 export async function checkArbitrum(net: Network, user: Address): Promise<CheckOutput> {
   const u = addressTopic(user);
-  const logs = (
-    await Promise.all([
-      getLogs(net, ARBSYS, [T.l2ToL1Tx, u]), // ETH withdrawals (destination = user)
-      ...(net.contracts.gateways as Address[]).map((g) => getLogs(net, g, [T.withdrawalInitiated, u])),
-    ])
-  ).flat();
+  const gateways = net.contracts.gateways as Address[];
+  const txs = await findBridgeTxs(net, user, {
+    targets: [ARBSYS, net.contracts.gatewayRouter as Address, ...gateways],
+    logs: [
+      [ARBSYS, [T.l2ToL1Tx, u]], // ETH withdrawals (destination = user)
+      ...gateways.map((g) => [g, [T.withdrawalInitiated, u]] as [Address, [Hex, Hex]]),
+    ],
+  });
 
   const out: CheckOutput = { findings: [], completed: 0 };
-  await mapLimit([...uniqueTxs(logs)], 3, async ([hash, timestamp]: [Hex, number]) => {
+  await mapLimit([...txs], 3, async ([hash, timestamp]: [Hex, number]) => {
     const receipt = await l2Client(net).getTransactionReceipt({ hash });
     if (receipt.status !== "success") return;
     await checkReceipt(net, receipt, user, timestamp, out);

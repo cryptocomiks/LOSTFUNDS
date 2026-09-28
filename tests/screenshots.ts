@@ -26,7 +26,7 @@ const server = createServer(async (req, res) => {
 const world = buildWorld();
 const browser = await pw.chromium.launch();
 
-async function shoot(name: string, opts: { width: number; height: number; dark?: boolean; path?: string; full?: boolean; failHost?: string; action?: (page: import("playwright").Page) => Promise<void> }) {
+async function shoot(name: string, opts: { width: number; height: number; dark?: boolean; path?: string; full?: boolean; failHost?: string[]; action?: (page: import("playwright").Page) => Promise<void> }) {
   const ctx = await browser.newContext({
     viewport: { width: opts.width, height: opts.height },
     deviceScaleFactor: 2,
@@ -38,7 +38,7 @@ async function shoot(name: string, opts: { width: number; height: number; dark?:
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   await page.route(/^https?:\/\/(?!localhost)/, async (route) => {
     const r = route.request();
-    if (opts.failHost && r.url().includes(opts.failHost)) return route.fulfill({ status: 403, body: "blocked" });
+    if (opts.failHost?.some((h) => r.url().includes(h))) return route.fulfill({ status: 403, body: "blocked" });
     const res = await world.fetch(r.url(), { method: r.method(), body: r.postData() ?? undefined });
     await route.fulfill({ status: res.status, headers: { "content-type": "application/json", "access-control-allow-origin": "*" }, body: await res.text() });
   });
@@ -78,7 +78,7 @@ await shoot("results-incomplete", {
   width: 1280,
   height: 900,
   path: `/?address=0x3333333333333333333333333333333333333333`,
-  failHost: "scroll.blockscout.com",
+  failHost: ["scroll.blockscout.com", "evm/534352/"],
   action: async (p) => {
     await waitResults(p);
     await p.getByText("Check incomplete").waitFor({ timeout: 60000 });

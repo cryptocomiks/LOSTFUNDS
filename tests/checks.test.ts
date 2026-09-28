@@ -102,15 +102,60 @@ describe("Rate limits", () => {
     assert.equal(busy, 0);
   });
 
-  test("reports the real cause when a source keeps failing", async () => {
+  test("reports every source's error when all of them fail", async () => {
     globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input instanceof Request ? input.url : input);
-      if (url.includes("explorer.zora.energy")) return new Response("nope", { status: 403 });
+      if (url.includes("explorer.zora.energy") || url.includes("routescan")) return new Response("nope", { status: 403 });
       return world.fetch(input, init);
     }) as typeof fetch;
     const r = await run("zora");
     globalThis.fetch = world.fetch as typeof fetch;
     assert.equal(r.state, "error");
     assert.match(r.error ?? "", /explorer\.zora\.energy: HTTP 403/);
+    assert.match(r.error ?? "", /routescan: HTTP 403/);
+  });
+});
+
+describe("Fallbacks", () => {
+  const withFetch = async (block: (url: string) => boolean, fn: () => Promise<void>) => {
+    const seen: string[] = [];
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input instanceof Request ? input.url : input);
+      seen.push(url);
+      if (block(url)) return new Response("down", { status: 403 });
+      return world.fetch(input, init);
+    }) as typeof fetch;
+    try {
+      await fn();
+    } finally {
+      globalThis.fetch = world.fetch as typeof fetch;
+    }
+    return seen;
+  };
+
+  test("uses the wallet's own transaction list first (no log scans)", async () => {
+    const seen = await withFetch(() => false, async () => {
+      const r = await run("arbitrum");
+      assert.equal(r.findings.length, 2);
+    });
+    const explorer = seen.filter((u) => u.includes("arbitrum.blockscout.com"));
+    assert.ok(explorer.length >= 1 && explorer.every((u) => u.includes("action=txlist")), explorer.join("\n"));
+  });
+
+  test("switches to Routescan when Blockscout is down", async () => {
+    const seen = await withFetch((u) => u.includes("arbitrum.blockscout.com"), async () => {
+      const r = await run("arbitrum");
+      assert.equal(r.state, "done", r.error ?? "");
+      assert.equal(r.findings.length, 2);
+    });
+    assert.ok(seen.some((u) => u.includes("api.routescan.io/v2/network/mainnet/evm/42161/")));
+  });
+
+  test("falls back to event-log search when no source supports the transaction list", async () => {
+    await withFetch((u) => u.includes("action=txlist"), async () => {
+      const r = await run("scroll");
+      assert.equal(r.state, "done", r.error ?? "");
+      assert.equal(r.findings.length, 1);
+    });
   });
 });

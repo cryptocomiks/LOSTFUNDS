@@ -12,7 +12,7 @@ Free, read-only, no wallet connection. Everything runs in the browser.
 | Scroll | Gateway / messenger events → `L1ScrollMessenger.isL2MessageExecuted(hash)`. |
 | Linea | `MessageSent` / token-bridge events → `LineaRollup.isMessageClaimed(nonce)` + L1 `MessageClaimed` events. |
 
-Data sources, all keyless: Blockscout (history search), public JSON-RPC nodes, DefiLlama (USD prices).
+Data sources, all keyless: the wallet's own transaction list from Blockscout, then Routescan (event-log search as a last resort), several public JSON-RPC nodes per network, DefiLlama (USD prices).
 Optionally set `NEXT_PUBLIC_ETHERSCAN_API_KEY` to use Etherscan V2 as a fallback for history search.
 
 Another 20+ bridges (Polygon, ZKsync, Starknet, CCTP, LayerZero, Wormhole…) have step-by-step claim guides.

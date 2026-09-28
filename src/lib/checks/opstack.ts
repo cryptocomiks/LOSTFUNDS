@@ -12,7 +12,7 @@ import {
 } from "viem";
 import { getTimeToFinalize, getWithdrawalStatus, getWithdrawals } from "viem/op-stack";
 import { l1Client, l2Client } from "../clients";
-import { addressTopic, getLogs, uniqueTxs } from "../logs";
+import { addressTopic, findBridgeTxs } from "../explorer";
 import { L1, type Network } from "../networks";
 import { ethAsset, mapLimit, tokenAsset } from "../tokens";
 import type { Asset, Finding } from "../types";
@@ -201,18 +201,18 @@ export async function checkOpStack(net: Network, user: Address): Promise<CheckOu
   const bridge = net.contracts.l2StandardBridge as Address;
   const passer = net.contracts.l2ToL1MessagePasser as Address;
 
-  const logs = (
-    await Promise.all([
-      getLogs(net, bridge, [T.withdrawalInitiated, null, null, u]),
-      getLogs(net, bridge, [T.ethBridgeInitiated, u]),
-      getLogs(net, bridge, [T.erc20BridgeInitiated, null, null, u]),
-      getLogs(net, passer, [T.messagePassed, null, u]), // direct withdrawals
-    ])
-  ).flat();
+  const txs = await findBridgeTxs(net, user, {
+    targets: [bridge, passer, net.contracts.l2CrossDomainMessenger as Address],
+    logs: [
+      [bridge, [T.withdrawalInitiated, null, null, u]],
+      [bridge, [T.ethBridgeInitiated, u]],
+      [bridge, [T.erc20BridgeInitiated, null, null, u]],
+      [passer, [T.messagePassed, null, u]], // direct withdrawals
+    ],
+  });
 
   const out: CheckOutput = { findings: [], completed: 0 };
-  const txs = [...uniqueTxs(logs)];
-  await mapLimit(txs, 3, async ([hash, timestamp]: [Hex, number]) => {
+  await mapLimit([...txs], 3, async ([hash, timestamp]: [Hex, number]) => {
     const receipt = await l2Client(net).getTransactionReceipt({ hash });
     if (receipt.status !== "success") return;
     await checkReceipt(net, receipt, user, timestamp, out);
