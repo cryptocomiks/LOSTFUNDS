@@ -185,11 +185,27 @@ export function Checker() {
       url.hash = "";
       history.replaceState(null, "", url);
       requestAnimationFrame(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      const failed: string[] = [];
       await runChecks(
         resolved.address,
-        (r) => setResults((prev) => ({ ...prev, [r.networkId]: r })),
+        (r) => {
+          if (r.state === "error") failed.push(r.networkId);
+          setResults((prev) => ({ ...prev, [r.networkId]: r }));
+        },
         ctrl.signal,
       );
+      // One automatic second attempt for networks whose data sources were busy.
+      if (failed.length && !ctrl.signal.aborted) {
+        await new Promise((r) => setTimeout(r, 1500));
+        await Promise.all(
+          failed.map(async (id) => {
+            if (ctrl.signal.aborted) return;
+            setResults((prev) => ({ ...prev, [id]: { networkId: id, state: "running", findings: [], completed: 0 } }));
+            const r = await checkNetwork(networkById(id)!, resolved.address);
+            if (!ctrl.signal.aborted) setResults((prev) => ({ ...prev, [id]: r }));
+          }),
+        );
+      }
       if (!ctrl.signal.aborted) setPhase("done");
     } catch (e) {
       if (ctrl.signal.aborted) return;
@@ -349,6 +365,17 @@ export function Checker() {
                       else can do it for you, and nobody needs your seed phrase.
                     </p>
                   </div>
+                ) : errors > 0 ? (
+                  <div className="mt-6 flex items-start gap-4">
+                    <Alert width={40} height={40} className="mt-1 shrink-0 text-orange" />
+                    <div>
+                      <p className="text-[28px] font-semibold tracking-tight sm:text-[34px]">Check incomplete</p>
+                      <p className="mt-2 text-[15px] text-text-2">
+                        {errors} network{errors > 1 ? "s" : ""} couldn&apos;t be checked right now, so we can&apos;t say
+                        yet. Nothing was found on the {finished - errors} others. Retry the missing ones below.
+                      </p>
+                    </div>
+                  </div>
                 ) : (
                   <div className="mt-6 flex items-start gap-4">
                     <CheckCircle width={40} height={40} className="mt-1 shrink-0 text-green" />
@@ -358,7 +385,6 @@ export function Checker() {
                         {completed > 0
                           ? `All ${completed} withdrawal${completed > 1 ? "s" : ""} we found were completed.`
                           : "We didn't find any unfinished withdrawals on the networks we check."}{" "}
-                        {errors > 0 && "Some networks couldn't be checked: retry them below."}
                       </p>
                     </div>
                   </div>
@@ -392,6 +418,20 @@ export function Checker() {
                 )}
               </div>
               <NetworkGrid results={results} onRetry={retry} />
+              {Object.values(results).some((r) => r.state === "error") && (
+                <details className="mt-3 rounded-2xl border border-line bg-surface px-4 py-3 text-[13px] text-text-2">
+                  <summary className="cursor-pointer font-medium text-text">Why did some networks fail?</summary>
+                  <ul className="mt-2 space-y-1 font-mono text-[12px] break-all">
+                    {Object.values(results)
+                      .filter((r) => r.state === "error")
+                      .map((r) => (
+                        <li key={r.networkId}>
+                          {networkById(r.networkId)?.name}: {r.error}
+                        </li>
+                      ))}
+                  </ul>
+                </details>
+              )}
               <p className="mt-4 px-1 text-[13px] leading-relaxed text-text-3">
                 Other bridges (Polygon, ZKsync, Starknet, CCTP, LayerZero, Wormhole…) aren&apos;t checked automatically
                 yet. If you used one, follow its guide below.

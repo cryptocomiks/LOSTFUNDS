@@ -39,14 +39,63 @@ function buildParams(address: Address, topics: Topics, fromBlock: bigint) {
   return p;
 }
 
-async function fetchPage(url: string): Promise<RawLog[]> {
-  const res = await fetch(url, { headers: { accept: "application/json" } });
+/**
+ * Free explorer APIs rate-limit per IP, so requests to each host go through a small
+ * queue: at most 2 in flight, spaced out, retried with backoff on 429 / 5xx / timeouts.
+ */
+const MAX_IN_FLIGHT = 2;
+const SPACING_MS = 300;
+const RETRIES = 4;
+const hosts = new Map<string, { active: number; last: number; waiting: (() => void)[] }>();
+
+async function withHostSlot<T>(host: string, fn: () => Promise<T>): Promise<T> {
+  let h = hosts.get(host);
+  if (!h) hosts.set(host, (h = { active: 0, last: 0, waiting: [] }));
+  while (h.active >= MAX_IN_FLIGHT) await new Promise<void>((r) => h!.waiting.push(r));
+  h.active++;
+  const wait = h.last + SPACING_MS - Date.now();
+  h.last = Math.max(Date.now(), h.last + SPACING_MS);
+  if (wait > 0) await sleep(wait);
+  try {
+    return await fn();
+  } finally {
+    h.active--;
+    h.waiting.shift()?.();
+  }
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+class RetryableError extends Error {}
+
+async function fetchOnce(url: string): Promise<RawLog[]> {
+  let res: Response;
+  try {
+    res = await fetch(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(25_000) });
+  } catch (e) {
+    throw new RetryableError(`network error (${(e as Error).name})`);
+  }
+  if (res.status === 429 || res.status >= 500) throw new RetryableError(`HTTP ${res.status}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const json = (await res.json()) as { status?: string; message?: string; result?: unknown };
+  const json = (await res.json().catch(() => ({}))) as { status?: string; message?: string; result?: unknown };
   if (Array.isArray(json.result)) return json.result as RawLog[];
   // "No logs found" / "No records found" come back as status 0 with an empty result.
   if (json.status === "0" && /no (logs|records)/i.test(json.message ?? "")) return [];
-  throw new Error(typeof json.result === "string" ? json.result : json.message || "Bad response");
+  const msg = typeof json.result === "string" ? json.result : json.message || "bad response";
+  if (/rate|limit|too many|timeout|timed out|busy|try again/i.test(msg)) throw new RetryableError(msg);
+  throw new Error(msg);
+}
+
+async function fetchPage(url: string): Promise<RawLog[]> {
+  const host = new URL(url).host;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await withHostSlot(host, () => fetchOnce(url));
+    } catch (e) {
+      if (!(e instanceof RetryableError) || attempt >= RETRIES) throw e;
+      await sleep(800 * 2 ** attempt + Math.random() * 400);
+    }
+  }
 }
 
 async function query(makeUrl: (from: bigint) => string): Promise<ApiLog[]> {
@@ -99,7 +148,8 @@ export async function getLogs(net: LogSource, address: Address, topics: Topics):
       lastError = e;
     }
   }
-  throw new Error(`Couldn't search ${net.name} history (${(lastError as Error)?.message ?? "unknown error"})`);
+  const host = new URL(net.blockscout).host;
+  throw new Error(`${host}: ${(lastError as Error)?.message ?? "unknown error"}`);
 }
 
 /** Unique tx hashes of a set of logs, with the tx timestamp. */

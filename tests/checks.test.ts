@@ -83,3 +83,34 @@ describe("Input", () => {
     await assert.rejects(resolveInput("hello"), InputError);
   });
 });
+
+describe("Rate limits", () => {
+  test("retries a busy explorer (HTTP 429) and still gets the result", async () => {
+    let busy = 2;
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (url.includes("scroll.blockscout.com") && busy > 0) {
+        busy--;
+        return new Response("Too Many Requests", { status: 429 });
+      }
+      return world.fetch(input, init);
+    }) as typeof fetch;
+    const r = await run("scroll");
+    globalThis.fetch = world.fetch as typeof fetch;
+    assert.equal(r.state, "done", r.error ?? "");
+    assert.equal(r.findings.length, 1);
+    assert.equal(busy, 0);
+  });
+
+  test("reports the real cause when a source keeps failing", async () => {
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (url.includes("explorer.zora.energy")) return new Response("nope", { status: 403 });
+      return world.fetch(input, init);
+    }) as typeof fetch;
+    const r = await run("zora");
+    globalThis.fetch = world.fetch as typeof fetch;
+    assert.equal(r.state, "error");
+    assert.match(r.error ?? "", /explorer\.zora\.energy: HTTP 403/);
+  });
+});

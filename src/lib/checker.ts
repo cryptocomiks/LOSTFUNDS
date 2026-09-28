@@ -40,6 +40,12 @@ export async function resolveInput(raw: string): Promise<{ address: Address; ens
   throw new InputError("That doesn't look like a wallet address.");
 }
 
+function describeError(e: unknown): string {
+  const err = e as { shortMessage?: string; message?: string; name?: string };
+  const msg = err?.shortMessage ?? err?.message ?? String(e);
+  return msg.split("\n")[0].slice(0, 160);
+}
+
 /** Checks one network. Never throws: failures come back as an "error" result. */
 export async function checkNetwork(net: Network, user: Address): Promise<NetworkResult> {
   try {
@@ -53,7 +59,7 @@ export async function checkNetwork(net: Network, user: Address): Promise<Network
       state: "error",
       findings: [],
       completed: 0,
-      error: "Couldn't reach this network's data sources. Try again in a moment.",
+      error: describeError(e),
     };
   }
 }
