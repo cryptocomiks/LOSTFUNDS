@@ -4,6 +4,7 @@ import { Guides } from "@/components/Guides";
 import { Header } from "@/components/Header";
 import { HowItWorks } from "@/components/HowItWorks";
 import { Safety } from "@/components/Safety";
+import { ShowReel } from "@/components/ShowReel";
 import { Stats } from "@/components/Stats";
 import { Tip } from "@/components/Tip";
 
@@ -14,6 +15,7 @@ export default function Home() {
       <main>
         <Checker />
         <Stats />
+        <ShowReel />
         <HowItWorks />
         <Guides />
         <Tip />
