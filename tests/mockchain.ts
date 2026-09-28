@@ -293,6 +293,8 @@ export class MockChain {
 
     const scout = [...NETWORKS, { ...L1, id: "l1" }].find((n) => n.blockscout && new URL(n.blockscout).host === url.host);
     if (scout && url.pathname === "/api") return json(this.explorer(scout.chain.id, url));
+    const api = NETWORKS.find((n) => n.api && url.href.startsWith(`${n.api}/api?`));
+    if (api) return json(this.explorer(api.chain.id, url));
     const v2 = scout && url.pathname.match(/^\/api\/v2\/addresses\/(0x[0-9a-fA-F]{40})\/transactions$/);
     if (scout && v2) {
       const me = v2[1].toLowerCase();

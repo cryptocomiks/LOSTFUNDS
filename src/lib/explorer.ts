@@ -11,7 +11,7 @@ import type { ApiLog } from "./types";
  *   - Etherscan V2, only if NEXT_PUBLIC_ETHERSCAN_API_KEY is set
  */
 
-export type ExplorerTarget = Pick<Network, "name" | "chain" | "blockscout" | "logsRpcs"> & {
+export type ExplorerTarget = Pick<Network, "name" | "chain" | "blockscout" | "logsRpcs" | "api"> & {
   /** Try the RPC nodes before the explorer (much faster for busy contracts). */
   preferRpc?: boolean;
 };
@@ -25,6 +25,7 @@ export const addressTopic = (a: Address) => pad(a, { size: 32 }).toLowerCase() a
 function apiSources(net: ExplorerTarget): { name: string; url: (p: URLSearchParams) => string }[] {
   const list: { name: string; url: (p: URLSearchParams) => string }[] = [];
   if (net.blockscout) list.push({ name: new URL(net.blockscout).host, url: (p) => `${net.blockscout}/api?${p}` });
+  if (net.api) list.push({ name: new URL(net.api).host, url: (p) => `${net.api}/api?${p}` });
   if (ETHERSCAN_KEY)
     list.push({
       name: "etherscan",

@@ -27,7 +27,7 @@ export const GUIDES: Guide[] = [
   {
     id: "opstack",
     title: "OP Stack chains",
-    subtitle: "Base, OP Mainnet, Zora, Mode, Unichain, Ink, Soneium…",
+    subtitle: "Base, OP Mainnet, World Chain, Blast, Unichain, Ink, Lisk, Zora, Mode…",
     live: true,
     steps: [
       "Open the chain's official bridge (most OP Stack chains use Superbridge) and connect the wallet that made the withdrawal.",

@@ -3,14 +3,24 @@ import {
   arbitrum,
   arbitrumNova,
   base,
+  blast,
+  bob,
+  codex,
+  fraxtal,
   ink,
   linea,
+  lisk,
   mainnet,
+  megaeth,
+  metalL2,
   mode,
   optimism,
   scroll,
+  shape,
   soneium,
+  superseed,
   unichain,
+  worldchain,
   zora,
 } from "viem/chains";
 
@@ -25,6 +35,8 @@ export interface Network {
   rpcs: string[];
   /** Blockscout API base (no key needed). Absent when the chain's explorer isn't Blockscout. */
   blockscout?: string;
+  /** Another Etherscan-compatible API (e.g. Routescan), for chains without a Blockscout explorer. */
+  api?: string;
   /** RPC nodes that accept eth_getLogs over the whole history (checked live), tried in order. */
   logsRpcs?: string[];
   /** Chain slug on DefiLlama's price API. */
@@ -52,6 +64,14 @@ export const L1 = {
     "https://1rpc.io/eth",
   ],
 };
+
+/**
+ * Several OP Stack chains moved to fault proofs after viem's chain definitions were written:
+ * point them at the DisputeGameFactory their OptimismPortal uses today (read on-chain).
+ */
+function withGames(chain: Chain, disputeGameFactory: Address): Chain {
+  return { ...chain, contracts: { ...chain.contracts, disputeGameFactory: { [mainnet.id]: { address: disputeGameFactory } } } };
+}
 
 const OP_STACK: Network[] = [
   {
@@ -125,16 +145,120 @@ const OP_STACK: Network[] = [
     explorer: "https://soneium.blockscout.com",
     bridgeUrl: "superbridge.app/soneium",
   },
-].map((n) => ({
+  {
+    id: "worldchain",
+    name: "World Chain",
+    chain: worldchain,
+    rpcs: ["https://worldchain-mainnet.g.alchemy.com/public", "https://worldchain.drpc.org", "https://480.rpc.thirdweb.com"],
+    blockscout: "https://worldchain-mainnet.explorer.alchemy.com",
+    llama: "wc",
+    explorer: "https://worldscan.org",
+    bridgeUrl: "the official World Chain bridge",
+  },
+  {
+    id: "blast",
+    name: "Blast",
+    chain: blast,
+    rpcs: ["https://rpc.blast.io", "https://blast-rpc.publicnode.com", "https://blast.drpc.org"],
+    api: "https://api.routescan.io/v2/network/mainnet/evm/81457/etherscan", // Blast has no Blockscout explorer
+    llama: "blast",
+    explorer: "https://blastscan.io",
+    bridgeUrl: "blast.io",
+    extraBridges: ["0x4300000000000000000000000000000000000005" as Address], // L2BlastBridge
+  },
+  {
+    id: "lisk",
+    name: "Lisk",
+    chain: lisk,
+    rpcs: ["https://rpc.api.lisk.com", "https://lisk.drpc.org"],
+    blockscout: "https://blockscout.lisk.com",
+    llama: "lisk",
+    explorer: "https://blockscout.lisk.com",
+    bridgeUrl: "superbridge.app/lisk",
+  },
+  {
+    id: "fraxtal",
+    name: "Fraxtal",
+    chain: fraxtal,
+    rpcs: ["https://rpc.frax.com", "https://fraxtal.drpc.org"],
+    logsRpcs: ["https://rpc.frax.com"],
+    llama: "fraxtal",
+    explorer: "https://fraxscan.com",
+    bridgeUrl: "frax.com",
+  },
+  {
+    id: "bob",
+    name: "BOB",
+    chain: withGames(bob, "0x96123dbFC3253185B594c6a7472EE5A21E9B1079"),
+    rpcs: ["https://rpc.gobob.xyz", "https://bob.drpc.org"],
+    logsRpcs: ["https://rpc.gobob.xyz"],
+    llama: "bob",
+    explorer: "https://explorer.gobob.xyz",
+    bridgeUrl: "app.gobob.xyz",
+  },
+  {
+    id: "megaeth",
+    name: "MegaETH",
+    chain: megaeth,
+    rpcs: ["https://mainnet.megaeth.com/rpc"],
+    blockscout: "https://megaeth.blockscout.com",
+    logsRpcs: ["https://mainnet.megaeth.com/rpc"],
+    llama: "megaeth",
+    explorer: "https://mega.etherscan.io",
+    bridgeUrl: "the official MegaETH bridge",
+  },
+  {
+    id: "shape",
+    name: "Shape",
+    chain: withGames(shape, "0x2c03e8BF8b16Af89079852BE87f0e9eC674a5952"),
+    rpcs: ["https://mainnet.shape.network", "https://shape.drpc.org"],
+    blockscout: "https://shapescan.xyz",
+    llama: "shape",
+    explorer: "https://shapescan.xyz",
+    bridgeUrl: "the official Shape bridge",
+  },
+  {
+    id: "metal",
+    name: "Metal L2",
+    chain: withGames(metalL2, "0x7BFfF391A2dbbDc68A259792AC9748F50FcDE93E"),
+    rpcs: ["https://rpc.metall2.com", "https://metall2.drpc.org"],
+    blockscout: "https://explorer.metall2.com",
+    logsRpcs: ["https://rpc.metall2.com"],
+    llama: "metal",
+    explorer: "https://explorer.metall2.com",
+    bridgeUrl: "superbridge.app/metal",
+  },
+  {
+    id: "superseed",
+    name: "Superseed",
+    chain: withGames(superseed, "0x657c1b0e31FFc69A02B207Be20699bDFF938c7E7"),
+    rpcs: ["https://mainnet.superseed.xyz", "https://superseed.drpc.org"],
+    logsRpcs: ["https://mainnet.superseed.xyz"],
+    llama: "superseed",
+    explorer: "https://explorer.superseed.xyz",
+    bridgeUrl: "superbridge.app/superseed",
+  },
+  {
+    id: "codex",
+    name: "Codex",
+    chain: codex,
+    rpcs: ["https://rpc.codex.xyz"],
+    logsRpcs: ["https://rpc.codex.xyz"],
+    llama: "codex",
+    explorer: "https://explorer.codex.xyz",
+    bridgeUrl: "the official Codex bridge",
+  },
+].map(({ extraBridges, ...n }: Omit<Network, "family" | "guideId" | "contracts"> & { extraBridges?: Address[] }): Network => ({
   ...n,
   family: "opstack" as const,
   guideId: "opstack",
   contracts: {
+    ...(extraBridges && { extraBridges }),
     // Same predeploy addresses on every OP Stack chain.
     l2StandardBridge: "0x4200000000000000000000000000000000000010",
     l2ToL1MessagePasser: "0x4200000000000000000000000000000000000016",
     l2CrossDomainMessenger: "0x4200000000000000000000000000000000000007",
-  } as Record<string, Address>,
+  } as Network["contracts"],
 }));
 
 export const NETWORKS: Network[] = [
