@@ -5,7 +5,6 @@ import type { CheckOutput } from "./checks/common";
 import { checkDebridge } from "./checks/debridge";
 import { checkLinea } from "./checks/linea";
 import { checkOpStack } from "./checks/opstack";
-import { checkPolygon } from "./checks/polygon";
 import { checkScroll } from "./checks/scroll";
 import { checkWormhole } from "./checks/wormhole";
 import { NETWORKS, type Family, type Network } from "./networks";
@@ -42,7 +41,8 @@ export const SOURCES: CheckSource[] = [
     bridgeUrl: n.bridgeUrl,
     run: (user: Address) => FAMILY[n.family](n, user),
   })),
-  { id: "polygon", name: "Polygon PoS", group: "l2", bridgeUrl: "portal.polygon.technology", run: checkPolygon },
+  // Polygon PoS (checks/polygon.ts) is implemented and unit-tested, but not enabled until it has been
+  // validated against real withdrawals: its only full-history source (Tenderly) rate-limits heavily.
   { id: "wormhole", name: "Wormhole", group: "solana", bridgeUrl: "portalbridge.com", run: checkWormhole },
   { id: "debridge", name: "deBridge", group: "solana", bridgeUrl: "app.debridge.finance", run: checkDebridge },
   { id: "cctp", name: "Circle CCTP", group: "solana", bridgeUrl: "the app you used, or a CCTP relayer", run: checkCctp },

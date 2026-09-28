@@ -52,7 +52,6 @@ export const GUIDES: Guide[] = [
     id: "polygon-pos",
     title: "Polygon PoS",
     subtitle: "Withdrawals burned on Polygon, never exited on Ethereum",
-    live: true,
     steps: [
       "Open the official Polygon Portal and connect the wallet that made the withdrawal.",
       "Open the transaction history and find the withdrawal.",
