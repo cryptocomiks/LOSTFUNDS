@@ -156,6 +156,29 @@ export class MockChain {
         const r = this.call(chainId, to, data);
         return r.ok ? reply(r.data) : fail("");
       }
+      case "eth_getLogs": {
+        const f = req.params[0] as { address: string; topics: (string | null)[] };
+        const logs = this.logs.filter(
+          (l) =>
+            l.chainId === chainId &&
+            l.address === f.address.toLowerCase() &&
+            f.topics.every((t, i) => !t || l.topics[i]?.toLowerCase() === t.toLowerCase()),
+        );
+        return reply(
+          logs.map((l) => ({
+            address: l.address,
+            topics: l.topics,
+            data: l.data,
+            transactionHash: l.txHash,
+            blockNumber: numberToHex(l.blockNumber),
+          })),
+        );
+      }
+      case "eth_getBlockByNumber": {
+        const bn = BigInt(req.params[0] as string);
+        const log = this.logs.find((l) => l.chainId === chainId && l.blockNumber === bn);
+        return reply({ number: numberToHex(bn), timestamp: numberToHex(log?.timestamp ?? 0) });
+      }
       default:
         return { jsonrpc: "2.0", id: req.id, error: { code: -32601, message: `mock: ${req.method} not supported` } };
     }
@@ -217,12 +240,26 @@ export class MockChain {
       return json({ coins });
     }
 
-    const scout = [...NETWORKS, { ...L1, id: "l1" }].find((n) => new URL(n.blockscout).host === url.host);
+    const scout = [...NETWORKS, { ...L1, id: "l1" }].find((n) => n.blockscout && new URL(n.blockscout).host === url.host);
     if (scout && url.pathname === "/api") return json(this.explorer(scout.chain.id, url));
-    const routescan = url.host === "api.routescan.io" && url.pathname.match(/\/evm\/(\d+)\/etherscan\/api$/);
-    if (routescan) return json(this.explorer(Number(routescan[1]), url));
+    const v2 = scout && url.pathname.match(/^\/api\/v2\/addresses\/(0x[0-9a-fA-F]{40})\/transactions$/);
+    if (scout && v2) {
+      const me = v2[1].toLowerCase();
+      const items = [...this.txs.values()]
+        .filter((t) => t.chainId === scout.chain.id && t.from.toLowerCase() === me)
+        .map((t) => ({
+          hash: t.hash,
+          from: { hash: t.from },
+          to: { hash: t.to },
+          status: "ok",
+          timestamp: new Date(t.timestamp * 1000).toISOString(),
+        }));
+      return json({ items, next_page_params: null });
+    }
 
-    const rpcNet = [...NETWORKS, L1].find((n) => n.rpcs.some((r) => r.replace(/\/$/, "") === url.href.replace(/\/$/, "")));
+    const rpcNet = [...NETWORKS, L1].find((n) =>
+      [...n.rpcs, "logsRpc" in n ? n.logsRpc : undefined].some((r) => r && r.replace(/\/$/, "") === url.href.replace(/\/$/, "")),
+    );
     if (rpcNet) {
       const body = JSON.parse(String(init?.body));
       const out = Array.isArray(body) ? body.map((r) => this.rpc(rpcNet.chain.id, r)) : this.rpc(rpcNet.chain.id, body);

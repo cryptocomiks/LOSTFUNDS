@@ -3,40 +3,31 @@ import type { Network } from "./networks";
 import type { ApiLog } from "./types";
 
 /**
- * Reads chain history from free, Etherscan-compatible explorer APIs.
- * Several sources are tried in order, so one busy explorer doesn't fail the check:
- *   1. Blockscout (keyless)
- *   2. Routescan (keyless)
- *   3. Etherscan V2 (only if NEXT_PUBLIC_ETHERSCAN_API_KEY is set)
+ * Reads chain history from free sources, trying each in turn so one busy or
+ * broken source doesn't fail the check:
+ *   - Blockscout's Etherscan-compatible API, then its v2 REST API (keyless)
+ *   - the network's own RPC node, for event searches over the whole history,
+ *     on nodes that allow it (`logsRpc`)
+ *   - Etherscan V2, only if NEXT_PUBLIC_ETHERSCAN_API_KEY is set
  */
 
-export type ExplorerTarget = Pick<Network, "name" | "chain" | "blockscout">;
+export type ExplorerTarget = Pick<Network, "name" | "chain" | "blockscout" | "logsRpc">;
 export type Topics = [Hex, (Hex | null)?, (Hex | null)?, (Hex | null)?];
 
 const ETHERSCAN_KEY = process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY ?? "";
 
 export const addressTopic = (a: Address) => pad(a, { size: 32 }).toLowerCase() as Hex;
 
-interface Source {
-  name: string;
-  url: (params: URLSearchParams) => string;
-}
-
-function sources(net: ExplorerTarget): Source[] {
-  const id = net.chain.id;
-  const list: Source[] = [
-    { name: new URL(net.blockscout).host, url: (p) => `${net.blockscout}/api?${p}` },
-    {
-      name: "routescan",
-      url: (p) => `https://api.routescan.io/v2/network/mainnet/evm/${id}/etherscan/api?${p}`,
-    },
-  ];
+/** Etherscan-compatible APIs (same query string, different base URL). */
+function apiSources(net: ExplorerTarget): { name: string; url: (p: URLSearchParams) => string }[] {
+  const list: { name: string; url: (p: URLSearchParams) => string }[] = [];
+  if (net.blockscout) list.push({ name: new URL(net.blockscout).host, url: (p) => `${net.blockscout}/api?${p}` });
   if (ETHERSCAN_KEY)
     list.push({
       name: "etherscan",
       url: (p) => {
         const q = new URLSearchParams(p);
-        q.set("chainid", String(id));
+        q.set("chainid", String(net.chain.id));
         q.set("apikey", ETHERSCAN_KEY);
         return `https://api.etherscan.io/v2/api?${q}`;
       },
@@ -70,17 +61,28 @@ async function withHostSlot<T>(host: string, fn: () => Promise<T>): Promise<T> {
 
 class RetryableError extends Error {}
 
-async function fetchOnce<T>(url: string): Promise<T[]> {
+const TIMEOUT_MS = 20_000;
+
+async function fetchJson(url: string, init?: RequestInit): Promise<unknown> {
   let res: Response;
   try {
-    res = await fetch(url, { headers: { accept: "application/json" } });
+    res = await fetch(url, { ...init, headers: { accept: "application/json", ...init?.headers }, signal: AbortSignal.timeout(TIMEOUT_MS) });
   } catch (e) {
+    const err = e as Error;
+    // A source that doesn't answer in time is skipped, not retried.
+    if (err.name === "TimeoutError" || err.name === "AbortError") throw new Error("no answer (timeout)");
     // Rate-limit replies often lack CORS headers and surface as a network error.
-    throw new RetryableError(`network error (${(e as Error).message || (e as Error).name})`);
+    throw new RetryableError(`network error (${err.message || err.name})`);
   }
   if (res.status === 429 || res.status >= 500) throw new RetryableError(`HTTP ${res.status}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const json = (await res.json().catch(() => ({}))) as { status?: string; message?: string; result?: unknown };
+  return res.json().catch(() => {
+    throw new Error("not JSON");
+  });
+}
+
+async function fetchOnce<T>(url: string): Promise<T[]> {
+  const json = (await fetchJson(url)) as { status?: string; message?: string; result?: unknown };
   if (Array.isArray(json.result)) return json.result as T[];
   // "No logs found" / "No transactions found" come back as status 0 with an empty result.
   if (json.status === "0" && /^no .*found/i.test(json.message ?? "")) return [];
@@ -89,30 +91,40 @@ async function fetchOnce<T>(url: string): Promise<T[]> {
   throw new Error(msg);
 }
 
-async function fetchResult<T>(url: string): Promise<T[]> {
+/** Queued + retried request. */
+async function polite<T>(url: string, run: () => Promise<T>): Promise<T> {
   const host = new URL(url).host;
   for (let attempt = 0; ; attempt++) {
     try {
-      return await withHostSlot(host, () => fetchOnce<T>(url));
+      return await withHostSlot(host, run);
     } catch (e) {
       if (!(e instanceof RetryableError) || attempt >= RETRIES) throw e;
-      await sleep(800 * 2 ** attempt + Math.random() * 400);
+      await sleep(1200 * 2 ** attempt + Math.random() * 500);
     }
   }
 }
 
-/** Runs `fn` against each source until one succeeds. */
-async function firstSuccess<R>(net: ExplorerTarget, fn: (src: Source) => Promise<R>): Promise<R> {
+const fetchResult = <T>(url: string) => polite(url, () => fetchOnce<T>(url));
+
+type Attempt<R> = { name: string; run: () => Promise<R> };
+
+/** Tries each source in order until one succeeds; otherwise reports every failure. */
+async function firstSuccess<R>(attempts: Attempt<R>[]): Promise<R> {
+  if (!attempts.length) throw new Error("no data source for this network");
   const errors: string[] = [];
-  for (const src of sources(net)) {
+  for (const a of attempts) {
     try {
-      return await fn(src);
+      return await a.run();
     } catch (e) {
-      errors.push(`${src.name}: ${(e as Error).message}`);
+      if (e instanceof TooManyTxs) throw e;
+      errors.push(`${a.name}: ${(e as Error).message}`);
     }
   }
   throw new Error(errors.join(" · "));
 }
+
+/** The wallet has too many transactions to page through: use event search instead. */
+class TooManyTxs extends Error {}
 
 /* ───────────── Logs ───────────── */
 
@@ -138,32 +150,70 @@ function logParams(address: Address, topics: Topics, fromBlock: bigint) {
   return p;
 }
 
+async function logsFromApi(url: (p: URLSearchParams) => string, address: Address, topics: Topics): Promise<ApiLog[]> {
+  const out: ApiLog[] = [];
+  const seen = new Set<string>();
+  let from = 0n;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const raw = await fetchResult<RawLog>(url(logParams(address, topics, from)));
+    for (const l of raw) {
+      const key = `${l.transactionHash}:${l.topics.join()}:${l.data}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        address: l.address.toLowerCase() as Address,
+        topics: l.topics.filter(Boolean) as Hex[],
+        data: l.data as Hex,
+        transactionHash: l.transactionHash as Hex,
+        blockNumber: BigInt(l.blockNumber),
+        timestamp: Number(BigInt(l.timeStamp)),
+      });
+    }
+    if (raw.length < PAGE) break;
+    from = BigInt(raw[raw.length - 1].blockNumber); // duplicates are skipped above
+  }
+  return out;
+}
+
+/** eth_getLogs over the whole history, on RPC nodes that allow it. */
+async function logsFromRpc(rpc: string, address: Address, topics: Topics): Promise<ApiLog[]> {
+  const call = (method: string, params: unknown[]) =>
+    polite(rpc, async () => {
+      const json = (await fetchJson(rpc, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      })) as { result?: unknown; error?: { message?: string } };
+      if (json.error) throw new Error(json.error.message ?? "RPC error");
+      return json.result;
+    });
+  const logs = (await call("eth_getLogs", [
+    { fromBlock: "0x0", toBlock: "latest", address, topics: topics.map((t) => t ?? null) },
+  ])) as { transactionHash: Hex; blockNumber: Hex; address: Address; topics: Hex[]; data: Hex }[];
+  // RPC logs carry no timestamp: read it from each block.
+  const times = new Map<string, number>();
+  for (const bn of new Set(logs.map((l) => l.blockNumber))) {
+    const block = (await call("eth_getBlockByNumber", [bn, false])) as { timestamp: Hex };
+    times.set(bn, Number(BigInt(block.timestamp)));
+  }
+  return logs.map((l) => ({
+    address: l.address.toLowerCase() as Address,
+    topics: l.topics,
+    data: l.data,
+    transactionHash: l.transactionHash,
+    blockNumber: BigInt(l.blockNumber),
+    timestamp: times.get(l.blockNumber)!,
+  }));
+}
+
 /** All logs of `address` matching `topics`, over the chain's whole history. */
 export function getLogs(net: ExplorerTarget, address: Address, topics: Topics): Promise<ApiLog[]> {
-  return firstSuccess(net, async (src) => {
-    const out: ApiLog[] = [];
-    const seen = new Set<string>();
-    let from = 0n;
-    for (let page = 0; page < MAX_PAGES; page++) {
-      const raw = await fetchResult<RawLog>(src.url(logParams(address, topics, from)));
-      for (const l of raw) {
-        const key = `${l.transactionHash}:${l.topics.join()}:${l.data}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        out.push({
-          address: l.address.toLowerCase() as Address,
-          topics: l.topics.filter(Boolean) as Hex[],
-          data: l.data as Hex,
-          transactionHash: l.transactionHash as Hex,
-          blockNumber: BigInt(l.blockNumber),
-          timestamp: Number(BigInt(l.timeStamp)),
-        });
-      }
-      if (raw.length < PAGE) break;
-      from = BigInt(raw[raw.length - 1].blockNumber); // duplicates are skipped above
-    }
-    return out;
-  });
+  const attempts: Attempt<ApiLog[]>[] = apiSources(net).map((src) => ({
+    name: src.name,
+    run: () => logsFromApi(src.url, address, topics),
+  }));
+  if (net.logsRpc) attempts.push({ name: `rpc ${new URL(net.logsRpc).host}`, run: () => logsFromRpc(net.logsRpc!, address, topics) });
+  return firstSuccess(attempts);
 }
 
 /* ───────────── Transactions sent by an address ───────────── */
@@ -177,36 +227,70 @@ interface RawTx {
   timeStamp: string;
 }
 
+/** Beyond this many transactions, event search is cheaper than paging through the wallet. */
+const MAX_TX_PAGES = 3;
+
 /**
  * Transactions `user` sent to one of `targets`, with their timestamps.
- * Uses the explorer's per-address index: one or two requests, even for an old wallet.
+ * Uses the explorer's per-address index: usually a single request.
  */
 export function getTxsTo(net: ExplorerTarget, user: Address, targets: Address[]): Promise<Map<Hex, number>> {
   const want = new Set(targets.map((t) => t.toLowerCase()));
   const me = user.toLowerCase();
-  return firstSuccess(net, async (src) => {
-    const found = new Map<Hex, number>();
-    for (let page = 1; page <= 10; page++) {
-      const p = new URLSearchParams({
-        module: "account",
-        action: "txlist",
-        address: getAddress(user),
-        startblock: "0",
-        endblock: "99999999999",
-        page: String(page),
-        offset: String(PAGE),
-        sort: "asc",
-      });
-      const raw = await fetchResult<RawTx>(src.url(p));
-      for (const tx of raw) {
-        if (tx.from?.toLowerCase() !== me || !tx.to || !want.has(tx.to.toLowerCase())) continue;
-        if (tx.isError === "1" || tx.txreceipt_status === "0") continue;
-        found.set(tx.hash as Hex, Number(BigInt(tx.timeStamp)));
+  const keep = (found: Map<Hex, number>, from: string | undefined, to: string | null | undefined, ok: boolean, hash: string, ts: number) => {
+    if (ok && from?.toLowerCase() === me && to && want.has(to.toLowerCase())) found.set(hash as Hex, ts);
+  };
+
+  const attempts: Attempt<Map<Hex, number>>[] = apiSources(net).map((src) => ({
+    name: src.name,
+    run: async () => {
+      const found = new Map<Hex, number>();
+      for (let page = 1; ; page++) {
+        if (page > MAX_TX_PAGES) throw new TooManyTxs();
+        const p = new URLSearchParams({
+          module: "account",
+          action: "txlist",
+          address: getAddress(user),
+          startblock: "0",
+          endblock: "99999999999",
+          page: String(page),
+          offset: String(PAGE),
+          sort: "asc",
+        });
+        const raw = await fetchResult<RawTx>(src.url(p));
+        for (const tx of raw)
+          keep(found, tx.from, tx.to, tx.isError !== "1" && tx.txreceipt_status !== "0", tx.hash, Number(BigInt(tx.timeStamp)));
+        if (raw.length < PAGE) return found;
       }
-      if (raw.length < PAGE) break;
-    }
-    return found;
-  });
+    },
+  }));
+
+  // First choice: Blockscout's v2 REST API, which returns only the transactions the user sent
+  // (the older API also lists every incoming transfer, spam included).
+  if (net.blockscout)
+    attempts.unshift({
+      name: `${new URL(net.blockscout).host} v2`,
+      run: async () => {
+        const found = new Map<Hex, number>();
+        let next: Record<string, string | number> | null = {};
+        for (let page = 0; next; page++) {
+          if (page >= (MAX_TX_PAGES * PAGE) / 50) throw new TooManyTxs();
+          const q = new URLSearchParams({ filter: "from" });
+          for (const [k, v] of Object.entries(next)) q.set(k, String(v));
+          const url = `${net.blockscout}/api/v2/addresses/${getAddress(user)}/transactions?${q}`;
+          const json = (await polite(url, () => fetchJson(url))) as {
+            items: { hash: string; from?: { hash: string }; to?: { hash: string } | null; status?: string; timestamp: string }[];
+            next_page_params: Record<string, string | number> | null;
+          };
+          if (!Array.isArray(json?.items)) throw new Error("bad response");
+          for (const tx of json.items)
+            keep(found, tx.from?.hash, tx.to?.hash, tx.status !== "error", tx.hash, Math.floor(Date.parse(tx.timestamp) / 1000));
+          next = json.next_page_params;
+        }
+        return found;
+      },
+    });
+  return firstSuccess(attempts);
 }
 
 /**
@@ -222,13 +306,15 @@ export async function findBridgeTxs(
   try {
     return await getTxsTo(net, user, opts.targets);
   } catch (txErr) {
+    // Very active wallet, or no transaction index available: search the bridges' events instead.
     try {
       const logs = (await Promise.all(opts.logs.map(([a, t]) => getLogs(net, a, t)))).flat();
       const m = new Map<Hex, number>();
       for (const l of logs) m.set(l.transactionHash, l.timestamp);
       return m;
     } catch (logErr) {
-      throw new Error(`${(txErr as Error).message} | logs: ${(logErr as Error).message}`);
+      const why = txErr instanceof TooManyTxs ? "very active wallet" : (txErr as Error).message;
+      throw new Error(`${why} | events: ${(logErr as Error).message}`);
     }
   }
 }

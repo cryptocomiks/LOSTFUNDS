@@ -105,14 +105,14 @@ describe("Rate limits", () => {
   test("reports every source's error when all of them fail", async () => {
     globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input instanceof Request ? input.url : input);
-      if (url.includes("explorer.zora.energy") || url.includes("routescan")) return new Response("nope", { status: 403 });
+      if (url.includes("mode")) return new Response("nope", { status: 403 });
       return world.fetch(input, init);
     }) as typeof fetch;
-    const r = await run("zora");
+    const r = await run("mode");
     globalThis.fetch = world.fetch as typeof fetch;
     assert.equal(r.state, "error");
-    assert.match(r.error ?? "", /explorer\.zora\.energy: HTTP 403/);
-    assert.match(r.error ?? "", /routescan: HTTP 403/);
+    assert.match(r.error ?? "", /explorer\.mode\.network v2: HTTP 403/);
+    assert.match(r.error ?? "", /rpc mainnet\.mode\.network: HTTP 403/);
   });
 });
 
@@ -133,22 +133,32 @@ describe("Fallbacks", () => {
     return seen;
   };
 
-  test("uses the wallet's own transaction list first (no log scans)", async () => {
+  test("uses the wallet's own sent transactions first (no event scans)", async () => {
     const seen = await withFetch(() => false, async () => {
       const r = await run("arbitrum");
       assert.equal(r.findings.length, 2);
     });
     const explorer = seen.filter((u) => u.includes("arbitrum.blockscout.com"));
-    assert.ok(explorer.length >= 1 && explorer.every((u) => u.includes("action=txlist")), explorer.join("\n"));
+    assert.equal(explorer.length, 1, explorer.join("\n"));
+    assert.match(explorer[0], /\/api\/v2\/addresses\/0x[0-9a-fA-F]{40}\/transactions\?filter=from/);
   });
 
-  test("switches to Routescan when Blockscout is down", async () => {
-    const seen = await withFetch((u) => u.includes("arbitrum.blockscout.com"), async () => {
+  test("falls back to the older API when the v2 API is down", async () => {
+    const seen = await withFetch((u) => u.includes("/api/v2/"), async () => {
       const r = await run("arbitrum");
       assert.equal(r.state, "done", r.error ?? "");
       assert.equal(r.findings.length, 2);
     });
-    assert.ok(seen.some((u) => u.includes("api.routescan.io/v2/network/mainnet/evm/42161/")));
+    assert.ok(seen.some((u) => u.includes("action=txlist")));
+  });
+
+  test("searches events on the RPC node when the explorer is down (Zora has no Blockscout)", async () => {
+    // Zora: no explorer at all, the RPC node is the only history source
+    const seen = await withFetch(() => false, async () => {
+      const r = await run("zora");
+      assert.equal(r.state, "done", r.error ?? "");
+    });
+    assert.ok(seen.some((u) => u.startsWith("https://rpc.zora.energy")));
   });
 
   test("falls back to event-log search when no source supports the transaction list", async () => {

@@ -23,8 +23,10 @@ export interface Network {
   chain: Chain;
   /** Public JSON-RPC endpoints, tried in order. */
   rpcs: string[];
-  /** Blockscout instance used to search logs by address (no API key needed). */
-  blockscout: string;
+  /** Blockscout API base (no key needed). Absent when the chain's explorer isn't Blockscout. */
+  blockscout?: string;
+  /** Official RPC node that accepts eth_getLogs over the whole history (checked live). */
+  logsRpc?: string;
   /** Chain slug on DefiLlama's price API. */
   llama: string;
   explorer: string;
@@ -74,7 +76,7 @@ const OP_STACK: Network[] = [
     name: "Zora",
     chain: zora,
     rpcs: ["https://rpc.zora.energy", "https://zora.drpc.org"],
-    blockscout: "https://explorer.zora.energy",
+    logsRpc: "https://rpc.zora.energy", // Zora's explorer is no longer Blockscout
     llama: "zora",
     explorer: "https://explorer.zora.energy",
     bridgeUrl: "superbridge.app/zora",
@@ -85,6 +87,7 @@ const OP_STACK: Network[] = [
     chain: mode,
     rpcs: ["https://mainnet.mode.network", "https://mode.drpc.org"],
     blockscout: "https://explorer.mode.network",
+    logsRpc: "https://mainnet.mode.network",
     llama: "mode",
     explorer: "https://explorer.mode.network",
     bridgeUrl: "superbridge.app/mode",
@@ -140,6 +143,7 @@ export const NETWORKS: Network[] = [
     chain: arbitrum,
     rpcs: ["https://arb1.arbitrum.io/rpc", "https://arbitrum-one-rpc.publicnode.com", "https://arbitrum.drpc.org", "https://1rpc.io/arb"],
     blockscout: "https://arbitrum.blockscout.com",
+    logsRpc: "https://arb1.arbitrum.io/rpc",
     llama: "arbitrum",
     explorer: "https://arbiscan.io",
     guideId: "arbitrum",
@@ -182,6 +186,7 @@ export const NETWORKS: Network[] = [
     chain: scroll,
     rpcs: ["https://rpc.scroll.io", "https://scroll-rpc.publicnode.com", "https://scroll.drpc.org", "https://1rpc.io/scroll"],
     blockscout: "https://scroll.blockscout.com",
+    logsRpc: "https://rpc.scroll.io",
     llama: "scroll",
     explorer: "https://scrollscan.com",
     guideId: "scroll",
@@ -205,7 +210,7 @@ export const NETWORKS: Network[] = [
     family: "linea",
     chain: linea,
     rpcs: ["https://rpc.linea.build", "https://linea-rpc.publicnode.com", "https://linea.drpc.org", "https://1rpc.io/linea"],
-    blockscout: "https://explorer.linea.build",
+    blockscout: "https://api-explorer.linea.build", // API host behind explorer.linea.build
     llama: "linea",
     explorer: "https://lineascan.build",
     guideId: "linea",
