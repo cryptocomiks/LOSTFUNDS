@@ -41,11 +41,11 @@ function buildParams(address: Address, topics: Topics, fromBlock: bigint) {
 
 /**
  * Free explorer APIs rate-limit per IP, so requests to each host go through a small
- * queue: at most 2 in flight, spaced out, retried with backoff on 429 / 5xx / timeouts.
+ * queue: at most 3 in flight, spaced out, retried with backoff on 429 / 5xx.
  */
-const MAX_IN_FLIGHT = 2;
+const MAX_IN_FLIGHT = 3;
 const SPACING_MS = 300;
-const RETRIES = 4;
+const RETRIES = 3;
 const hosts = new Map<string, { active: number; last: number; waiting: (() => void)[] }>();
 
 async function withHostSlot<T>(host: string, fn: () => Promise<T>): Promise<T> {
@@ -69,11 +69,13 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 class RetryableError extends Error {}
 
 async function fetchOnce(url: string): Promise<RawLog[]> {
+  // No client-side timeout: full-history searches on free explorers can legitimately take a while.
   let res: Response;
   try {
-    res = await fetch(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(25_000) });
+    res = await fetch(url, { headers: { accept: "application/json" } });
   } catch (e) {
-    throw new RetryableError(`network error (${(e as Error).name})`);
+    // Rate-limit replies often lack CORS headers and surface as a network error.
+    throw new RetryableError(`network error (${(e as Error).message || (e as Error).name})`);
   }
   if (res.status === 429 || res.status >= 500) throw new RetryableError(`HTTP ${res.status}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -82,7 +84,7 @@ async function fetchOnce(url: string): Promise<RawLog[]> {
   // "No logs found" / "No records found" come back as status 0 with an empty result.
   if (json.status === "0" && /no (logs|records)/i.test(json.message ?? "")) return [];
   const msg = typeof json.result === "string" ? json.result : json.message || "bad response";
-  if (/rate|limit|too many|timeout|timed out|busy|try again/i.test(msg)) throw new RetryableError(msg);
+  if (/rate|too many|busy|try again/i.test(msg)) throw new RetryableError(msg);
   throw new Error(msg);
 }
 
