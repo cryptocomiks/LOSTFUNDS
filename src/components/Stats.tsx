@@ -5,8 +5,8 @@ import { Reveal } from "./Reveal";
 const STATS = [
   {
     value: String(SOURCES.length),
-    label: "bridges checked live",
-    detail: "L2 withdrawals to Ethereum, and Solana ↔ Ethereum transfers, verified on-chain.",
+    label: "checks run live",
+    detail: "L2 withdrawals, Solana ↔ Ethereum transfers and open airdrops, verified on-chain.",
   },
   { value: String(GUIDES.length), label: "bridges with a claim guide", detail: "Rollups, cross-chain bridges and shut-down apps." },
   { value: "0", label: "addresses stored", detail: "Everything runs in your browser. No accounts, no tracking." },

@@ -65,7 +65,9 @@ function FindingRow({ f, index }: { f: Finding; index: number }) {
           <NetDot id={f.networkId} />
           <span className="font-medium text-text">{f.networkName}</span>
           <span aria-hidden>·</span>
-          <span>Sent {formatDate(f.timestamp)}</span>
+          <span>
+            {f.networkId === "airdrops" ? "Airdropped" : "Sent"} {formatDate(f.timestamp)}
+          </span>
         </div>
         <span className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ${s.tone}`}>{s.label}</span>
       </div>
@@ -79,7 +81,7 @@ function FindingRow({ f, index }: { f: Finding; index: number }) {
         )}
       </div>
 
-      <p className="mt-1.5 text-[15px] leading-relaxed text-text-2">{STATUS_HELP[f.status](f)}</p>
+      <p className="mt-1.5 text-[15px] leading-relaxed text-text-2">{f.note ?? STATUS_HELP[f.status](f)}</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <button
@@ -100,7 +102,7 @@ function FindingRow({ f, index }: { f: Finding; index: number }) {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px] text-text-3">
-        Official bridge:
+        Where to claim:
         <code className="rounded-md bg-fill px-1.5 py-0.5 font-mono text-[12px] text-text-2">{net.bridgeUrl}</code>
         <span className="hidden sm:inline">(type it yourself)</span>
       </div>
@@ -359,7 +361,7 @@ export function Checker() {
                   <div className="mt-6">
                     <p className="text-[28px] font-semibold tracking-tight sm:text-[34px]">Checking bridges…</p>
                     <p className="mt-2 text-[15px] text-text-2">
-                      Finding your withdrawals and cross-chain transfers, then asking Ethereum and Solana whether each one was completed.
+                      Finding your withdrawals, cross-chain transfers and airdrops, then asking Ethereum and Solana whether each one was completed.
                     </p>
                   </div>
                 ) : stuck.length > 0 ? (

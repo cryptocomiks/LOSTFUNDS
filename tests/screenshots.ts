@@ -56,7 +56,7 @@ async function shoot(name: string, opts: { width: number; height: number; dark?:
 }
 
 const waitResults = async (page: import("playwright").Page) => {
-  await page.waitForFunction(() => /14\/14 checks done/.test(document.body.innerText), null, { timeout: 30000 });
+  await page.waitForFunction(() => /15\/15 checks done/.test(document.body.innerText), null, { timeout: 30000 });
 };
 
 await shoot("desktop-hero", { width: 1280, height: 860 });

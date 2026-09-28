@@ -13,6 +13,18 @@ export interface Guide {
 
 export const GUIDES: Guide[] = [
   {
+    id: "airdrops",
+    title: "Unclaimed airdrops",
+    subtitle: "Uniswap (UNI, 2020): no deadline",
+    live: true,
+    steps: [
+      "Uniswap's September 2020 airdrop never expires. Around 12.5 million UNI are still waiting to be claimed.",
+      "Open the official Uniswap app and connect the eligible wallet. If a Claim UNI prompt shows, confirm it.",
+      "No prompt? Claim directly on the contract: open the MerkleDistributor (0x090D4613473dEE047c3f2706764f49E0821D256e) on Etherscan, Write Contract → claim, with your index, address, amount and proof from Uniswap's published list (github.com/Uniswap/mrkl-drop-data-chunks).",
+    ],
+    note: "The UNI can only be sent to the eligible address itself, whoever submits the claim. Never sign anything on a site that asks you to \"approve\" tokens to receive an airdrop.",
+  },
+  {
     id: "opstack",
     title: "OP Stack chains",
     subtitle: "Base, OP Mainnet, Zora, Mode, Unichain, Ink, Soneium…",

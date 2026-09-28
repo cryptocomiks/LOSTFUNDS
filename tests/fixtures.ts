@@ -174,5 +174,16 @@ export function buildWorld(): MockChain {
     successfulMessages: () => false,
   });
 
+  // Uniswap 2020 airdrop: USER was eligible and never claimed.
+  const uni = "https://raw.githubusercontent.com/Uniswap/mrkl-drop-data-chunks/final/chunks";
+  m.static[`${uni}/mapping.json`] = { "0x1100000000000000000000000000000000000000": "0x1200000000000000000000000000000000000000" };
+  m.static[`${uni}/0x1100000000000000000000000000000000000000.json`] = {
+    [USER]: { index: 3, amount: "0x15af1d78b58c400000", proof: [] },
+  };
+  m.addContract(1, "0x090D4613473dEE047c3f2706764f49E0821D256e", parseAbi(["function isClaimed(uint256) view returns (bool)"]), {
+    isClaimed: () => false,
+  });
+  m.prices["ethereum:0x1f9840a85d5af5bf1d1762f925bdaddc4201f984"] = 7.5;
+
   return m;
 }

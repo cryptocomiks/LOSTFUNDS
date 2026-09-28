@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { before, describe, test } from "node:test";
 import { parseAbi, parseAbiItem, type Address, type Hex } from "viem";
+import { checkAirdrops } from "../src/lib/checks/airdrops.ts";
 import { checkCctp } from "../src/lib/checks/cctp.ts";
 import { checkDebridge } from "../src/lib/checks/debridge.ts";
 import { checkPolygon } from "../src/lib/checks/polygon.ts";
@@ -237,6 +238,40 @@ describe("Wallet kinds", () => {
     );
   });
   test("an Ethereum address runs everything", () => {
-    assert.equal(sourcesFor("evm").length, 14);
+    assert.equal(sourcesFor("evm").length, 15);
+  });
+});
+
+describe("Airdrops", () => {
+  const ELIGIBLE: Address = "0x32b7C9B07ed7885d398ef5A65206E77f1b5B92F9";
+  const CLAIMED: Address = "0x32b73C3C101f74e24A815a8291Eb60F25d96cdcc";
+  before(() => {
+    const base = "https://raw.githubusercontent.com/Uniswap/mrkl-drop-data-chunks/final/chunks";
+    world.static[`${base}/mapping.json`] = {
+      "0x0000000000000000000000000000000000000000": "0x0003092ffbaaaa22d8d9c9715b357e01db1915b7",
+      "0x32b0000000000000000000000000000000000000": "0x32b8000000000000000000000000000000000000",
+    };
+    world.static[`${base}/0x32b0000000000000000000000000000000000000.json`] = {
+      [ELIGIBLE]: { index: 7, amount: "0x15af1d78b58c400000", proof: [] },
+      [CLAIMED]: { index: 8, amount: "0x15af1d78b58c400000", proof: [] },
+    };
+    world.addContract(1, "0x090D4613473dEE047c3f2706764f49E0821D256e", parseAbi(["function isClaimed(uint256) view returns (bool)"]), {
+      isClaimed: ([i]) => i === 8n,
+    });
+  });
+
+  test("finds 400 UNI never claimed from the 2020 airdrop", async () => {
+    const r = await checkAirdrops(ELIGIBLE);
+    assert.equal(r.findings.length, 1);
+    assert.equal(r.findings[0].asset.amount, 400n * 10n ** 18n);
+    assert.equal(r.findings[0].asset.symbol, "UNI");
+  });
+  test("counts a claimed airdrop as completed", async () => {
+    const r = await checkAirdrops(CLAIMED);
+    assert.deepEqual([r.findings.length, r.completed], [0, 1]);
+  });
+  test("ignores addresses that weren't eligible", async () => {
+    const r = await checkAirdrops("0x32b5555555555555555555555555555555555555");
+    assert.deepEqual(r, { findings: [], completed: 0 });
   });
 });

@@ -15,4 +15,5 @@ export const NETWORK_COLORS: Record<string, string> = {
   wormhole: "linear-gradient(135deg,#1b1b1b,#8a8a8a)",
   debridge: "#FBFF3A",
   cctp: "#2775CA",
+  airdrops: "#FF007A",
 };

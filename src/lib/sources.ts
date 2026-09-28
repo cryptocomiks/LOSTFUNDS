@@ -1,4 +1,5 @@
 import type { Address } from "viem";
+import { checkAirdrops } from "./checks/airdrops";
 import { checkArbitrum } from "./checks/arbitrum";
 import { checkCctp, checkCctpFromSolana } from "./checks/cctp";
 import type { CheckOutput } from "./checks/common";
@@ -9,11 +10,12 @@ import { checkScroll } from "./checks/scroll";
 import { checkWormhole } from "./checks/wormhole";
 import { NETWORKS, type Family, type Network } from "./networks";
 
-export type Group = "l2" | "solana";
+export type Group = "l2" | "solana" | "airdrops";
 
 export const GROUPS: Record<Group, string> = {
   l2: "L2 → Ethereum",
   solana: "Solana ↔ Ethereum",
+  airdrops: "Unclaimed airdrops",
 };
 
 /** One line of the checker: a network's withdrawals, or a bridge route. */
@@ -56,6 +58,14 @@ export const SOURCES: CheckSource[] = [
     bridgeUrl: "the app you used, or a CCTP relayer",
     accepts: ["evm", "solana"],
     run: (user) => (user.startsWith("0x") ? checkCctp(user as Address) : checkCctpFromSolana(user)),
+  },
+  {
+    id: "airdrops",
+    name: "Uniswap (UNI)",
+    group: "airdrops",
+    bridgeUrl: "app.uniswap.org, or the MerkleDistributor contract on Etherscan",
+    accepts: ["evm"],
+    run: (user) => checkAirdrops(user as Address),
   },
 ];
 

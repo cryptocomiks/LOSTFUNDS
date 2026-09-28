@@ -51,6 +51,8 @@ export class MockChain {
   wormhole = { transactions: {} as Record<string, object[]>, vaas: {} as Record<string, { vaa: string; txHash?: string }> };
   /** deBridge API: listed orders and their details. */
   debridge = { orders: [] as Record<string, unknown>[], details: {} as Record<string, object> };
+  /** Static JSON files served by URL (e.g. airdrop eligibility lists). */
+  static: Record<string, unknown> = {};
   /** Solana accounts (base58 → raw data), missing = doesn't exist. */
   solana: Record<string, Uint8Array> = {};
 
@@ -246,6 +248,10 @@ export class MockChain {
       return json({ coins });
     }
 
+    if (url.host === "raw.githubusercontent.com") {
+      const hit = this.static[url.href];
+      return hit ? json(hit) : new Response("404: Not Found", { status: 404 });
+    }
     if (url.host === "api.wormholescan.io") {
       const tx = url.pathname.match(/^\/api\/v1\/transactions$/);
       if (tx) return json({ transactions: this.wormhole.transactions[(url.searchParams.get("address") ?? "").toLowerCase()] ?? [] });
