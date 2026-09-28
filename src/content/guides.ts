@@ -110,7 +110,7 @@ export const GUIDES: Guide[] = [
   {
     id: "debridge",
     title: "deBridge (DLN orders)",
-    subtitle: "Cross-chain orders that were never filled",
+    subtitle: "Orders on any route (30+ chains, Solana, Tron) that were never filled",
     live: true,
     steps: [
       "Open the official deBridge app and connect your wallet.",

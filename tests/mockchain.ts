@@ -15,6 +15,7 @@ import {
   type Hex,
 } from "viem";
 import { L1, NETWORKS } from "../src/lib/networks.ts";
+import { EVM_CHAINS } from "../src/lib/evm.ts";
 
 const MULTICALL3 = "0xca11bde05977b3631167028862be2a173976ca11";
 
@@ -310,9 +311,10 @@ export class MockChain {
     const rpcNet = [...NETWORKS, L1].find((n) =>
       [...n.rpcs, ...(("logsRpcs" in n && n.logsRpcs) || [])].some((r) => r && r.replace(/\/$/, "") === url.href.replace(/\/$/, "")),
     );
-    if (rpcNet) {
+    const rpcChain = rpcNet?.chain.id ?? EVM_CHAINS.find((c) => c.rpcs.some((r) => r.replace(/\/$/, "") === url.href.replace(/\/$/, "")))?.id;
+    if (rpcChain) {
       const body = JSON.parse(String(init?.body));
-      const out = Array.isArray(body) ? body.map((r) => this.rpc(rpcNet.chain.id, r)) : this.rpc(rpcNet.chain.id, body);
+      const out = Array.isArray(body) ? body.map((r) => this.rpc(rpcChain, r)) : this.rpc(rpcChain, body);
       return json(out);
     }
     return new Response("not found", { status: 404 });

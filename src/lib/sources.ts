@@ -14,7 +14,7 @@ export type Group = "l2" | "solana" | "airdrops";
 
 export const GROUPS: Record<Group, string> = {
   l2: "L2 → Ethereum",
-  solana: "Solana ↔ Ethereum",
+  solana: "Cross-chain bridges",
   airdrops: "Unclaimed airdrops",
 };
 

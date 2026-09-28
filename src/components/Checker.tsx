@@ -361,7 +361,7 @@ export function Checker() {
                   <div className="mt-6">
                     <p className="text-[28px] font-semibold tracking-tight sm:text-[34px]">Checking bridges…</p>
                     <p className="mt-2 text-[15px] text-text-2">
-                      Finding your withdrawals, cross-chain transfers and airdrops, then asking Ethereum and Solana whether each one was completed.
+                      Finding your withdrawals, cross-chain transfers and airdrops, then asking each chain whether it was completed.
                     </p>
                   </div>
                 ) : stuck.length > 0 ? (

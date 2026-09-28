@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { before, describe, test } from "node:test";
-import { parseAbi, parseAbiItem, type Address, type Hex } from "viem";
+import { parseAbi, parseAbiItem, zeroAddress, type Address, type Hex } from "viem";
 import { checkAirdrops } from "../src/lib/checks/airdrops.ts";
 import { checkCctp } from "../src/lib/checks/cctp.ts";
 import { checkDebridge } from "../src/lib/checks/debridge.ts";
@@ -167,6 +167,45 @@ describe("deBridge", () => {
     const fake = r.findings.find((f) => f.asset.symbol === "USⅮΤ")!;
     assert.match(fake.note ?? "", /scam/);
     assert.equal(fake.asset.priceKey, "none:none", "fake tokens are never priced");
+  });
+
+  test("covers every route, double-checked on each EVM chain", async () => {
+    const saved = { ...world.debridge, orders: [...world.debridge.orders] };
+    const P1 = `0x${"5".repeat(64)}`; // Polygon → Base, never filled
+    const P2 = `0x${"6".repeat(64)}`; // Polygon → Base, API says open but filled on Base
+    const P3 = `0x${"7".repeat(64)}`; // Berachain (deBridge id 100000020) → Solana, cancelled, refund unclaimed
+    const poly = (id: string, give: string, take: string, state: string, token: string) => {
+      const o = order(id, give, take, state);
+      o.giveOfferWithMetadata.tokenAddress.stringValue = token;
+      return o;
+    };
+    world.debridge.orders = [
+      poly(P1, "137", "8453", "Created", "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"),
+      poly(P2, "137", "8453", "Created", "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"),
+      poly(P3, "100000020", "7565164", "OrderCancelled", "0x0000000000000000000000000000000000000000"),
+    ];
+    world.debridge.details = Object.fromEntries([P1, P2, P3].map((id) => [id, { makerSrc: { stringValue: USER } }]));
+    const dln = parseAbi([
+      "function giveOrders(bytes32) view returns (uint8 status, uint160 giveTokenAddress, uint256 giveAmount)",
+      "function takeOrders(bytes32) view returns (uint8 status, address takerAddress, uint256 giveChainId)",
+    ]);
+    world.addContract(137, "0xeF4fB24aD0916217251F553c0596F8Edc630EB66", dln, { giveOrders: () => [1, 0n, 0n] });
+    world.addContract(8453, "0xE7351Fd770A37282b91D153Ee690B63579D6dd7f", dln, {
+      takeOrders: ([id]) => (id === P2 ? [1, USER, 137n] : [0, zeroAddress, 0n]),
+    });
+    world.addContract(80094, "0xeF4fB24aD0916217251F553c0596F8Edc630EB66", dln, { giveOrders: () => [1, 0n, 0n] });
+    try {
+      const r = await checkDebridge(USER);
+      assert.equal(r.completed, 1, "the order filled on Base counts as completed");
+      assert.deepEqual(r.findings.map((f) => f.networkName).sort(), ["deBridge · Berachain → Solana", "deBridge · Polygon → Base"]);
+      const polygon = r.findings.find((f) => f.networkName.includes("Polygon"))!;
+      assert.equal(polygon.asset.priceKey, "polygon:0x3c499c542cef5e3811e1192ce70d8cc03d5c3359");
+      const bera = r.findings.find((f) => f.networkName.includes("Berachain"))!;
+      assert.equal(bera.asset.priceKey, "coingecko:berachain-bera");
+      assert.match(bera.note ?? "", /cancelled/);
+    } finally {
+      Object.assign(world.debridge, saved);
+    }
   });
 });
 
