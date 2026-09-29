@@ -197,8 +197,9 @@ export const GUIDES: Guide[] = [
       "Reopen the app you used for the transfer (Circle, Jupiter, Mayan, Portal…). Many have a Resume or Redeem option for unfinished transfers.",
       "If the app set itself as the only allowed relayer, only that app can finish the transfer.",
       "Otherwise anyone can finish it: fetch the message and attestation for your burn transaction from Circle's attestation API, then submit them to the destination chain's MessageTransmitter (receiveMessage). The USDC is minted to the recipient set at burn time.",
+      "If the attestation expired (fast CCTP V2 transfers), ask Circle's API to re-attest the message first, then submit the new attestation.",
     ],
-    note: "The USDC can only be minted to the recipient chosen when it was burned. Nobody else can receive it.",
+    note: "The USDC can only be minted to the recipient chosen when it was burned. Nobody else can receive it. Circle is retiring CCTP V1: its contracts are paused on Dec 1, 2026, so mint V1 transfers before then.",
   },
   {
     id: "layerzero",

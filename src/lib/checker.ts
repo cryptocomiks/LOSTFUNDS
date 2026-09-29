@@ -47,8 +47,10 @@ function describeError(e: unknown): string {
 /** Runs one check. Never throws: failures come back as an "error" result. */
 export async function checkSource(src: CheckSource, user: string): Promise<NetworkResult> {
   try {
-    const out = await src.run(user);
+    const { error, ...out } = await src.run(user);
     await addPrices(out.findings.map((f) => f.asset));
+    // A partial failure keeps what was found, but the check still reads as failed (with a Retry).
+    if (error) return { networkId: src.id, state: "error", ...out, error: error.slice(0, 300) };
     return { networkId: src.id, state: "done", ...out };
   } catch (e) {
     console.error(`[${src.id}]`, e);

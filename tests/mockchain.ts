@@ -2,8 +2,11 @@
  * A tiny in-memory stand-in for Blockscout, JSON-RPC nodes (incl. Multicall3) and
  * DefiLlama, so the checks can be exercised end-to-end without network access.
  */
+import { base58 } from "@scure/base";
 import {
   decodeFunctionData,
+  encodeErrorResult,
+  parseAbiItem,
   encodeAbiParameters,
   encodeEventTopics,
   encodeFunctionResult,
@@ -16,8 +19,15 @@ import {
 } from "viem";
 import { L1, NETWORKS } from "../src/lib/networks.ts";
 import { EVM_CHAINS } from "../src/lib/evm.ts";
+import { CCTP_DOMAINS } from "../src/lib/checks/cctp.ts";
 
 const MULTICALL3 = "0xca11bde05977b3631167028862be2a173976ca11";
+const ERROR_STRING = parseAbiItem("error Error(string)");
+/** keccak256("Transfer(address,address,uint256)") */
+const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+const sameUrl = (a: string, b: string) => a.replace(/\/$/, "") === b.replace(/\/$/, "");
+/** Explorers of the CCTP source chains, as mock networks. */
+const CCTP_EXPLORERS = CCTP_DOMAINS.flatMap((d) => (d.history ? [{ ...d.history, chain: d.chain }] : []));
 
 interface StoredLog {
   chainId: number;
@@ -64,6 +74,11 @@ export class MockChain {
   static: Record<string, unknown> = {};
   /** Solana accounts (base58 → raw data), missing = doesn't exist. */
   solana: Record<string, Uint8Array> = {};
+  /** Solana accounts owned by a program (getProgramAccounts), and signatures by address. */
+  solanaPrograms: Record<string, { pubkey: string; data: Uint8Array }[]> = {};
+  solanaSignatures: Record<string, { signature: string; err: null; blockTime: number }[]> = {};
+  /** Circle's API: `${sourceDomain}:${txHash}` or `${sourceDomain}:nonce:${nonce}` → response body. */
+  iris: Record<string, object> = {};
 
   addTx(p: {
     chainId: number;
@@ -110,20 +125,28 @@ export class MockChain {
   private call(chainId: number, to: string, data: Hex): { ok: boolean; data: Hex } {
     const c = this.contracts.get(`${chainId}:${to.toLowerCase()}`);
     if (!c) return { ok: false, data: "0x" };
+    let decoded;
     try {
-      const { functionName, args } = decodeFunctionData({ abi: c.abi, data });
-      const fn = c.fns[functionName];
-      if (!fn) return { ok: false, data: "0x" };
-      const result = fn(args ?? []);
-      return { ok: true, data: encodeFunctionResult({ abi: c.abi, functionName, result } as never) };
+      decoded = decodeFunctionData({ abi: c.abi, data });
     } catch {
       return { ok: false, data: "0x" };
+    }
+    const { functionName, args } = decoded;
+    const fn = c.fns[functionName];
+    if (!fn) return { ok: false, data: "0x" };
+    try {
+      const result = fn(args ?? []);
+      return { ok: true, data: encodeFunctionResult({ abi: c.abi, functionName, result } as never) };
+    } catch (e) {
+      // A contract function that throws reverts with its message, as `Error(string)`.
+      const reason = (e as Error)?.message;
+      return { ok: false, data: reason ? encodeErrorResult({ abi: [ERROR_STRING], errorName: "Error", args: [reason] }) : "0x" };
     }
   }
 
   private rpc(chainId: number, req: { id: number; method: string; params: unknown[] }) {
     const reply = (result: unknown) => ({ jsonrpc: "2.0", id: req.id, result });
-    const fail = (message: string) => ({ jsonrpc: "2.0", id: req.id, error: { code: 3, message: "execution reverted", data: "0x" + message } });
+    const fail = (data: Hex) => ({ jsonrpc: "2.0", id: req.id, error: { code: 3, message: "execution reverted", data } });
     switch (req.method) {
       case "eth_chainId":
         return reply(numberToHex(chainId));
@@ -171,7 +194,7 @@ export class MockChain {
           return reply(encodeFunctionResult({ abi: multicall3Abi, functionName: "aggregate3", result: results }));
         }
         const r = this.call(chainId, to, data);
-        return r.ok ? reply(r.data) : fail("");
+        return r.ok ? reply(r.data) : fail(r.data);
       }
       case "eth_getLogs": {
         const f = req.params[0] as { address: string; topics: (string | null)[] };
@@ -203,6 +226,15 @@ export class MockChain {
 
   private explorer(chainId: number, url: URL) {
     const q = url.searchParams;
+    if (q.get("action") === "tokentx") {
+      const me = q.get("address")!.toLowerCase();
+      const token = q.get("contractaddress")!.toLowerCase();
+      const result = this.transfers(chainId, token)
+        .filter((t) => t.from === me || t.to === me)
+        .map((t) => ({ hash: t.log.txHash, from: t.from, to: t.to, contractAddress: token, timeStamp: String(t.log.timestamp), blockNumber: String(t.log.blockNumber) }));
+      if (!result.length) return { status: "0", message: "No transactions found", result: [] };
+      return { status: "1", message: "OK", result };
+    }
     if (q.get("action") === "txlist") {
       const me = q.get("address")!.toLowerCase();
       const result = [...this.txs.values()]
@@ -239,6 +271,38 @@ export class MockChain {
       }));
     if (!result.length) return { status: "0", message: "No logs found", result: [] };
     return { status: "1", message: "OK", result };
+  }
+
+  /** ERC-20 Transfer logs of `token` on a chain. */
+  private transfers(chainId: number, token: string) {
+    return this.logs
+      .filter((l) => l.chainId === chainId && l.address === token.toLowerCase() && l.topics[0] === TRANSFER_TOPIC)
+      .map((l) => ({ log: l, from: `0x${l.topics[1].slice(26)}`.toLowerCase(), to: `0x${l.topics[2].slice(26)}`.toLowerCase() }));
+  }
+
+  private solanaRpc(req: { id: number; method: string; params: unknown[] }) {
+    const reply = (result: unknown) => ({ jsonrpc: "2.0", id: req.id, result });
+    const b64 = (d: Uint8Array) => btoa(String.fromCharCode(...d));
+    switch (req.method) {
+      case "getMultipleAccounts": {
+        const keys = req.params[0] as string[];
+        return reply({ context: { slot: 1 }, value: keys.map((k) => (this.solana[k] ? { data: [b64(this.solana[k]), "base64"] } : null)) });
+      }
+      case "getProgramAccounts": {
+        const [program, opts] = req.params as [string, { filters?: { memcmp: { offset: number; bytes: string } }[] }];
+        const accounts = (this.solanaPrograms[program] ?? []).filter((a) =>
+          (opts.filters ?? []).every((f) => {
+            const want = base58.decode(f.memcmp.bytes);
+            return want.every((b, i) => a.data[f.memcmp.offset + i] === b);
+          }),
+        );
+        return reply(accounts.map((a) => ({ pubkey: a.pubkey, account: { data: [b64(a.data), "base64"] } })));
+      }
+      case "getSignaturesForAddress":
+        return reply(this.solanaSignatures[req.params[0] as string] ?? []);
+      default:
+        return { jsonrpc: "2.0", id: req.id, error: { message: "unsupported" } };
+    }
   }
 
   /** A drop-in `fetch`. */
@@ -284,13 +348,17 @@ export class MockChain {
       if (d && this.debridge.details[d[1]]) return json(this.debridge.details[d[1]]);
       return new Response("{}", { status: 404 });
     }
-    if (url.host === "iris-api.circle.com") return new Response(JSON.stringify({ error: "Message not found" }), { status: 404 });
-    if (url.host === "solana-rpc.publicnode.com" || url.host === "api.mainnet-beta.solana.com") {
-      const body = JSON.parse(String(init?.body)) as { id: number; method: string; params: [string[]] };
-      if (body.method !== "getMultipleAccounts") return json({ jsonrpc: "2.0", id: body.id, error: { message: "unsupported" } });
-      const b64 = (d: Uint8Array) => btoa(String.fromCharCode(...d));
-      const value = body.params[0].map((k) => (this.solana[k] ? { data: [b64(this.solana[k]), "base64"] } : null));
-      return json({ jsonrpc: "2.0", id: body.id, result: { context: { slot: 1 }, value } });
+    if (url.host === "iris-api.circle.com") {
+      const src = url.pathname.match(/^\/v2\/messages\/(\d+)$/)?.[1];
+      const tx = url.searchParams.get("transactionHash");
+      const nonce = url.searchParams.get("nonce");
+      const hit = src && this.iris[tx ? `${src}:${tx}` : `${src}:nonce:${nonce}`];
+      if (hit) return json(hit);
+      return new Response(JSON.stringify({ error: "Message not found" }), { status: 404 });
+    }
+    if (["solana-rpc.publicnode.com", "api.mainnet-beta.solana.com", "public.rpc.solanavibestation.com"].includes(url.host)) {
+      const body = JSON.parse(String(init?.body));
+      return json(Array.isArray(body) ? body.map((r) => this.solanaRpc(r)) : this.solanaRpc(body));
     }
     if (url.href.startsWith("https://gateway.tenderly.co/public/polygon") || url.host === "polygon-bor-rpc.publicnode.com") {
       const body = JSON.parse(String(init?.body));
@@ -299,10 +367,25 @@ export class MockChain {
     }
     if (url.host === "proof-generator.polygon.technology") return new Response(JSON.stringify({ error: true, message: "Burn transaction has not been checkpointed yet" }), { status: 404 });
 
-    const scout = [...NETWORKS, { ...L1, id: "l1" }].find((n) => n.blockscout && new URL(n.blockscout).host === url.host);
+    const scout = [...NETWORKS, { ...L1, id: "l1" }, ...CCTP_EXPLORERS].find((n) => n.blockscout && new URL(n.blockscout).host === url.host);
     if (scout && url.pathname === "/api") return json(this.explorer(scout.chain.id, url));
-    const api = NETWORKS.find((n) => n.api && url.href.startsWith(`${n.api}/api?`));
+    const api = [...NETWORKS, ...CCTP_EXPLORERS].find((n) => n.api && url.href.startsWith(`${n.api}/api?`));
     if (api) return json(this.explorer(api.chain.id, url));
+    const tt = scout && url.pathname.match(/^\/api\/v2\/addresses\/(0x[0-9a-fA-F]{40})\/token-transfers$/);
+    if (scout && tt) {
+      const me = tt[1].toLowerCase();
+      const token = url.searchParams.get("token")!.toLowerCase();
+      const items = this.transfers(scout.chain.id, token)
+        .filter((t) => t.from === me)
+        .map((t) => ({
+          transaction_hash: t.log.txHash,
+          from: { hash: t.from },
+          to: { hash: t.to },
+          token: { address_hash: token },
+          timestamp: new Date(t.log.timestamp * 1000).toISOString(),
+        }));
+      return json({ items, next_page_params: null });
+    }
     const v2 = scout && url.pathname.match(/^\/api\/v2\/addresses\/(0x[0-9a-fA-F]{40})\/transactions$/);
     if (scout && v2) {
       const me = v2[1].toLowerCase();
@@ -321,7 +404,10 @@ export class MockChain {
     const rpcNet = [...NETWORKS, L1].find((n) =>
       [...n.rpcs, ...(("logsRpcs" in n && n.logsRpcs) || [])].some((r) => r && r.replace(/\/$/, "") === url.href.replace(/\/$/, "")),
     );
-    const rpcChain = rpcNet?.chain.id ?? EVM_CHAINS.find((c) => c.rpcs.some((r) => r.replace(/\/$/, "") === url.href.replace(/\/$/, "")))?.id;
+    const rpcChain =
+      rpcNet?.chain.id ??
+      EVM_CHAINS.find((c) => c.rpcs.some((r) => sameUrl(r, url.href)))?.id ??
+      CCTP_DOMAINS.find((d) => [...d.rpcs, ...(d.history?.logsRpcs ?? [])].some((r) => sameUrl(r, url.href)))?.chain.id;
     if (rpcChain) {
       const body = JSON.parse(String(init?.body));
       const out = Array.isArray(body) ? body.map((r) => this.rpc(rpcChain, r)) : this.rpc(rpcChain, body);
