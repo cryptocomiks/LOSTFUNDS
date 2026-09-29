@@ -1,4 +1,4 @@
-import { getAddress, pad, type Address, type Hex } from "viem";
+import { getAddress, pad, toHex, type Address, type Hex } from "viem";
 import type { Network } from "./networks";
 import type { ApiLog } from "./types";
 
@@ -11,9 +11,17 @@ import type { ApiLog } from "./types";
  *   - Etherscan V2, only if NEXT_PUBLIC_ETHERSCAN_API_KEY is set
  */
 
-export type ExplorerTarget = Pick<Network, "name" | "chain" | "blockscout" | "logsRpcs" | "api"> & {
+export type ExplorerTarget = Pick<Network, "name" | "chain" | "blockscout" | "logsRpcs" | "logsRange" | "api"> & {
   /** Try the RPC nodes before the explorer (much faster for busy contracts). */
   preferRpc?: boolean;
+  /**
+   * Search the last `logsTail` blocks in a separate call. Some nodes (Tenderly) serve recent blocks
+   * from another index: when a query also covers them and the archive part fails (too many results,
+   * timeout), they silently return only the recent logs. Split, the failure comes back as an error.
+   */
+  logsTail?: number;
+  /** The caller doesn't use log timestamps: don't read them from RPC nodes (they come back as 0). */
+  noTimestamps?: boolean;
 };
 export type Topics = [Hex, (Hex | null)?, (Hex | null)?, (Hex | null)?];
 
@@ -182,8 +190,16 @@ async function logsFromApi(url: (p: URLSearchParams) => string, address: Address
   return out;
 }
 
-/** eth_getLogs over the whole history, on RPC nodes that allow it. */
-async function logsFromRpc(rpc: string, address: Address | undefined, topics: Topics): Promise<ApiLog[]> {
+/**
+ * eth_getLogs over the whole history, on RPC nodes that allow it: in one call, or in chunks
+ * (see `logsRange` / `logsTail`). A chunk that fails fails the whole search.
+ */
+async function logsFromRpc(
+  rpc: string,
+  address: Address | undefined,
+  topics: Topics,
+  { range, tail, noTimestamps }: { range?: number; tail?: number; noTimestamps?: boolean } = {},
+): Promise<ApiLog[]> {
   const call = (method: string, params: unknown[]) =>
     polite(rpc, async () => {
       const json = (await fetchJson(rpc, {
@@ -199,12 +215,29 @@ async function logsFromRpc(rpc: string, address: Address | undefined, topics: To
       }
       return json.result;
     });
-  const logs = (await call("eth_getLogs", [
-    { fromBlock: "0x0", toBlock: "latest", address, topics: topics.map((t) => t ?? null) },
-  ])) as { transactionHash: Hex; blockNumber: Hex; address: Address; topics: Hex[]; data: Hex }[];
+  type RpcLog = { transactionHash: Hex; blockNumber: Hex; address: Address; topics: Hex[]; data: Hex };
+  const filter = { address, topics: topics.map((t) => t ?? null) };
+  // Block spans to query, one after the other: the whole history at once, or chunks of `range`
+  // blocks, and with `tail` the last `tail` blocks on their own.
+  const spans: [Hex, Hex | "latest"][] = [];
+  if (!range && !tail) spans.push(["0x0", "latest"]);
+  else {
+    const head = BigInt((await call("eth_blockNumber", [])) as Hex);
+    const archiveEnd = tail && head > BigInt(tail) ? head - BigInt(tail) : head;
+    const step = range ? BigInt(range) : archiveEnd + 1n;
+    for (let from = 0n; from <= archiveEnd; from += step)
+      spans.push([toHex(from), toHex(from + step - 1n < archiveEnd ? from + step - 1n : archiveEnd)]);
+    if (archiveEnd < head) spans.push([toHex(archiveEnd + 1n), toHex(head)]);
+  }
+  const logs: RpcLog[] = [];
+  for (const [fromBlock, toBlock] of spans) {
+    const chunk = (await call("eth_getLogs", [{ ...filter, fromBlock, toBlock }])) as RpcLog[];
+    if (!Array.isArray(chunk)) throw new Error("bad eth_getLogs reply");
+    logs.push(...chunk);
+  }
   // RPC logs carry no timestamp: read the blocks' timestamps, 50 per batched request.
   const times = new Map<string, number>();
-  const blocks = [...new Set(logs.map((l) => l.blockNumber))];
+  const blocks = noTimestamps ? [] : [...new Set(logs.map((l) => l.blockNumber))];
   for (let i = 0; i < blocks.length; i += 50) {
     const chunk = blocks.slice(i, i + 50);
     const replies = (await polite(rpc, () =>
@@ -224,7 +257,7 @@ async function logsFromRpc(rpc: string, address: Address | undefined, topics: To
     data: l.data,
     transactionHash: l.transactionHash,
     blockNumber: BigInt(l.blockNumber),
-    timestamp: times.get(l.blockNumber)!,
+    timestamp: times.get(l.blockNumber) ?? 0,
   }));
 }
 
@@ -234,7 +267,10 @@ export function getLogs(net: ExplorerTarget, address: Address | undefined, topic
     name: src.name,
     run: () => logsFromApi(src.url, address, topics),
   }));
-  const rpcs = (net.logsRpcs ?? []).map((rpc) => ({ name: `rpc ${new URL(rpc).host}`, run: () => logsFromRpc(rpc, address, topics) }));
+  const rpcs = (net.logsRpcs ?? []).map((rpc) => ({
+    name: `rpc ${new URL(rpc).host}`,
+    run: () => logsFromRpc(rpc, address, topics, { range: net.logsRange, tail: net.logsTail, noTimestamps: net.noTimestamps }),
+  }));
   return firstSuccess(net.preferRpc ? [...rpcs, ...attempts] : [...attempts, ...rpcs]);
 }
 

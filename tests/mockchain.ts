@@ -6,6 +6,7 @@ import {
   decodeFunctionData,
   encodeAbiParameters,
   encodeEventTopics,
+  encodeErrorResult,
   encodeFunctionResult,
   multicall3Abi,
   numberToHex,
@@ -18,6 +19,15 @@ import { L1, NETWORKS } from "../src/lib/networks.ts";
 import { EVM_CHAINS } from "../src/lib/evm.ts";
 
 const MULTICALL3 = "0xca11bde05977b3631167028862be2a173976ca11";
+/** Latest block number of every mock chain. */
+export const MOCK_HEAD = 30_000_000n;
+const ERROR_STRING = { type: "error", name: "Error", inputs: [{ type: "string", name: "reason" }] } as const;
+
+/** Throw from a mock contract function to revert with a reason string. */
+export class MockRevert extends Error {}
+export const revert = (reason: string): never => {
+  throw new MockRevert(reason);
+};
 
 interface StoredLog {
   chainId: number;
@@ -64,6 +74,8 @@ export class MockChain {
   static: Record<string, unknown> = {};
   /** Solana accounts (base58 → raw data), missing = doesn't exist. */
   solana: Record<string, Uint8Array> = {};
+  /** Largest eth_getLogs block span each chain's RPC nodes accept (by chain id); unlimited if unset. */
+  logsRangeLimit: Record<number, number> = {};
 
   addTx(p: {
     chainId: number;
@@ -107,7 +119,7 @@ export class MockChain {
     this.contracts.set(`${chainId}:${address.toLowerCase()}`, { abi, fns });
   }
 
-  private call(chainId: number, to: string, data: Hex): { ok: boolean; data: Hex } {
+  private call(chainId: number, to: string, data: Hex): { ok: boolean; data: Hex; reason?: string } {
     const c = this.contracts.get(`${chainId}:${to.toLowerCase()}`);
     if (!c) return { ok: false, data: "0x" };
     try {
@@ -115,20 +127,28 @@ export class MockChain {
       const fn = c.fns[functionName];
       if (!fn) return { ok: false, data: "0x" };
       const result = fn(args ?? []);
+      if (result === undefined) return { ok: true, data: "0x" }; // function with no return value
       return { ok: true, data: encodeFunctionResult({ abi: c.abi, functionName, result } as never) };
-    } catch {
+    } catch (e) {
+      // `revert("reason")` in a contract fn: a real Error(string) revert.
+      if (e instanceof MockRevert)
+        return { ok: false, reason: e.message, data: encodeErrorResult({ abi: [ERROR_STRING], errorName: "Error", args: [e.message] }) };
       return { ok: false, data: "0x" };
     }
   }
 
   private rpc(chainId: number, req: { id: number; method: string; params: unknown[] }) {
     const reply = (result: unknown) => ({ jsonrpc: "2.0", id: req.id, result });
-    const fail = (message: string) => ({ jsonrpc: "2.0", id: req.id, error: { code: 3, message: "execution reverted", data: "0x" + message } });
+    const fail = (r: { data: Hex; reason?: string }) => ({
+      jsonrpc: "2.0",
+      id: req.id,
+      error: { code: 3, message: r.reason ? `execution reverted: ${r.reason}` : "execution reverted", data: r.data },
+    });
     switch (req.method) {
       case "eth_chainId":
         return reply(numberToHex(chainId));
       case "eth_blockNumber":
-        return reply(numberToHex(30_000_000));
+        return reply(numberToHex(MOCK_HEAD));
       case "eth_getTransactionReceipt": {
         const tx = this.txs.get(`${chainId}:${req.params[0]}`);
         if (!tx) return reply(null);
@@ -171,13 +191,20 @@ export class MockChain {
           return reply(encodeFunctionResult({ abi: multicall3Abi, functionName: "aggregate3", result: results }));
         }
         const r = this.call(chainId, to, data);
-        return r.ok ? reply(r.data) : fail("");
+        return r.ok ? reply(r.data) : fail(r);
       }
       case "eth_getLogs": {
-        const f = req.params[0] as { address: string; topics: (string | null)[] };
+        const f = req.params[0] as { address: string; topics: (string | null)[]; fromBlock?: string; toBlock?: string };
+        const from = f.fromBlock && f.fromBlock !== "earliest" ? BigInt(f.fromBlock) : 0n;
+        const to = f.toBlock && f.toBlock !== "latest" ? BigInt(f.toBlock) : MOCK_HEAD;
+        const max = this.logsRangeLimit[chainId];
+        if (max && to - from + 1n > BigInt(max))
+          return { jsonrpc: "2.0", id: req.id, error: { code: -32602, message: `query spans ${to - from + 1n} blocks, but only ${max} are allowed` } };
         const logs = this.logs.filter(
           (l) =>
             l.chainId === chainId &&
+            l.blockNumber >= from &&
+            l.blockNumber <= to &&
             (!f.address || l.address === f.address.toLowerCase()) &&
             f.topics.every((t, i) => !t || l.topics[i]?.toLowerCase() === t.toLowerCase()),
         );

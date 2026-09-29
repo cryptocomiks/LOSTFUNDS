@@ -1,15 +1,15 @@
 import assert from "node:assert/strict";
 import { before, describe, test } from "node:test";
-import { parseAbi, parseAbiItem, zeroAddress, type Address, type Hex } from "viem";
+import { concat, numberToHex, pad, parseAbi, parseAbiItem, toEventSelector, toRlp, zeroAddress, type Address, type Hex } from "viem";
 import { checkAirdrops } from "../src/lib/checks/airdrops.ts";
 import { checkCctp } from "../src/lib/checks/cctp.ts";
 import { checkDebridge } from "../src/lib/checks/debridge.ts";
-import { checkPolygon } from "../src/lib/checks/polygon.ts";
+import { checkPolygon, decodeExitPayload } from "../src/lib/checks/polygon.ts";
 import { checkWormhole, decodeTransferVaa } from "../src/lib/checks/wormhole.ts";
 import { associatedTokenAddress, findProgramAddress, hexBytes, u16be, u64be } from "../src/lib/solana.ts";
 import { base58 } from "@scure/base";
 import { sourcesFor } from "../src/lib/checker.ts";
-import { MockChain } from "./mockchain.ts";
+import { MockChain, revert } from "./mockchain.ts";
 import {
   CCTP_V1_USED_NONCES_499201,
   CLAIM_PDA_ETH_691205,
@@ -21,6 +21,7 @@ import {
 
 const USER: Address = "0x1111111111111111111111111111111111111111";
 const STRANGER: Address = "0x9999999999999999999999999999999999999999";
+const OTHER_WALLET: Address = "0x8888888888888888888888888888888888888888";
 const SOL_EMITTER = "ec7372995d5cc8732397fb0ad35c0121e0eaa90d26f828a534cab54391b3a4f5";
 const TOKEN_BRIDGE: Address = "0x3ee18B2214AFF97000D974cf647E7C347E8fa585";
 const WRAPPED_USDC: Address = "0x41f7B8b9b897276b7AAE926a9016935280b44E97";
@@ -264,9 +265,134 @@ describe("Circle CCTP", () => {
 });
 
 describe("Polygon PoS", () => {
+  const RCM: Address = "0xA0c68C638235ee32657e8f720a23ceC1bFc77C77";
+  const TRANSFER = parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 value)");
+  const PROOFS = "https://proof-generator.polygon.technology/api/v1/matic/all-exit-payloads";
+  const WETH: Address = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619"; // → ETH
+  const USDCE: Address = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"; // → USDC
+  const USDT: Address = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"; // → USDT, exits disabled (USDT0)
+  const UNMAPPED: Address = "0x5555555555555555555555555555555555555555";
+  const USDC_L1: Address = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+  const tx = (n: number) => `0x${n.toString(16).padStart(64, "0")}` as Hex;
+  const day = 86_400;
+  const t0 = Math.floor(Date.now() / 1000);
+  const int = (n: number) => (n === 0 ? "0x" : numberToHex(n, { size: Math.ceil(n.toString(16).length / 2) }));
+  type Burn = { token: Address; from: Address; amount: bigint };
+  /** An exit payload as Polygon's proof generator builds it: the receipt's logs and the index of the proven one. */
+  const payload = (block: number, burns: Burn[], logIndex: number, typed = true) => {
+    const logs = burns.map((b) => [b.token, [toEventSelector(TRANSFER), pad(b.from), pad("0x00")], numberToHex(b.amount, { size: 32 })] as [Hex, Hex[], Hex]);
+    const receipt = toRlp(["0x01", "0x5208", `0x${"00".repeat(256)}`, logs]);
+    return toRlp([int(7), "0x1234", int(block), int(1_700_000_000), `0x${"11".repeat(32)}`, `0x${"22".repeat(32)}`, typed ? concat(["0x02", receipt]) : receipt, "0xc0", "0x0080", int(logIndex)]);
+  };
+  const exited = new Set<string>();
+  const addBurns = (hash: Hex, block: number, age: number, burns: Burn[], proofs = true) => {
+    world.addTx({
+      chainId: 137,
+      hash,
+      from: burns[0].from,
+      to: burns[0].token,
+      blockNumber: BigInt(block),
+      timestamp: t0 - age * day,
+      logs: burns.map((b) => ({ address: b.token, event: TRANSFER, args: { from: b.from, to: zeroAddress, value: b.amount } })),
+    });
+    if (proofs)
+      world.static[`${PROOFS}/${hash}?eventSignature=${toEventSelector(TRANSFER)}`] = {
+        message: "Payload generation success",
+        result: burns.map((_, i) => payload(block, burns, i, i % 2 === 0)),
+      };
+  };
+
+  before(() => {
+    const roots: Record<string, Address> = {
+      [WETH.toLowerCase()]: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      [USDCE.toLowerCase()]: USDC_L1,
+      [USDT.toLowerCase()]: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+    };
+    const USDT_L1 = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
+    const rcm = parseAbi([
+      "function childToRootToken(address) view returns (address)",
+      "function migrationStatus(address) view returns (bool isDepositDisabled, bool isExitDisabled, uint256 lastExitBlockNumber)",
+      "function exit(bytes inputData)",
+    ]);
+    world.addContract(1, RCM, rcm, {
+      childToRootToken: ([c]) => roots[(c as string).toLowerCase()] ?? zeroAddress,
+      // USDT exits stop after Polygon block 28,000,000 (its USDT0 migration).
+      migrationStatus: ([r]) => ((r as string).toLowerCase() === USDT_L1.toLowerCase() ? [true, true, 28_000_000n] : [false, false, 0n]),
+      exit: ([data]) => {
+        const { log, logIndex, blockNumber } = decodeExitPayload(data as Hex);
+        if (exited.has(`${log.address.toLowerCase()}:${log.topics[1]}:${logIndex}`)) revert("RootChainManager: EXIT_ALREADY_PROCESSED");
+        if (log.address.toLowerCase() === USDT.toLowerCase() && blockNumber > 28_000_000n) revert("RootChainManager: EXIT_DISABLED");
+      },
+    });
+    world.addContract(1, USDC_L1, parseAbi(["function decimals() view returns (uint8)", "function symbol() view returns (string)"]), {
+      decimals: () => 6,
+      symbol: () => "USDC",
+    });
+    // A WETH withdrawal never exited, a USDC.e one exited, a USDT0 send (burns USDT, not a withdrawal).
+    addBurns(tx(0xb1), 20_000_000, 400, [{ token: WETH, from: USER, amount: 10_800_000_000_000_000n }]);
+    addBurns(tx(0xb2), 21_000_000, 300, [{ token: USDCE, from: USER, amount: 2_500_000_000n }]);
+    exited.add(`${USDCE.toLowerCase()}:${pad(USER)}:0`);
+    addBurns(tx(0xb3), 29_000_000, 20, [{ token: USDT, from: USER, amount: 194_000_000n }]);
+    // A USDT withdrawal from before the migration: still claimable.
+    addBurns(tx(0xb7), 27_000_000, 90, [{ token: USDT, from: USER, amount: 50_000_000n }]);
+    world.addContract(1, USDT_L1, parseAbi(["function decimals() view returns (uint8)", "function symbol() view returns (string)"]), {
+      decimals: () => 6,
+      symbol: () => "USDT",
+    });
+    // One transaction, two burns: someone else's (exited) first, then the user's (not exited).
+    addBurns(tx(0xb4), 22_000_000, 200, [
+      { token: WETH, from: STRANGER, amount: 5n * 10n ** 18n },
+      { token: WETH, from: USER, amount: 10n ** 18n },
+    ]);
+    exited.add(`${WETH.toLowerCase()}:${pad(STRANGER)}:0`);
+    // Burned an hour ago (inside the separately searched tail): not checkpointed yet.
+    addBurns(tx(0xb5), 29_999_000, 0.04, [{ token: USDCE, from: USER, amount: 3_000_000n }], false);
+    // A token the PoS bridge doesn't know.
+    addBurns(tx(0xb6), 23_000_000, 100, [{ token: UNMAPPED, from: USER, amount: 1n }], false);
+  });
+
   test("comes back clean when the wallet never burned bridged tokens", async () => {
-    const r = await checkPolygon(STRANGER);
+    const r = await checkPolygon(OTHER_WALLET);
     assert.deepEqual(r, { findings: [], completed: 0 });
+  });
+
+  test("decodes the burn an exit payload proves", () => {
+    const p = payload(123, [{ token: WETH, from: STRANGER, amount: 5n }, { token: USDCE, from: USER, amount: 7n }], 1);
+    const { log, logIndex } = decodeExitPayload(p);
+    assert.equal(logIndex, 1);
+    assert.equal(log.address, USDCE.toLowerCase());
+    assert.equal(log.topics[1], pad(USER).toLowerCase());
+    assert.equal(BigInt(log.data), 7n);
+  });
+
+  test("finds burns never exited, checked with each burn's own proof", async () => {
+    const r = await checkPolygon(USER);
+    assert.equal(r.completed, 1, "the exited USDC.e withdrawal");
+    const got = r.findings.map((f) => `${f.status} ${f.asset.amount} ${f.asset.symbol}`).sort();
+    assert.deepEqual(got, [
+      "ready 1000000000000000000 ETH", // not mistaken for the stranger's exited burn in the same tx
+      "ready 10800000000000000 ETH", // WETH burns exit as ETH
+      "ready 50000000 USDT", // before USDT's exit cut-off
+      "recent 3000000 USDC",
+    ]);
+    assert.ok(!world.requests.some((u) => u.includes(tx(0xb3))), "USDT burns after its exit cut-off aren't even looked up");
+    const weth = r.findings.find((f) => f.txHash === tx(0xb1))!;
+    assert.equal(weth.networkName, "Polygon PoS → Ethereum");
+    assert.equal(weth.asset.token, undefined, "priced as ETH");
+    assert.equal(weth.txUrl, `https://polygonscan.com/tx/${tx(0xb1)}`);
+    assert.match(r.findings.find((f) => f.status === "recent")!.note ?? "", /checkpoint/);
+  });
+
+  test("a busy proof generator fails the check instead of reporting it clean", async () => {
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      if (String(input).startsWith(PROOFS)) return new Response("Too Many Requests", { status: 429 });
+      return world.fetch(input, init);
+    }) as typeof fetch;
+    try {
+      await assert.rejects(checkPolygon(USER), /proof generator: HTTP 429/);
+    } finally {
+      globalThis.fetch = world.fetch as typeof fetch;
+    }
   });
 });
 
@@ -278,7 +404,7 @@ describe("Wallet kinds", () => {
     );
   });
   test("an Ethereum address runs everything", () => {
-    assert.equal(sourcesFor("evm").length, 33);
+    assert.equal(sourcesFor("evm").length, 37);
   });
 });
 

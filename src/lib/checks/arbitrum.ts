@@ -11,6 +11,7 @@ import { l1Client, l2Client } from "../clients";
 import { addressTopic, findBridgeTxs } from "../explorer";
 import type { Network } from "../networks";
 import { ethAsset, mapLimit, tokenAsset } from "../tokens";
+import type { Asset } from "../types";
 import { DAY, makeFinding, unclaimedStatus, type CheckOutput } from "./common";
 
 const ARBSYS: Address = "0x0000000000000000000000000000000000000064";
@@ -28,6 +29,18 @@ const T = {
 
 /** Challenge period (~6.4 days) plus a margin for the assertion to be confirmed. */
 const FINALITY = 7 * DAY;
+
+/**
+ * The chain's gas token, in which ArbSys withdrawals (`callvalue`) are paid out: ETH, or on chains with
+ * their own gas token (Plume, Gravity…) that token, released on Ethereum by the chain's bridge.
+ * `callvalue` always has the L2 native currency's decimals.
+ */
+export function nativeAsset(net: Network, amount: bigint): Asset {
+  const token = net.contracts.nativeToken as Address | undefined;
+  if (!token) return ethAsset(amount);
+  const { symbol, decimals } = net.chain.nativeCurrency;
+  return { symbol, decimals, amount, token, tokenChain: "ethereum" };
+}
 
 async function checkReceipt(net: Network, receipt: TransactionReceipt, user: Address, timestamp: number, out: CheckOutput) {
   const gateways = (net.contracts.gateways as Address[]).map((g) => g.toLowerCase());
@@ -85,7 +98,7 @@ async function checkReceipt(net: Network, receipt: TransactionReceipt, user: Add
     const t = hasTokens ? tokenTransfers[i] : undefined;
     const asset = t
       ? await tokenAsset([l1Client(), l2Client(net)], t.l1Token, t.amount, "ethereum")
-      : ethAsset(m.callvalue);
+      : nativeAsset(net, m.callvalue);
     out.findings.push(
       makeFinding(net, {
         key: m.position.toString(),

@@ -7,6 +7,7 @@ import {
   bob,
   codex,
   fraxtal,
+  gravity,
   ink,
   linea,
   lisk,
@@ -15,6 +16,8 @@ import {
   metalL2,
   mode,
   optimism,
+  plumeMainnet,
+  robinhood,
   scroll,
   shape,
   soneium,
@@ -39,6 +42,8 @@ export interface Network {
   api?: string;
   /** RPC nodes that accept eth_getLogs over the whole history (checked live), tried in order. */
   logsRpcs?: string[];
+  /** Largest block span `logsRpcs` accept per eth_getLogs call: longer histories are searched in chunks. */
+  logsRange?: number;
   /** Chain slug on DefiLlama's price API. */
   llama: string;
   explorer: string;
@@ -46,7 +51,10 @@ export interface Network {
   guideId: string;
   /** Official bridge UI. Shown as text: users should type it themselves. */
   bridgeUrl: string;
-  /** Family-specific L1 / L2 contract addresses. */
+  /**
+   * Family-specific L1 / L2 contract addresses. Arbitrum chains with their own gas token also set
+   * `nativeToken`: that token's address on Ethereum (withdrawals of the gas token are paid out in it).
+   */
   contracts: Record<string, Address | Address[]>;
 }
 
@@ -304,6 +312,68 @@ export const NETWORKS: Network[] = [
         "0xbf544970E6BD77b21C6492C281AB60d0770451F4", // L2 custom gateway
         "0x7626841cB6113412F9c88D3ADC720C9FAC88D9eD", // L2 WETH gateway
       ],
+    },
+  },
+  // Arbitrum Orbit chains that settle directly on Ethereum. Outbox = rollup.outbox() on Ethereum (its
+  // Bridge's only allowed outbox); gateways = the L2 counterparts of the L1 router's gateways (checked on-chain).
+  {
+    id: "robinhood",
+    name: "Robinhood Chain",
+    family: "arbitrum",
+    chain: robinhood,
+    rpcs: ["https://rpc.mainnet.chain.robinhood.com"],
+    // Its Blockscout sits behind a bot challenge: the RPC node is the only history source,
+    // and it answers eth_getLogs over at most 10M blocks per call.
+    logsRpcs: ["https://rpc.mainnet.chain.robinhood.com"],
+    logsRange: 10_000_000,
+    llama: "robinhood",
+    explorer: "https://robinhoodchain.blockscout.com",
+    guideId: "arbitrum",
+    bridgeUrl: "the official Robinhood Chain bridge",
+    contracts: {
+      outbox: "0xf0ce991ea4A0d2400A4AB49b20ae333f6Dce3DE9",
+      gatewayRouter: "0x1E324B9316138CA9a73F960213621AD1aaf01B89",
+      gateways: [
+        "0xfd9b17206278C16DdaacF6AC8f05dBf97EdCb31e", // L2 ERC20 gateway
+        "0x1D187C3E2dA52D72BC9C41e3AbA0fdFa6a7bF055", // L2 WETH gateway
+      ],
+    },
+  },
+  {
+    id: "plume",
+    name: "Plume",
+    family: "arbitrum",
+    chain: plumeMainnet,
+    rpcs: ["https://rpc.plume.org"],
+    blockscout: "https://explorer.plume.org",
+    logsRpcs: ["https://rpc.plume.org"],
+    llama: "plume_mainnet",
+    explorer: "https://explorer.plume.org",
+    guideId: "arbitrum",
+    bridgeUrl: "the official Plume bridge",
+    contracts: {
+      outbox: "0x7e4627bC114Fcd12ba912103279FD2858E644E71",
+      gatewayRouter: "0xEFE6F45507C24Bb85Fa25d417fe7d43763b9dE3d",
+      gateways: ["0x3955A911411cfae01c8B6Fd0D57c08DfE4428e38"], // L2 ERC20 gateway
+      nativeToken: "0x4C1746A800D224393fE2470C70A35717eD4eA5F1", // PLUME on Ethereum
+    },
+  },
+  {
+    id: "gravity",
+    name: "Gravity",
+    family: "arbitrum",
+    chain: gravity,
+    rpcs: ["https://rpc.gravity.xyz"],
+    logsRpcs: ["https://rpc.gravity.xyz"], // its explorer has no Blockscout-compatible API
+    llama: "gravity",
+    explorer: "https://explorer.gravity.xyz",
+    guideId: "arbitrum",
+    bridgeUrl: "the official Gravity bridge",
+    contracts: {
+      outbox: "0x1153a1e4B1523DFf36f77d696bd6eBF2B0e7DAbF",
+      gatewayRouter: "0xf1cA401FB474520EbaBb285670891dEbd7C505Bc",
+      gateways: ["0xD330E617270F375Bd476896f3A8AE9041264E13d"], // L2 ERC20 gateway
+      nativeToken: "0x9C7BEBa8F6eF6643aBd725e45a4E8387eF260649", // G on Ethereum
     },
   },
   {

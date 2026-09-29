@@ -445,7 +445,7 @@ export function Checker() {
                 </details>
               )}
               <p className="mt-4 px-1 text-[13px] leading-relaxed text-text-3">
-                Other bridges (Polygon, ZKsync, Starknet, LayerZero, Gnosis…) aren&apos;t checked automatically
+                Other bridges (ZKsync, Starknet, LayerZero, Gnosis…) aren&apos;t checked automatically
                 yet. If you used one, follow its guide below.
               </p>
             </div>
