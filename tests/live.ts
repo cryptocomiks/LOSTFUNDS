@@ -16,7 +16,11 @@ await Promise.all(
       `${s.name.padEnd(14)} ${r.state.padEnd(6)} ${((Date.now() - t) / 1000).toFixed(1)}s  completed=${r.completed} found=${r.findings.length}` +
         (r.error ? `  ERROR: ${r.error}` : "") +
         r.findings
-          .map((f) => `\n    - ${f.status} ${Number(f.asset.amount) / 10 ** f.asset.decimals} ${f.asset.symbol} (${f.networkName}) ${f.txUrl}`)
+          .map(
+            (f) =>
+              `\n    - ${f.status} ${Number(f.asset.amount) / 10 ** f.asset.decimals} ${f.asset.symbol}` +
+              `${f.asset.usd !== undefined ? ` ≈ $${f.asset.usd.toFixed(2)}` : ""} (${f.networkName}) ${f.txUrl}`,
+          )
           .join(""),
     );
   }),

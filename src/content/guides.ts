@@ -53,30 +53,31 @@ export const GUIDES: Guide[] = [
     subtitle: "Arbitrum One, Nova, Robinhood Chain, Plume, Gravity…",
     live: true,
     steps: [
-      "Open the official Arbitrum bridge (or your Orbit chain's own bridge) and connect the wallet that made the withdrawal.",
+      "Open the official Arbitrum bridge (Arbitrum One, Nova) or your Orbit chain's own bridge (Robinhood Chain, Plume, Gravity) and connect the wallet that made the withdrawal.",
       "Open the transaction history and look for withdrawals marked Claimable.",
       "Withdrawals become claimable about 7 days after they were sent (the challenge period).",
       "Click Claim and confirm on Ethereum (or the Orbit chain's parent chain). The funds are released to your address.",
     ],
-    note: "Withdrawals from before the Nitro upgrade (August 31, 2022) are still claimable, but some apps hide them.",
+    note: "Withdrawals from before the Nitro upgrade (August 31, 2022) are still claimable, but some apps hide them. On chains with their own gas token, withdrawals of that token are paid out on Ethereum in the same token (PLUME from Plume, G from Gravity), not in ETH.",
     manual: [
-      "Every withdrawal has a position in the Outbox. Get the proof by calling constructOutboxProof on the NodeInterface (0x00000000000000000000000000000000000000C8) on Arbitrum.",
-      "Then call executeTransaction on the chain's Outbox contract on Ethereum with that proof and the fields of your L2ToL1Tx event.",
+      "Every withdrawal has a position in the Outbox. Get the proof by calling constructOutboxProof on the NodeInterface (0x00000000000000000000000000000000000000C8) on the chain you withdrew from.",
+      "Then call executeTransaction on that chain's Outbox contract on Ethereum with that proof and the fields of your L2ToL1Tx event. Outboxes: Arbitrum One 0x0B9857ae2D4A3DBe74ffE1d7DF045bb7F96E4840, Nova 0xD4B80C3D7240325D18E645B49e6535A3Bf95cc58, Robinhood Chain 0xf0ce991ea4A0d2400A4AB49b20ae333f6Dce3DE9, Plume 0x7e4627bC114Fcd12ba912103279FD2858E644E71, Gravity 0x1153a1e4B1523DFf36f77d696bd6eBF2B0e7DAbF.",
     ],
   },
   {
     id: "polygon-pos",
     title: "Polygon PoS",
     subtitle: "Withdrawals burned on Polygon, never exited on Ethereum",
+    live: true,
     steps: [
       "Open the official Polygon Portal and connect the wallet that made the withdrawal.",
       "Open the transaction history and find the withdrawal.",
       "After the checkpoint (usually 1–3 hours) the withdrawal shows Claim.",
       "Click Claim and confirm on Ethereum. The funds are released from the bridge to your address.",
     ],
-    note: "Old withdrawals through the Plasma bridge (mostly MATIC) have an extra 7-day wait and a final Process exit step.",
+    note: "The live check covers tokens and ETH (WETH) withdrawn through the PoS bridge. Native POL / MATIC withdrawals through the older Plasma bridge aren't checked automatically: they have an extra 7-day wait and a final Process exit step in the Portal.",
     manual: [
-      "Build the exit payload for your burn transaction with Polygon's proof generator API, then call exit(bytes) on the RootChainManager on Ethereum.",
+      "Build the exit payload for your burn transaction with Polygon's proof generator API (proof-generator.polygon.technology), then call exit(bytes) on the RootChainManager (0xA0c68C638235ee32657e8f720a23ceC1bFc77C77) on Ethereum, from any wallet: the funds always go to the address that burned them.",
     ],
   },
   {

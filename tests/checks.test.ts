@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { before, describe, test } from "node:test";
-import { parseEther, parseUnits } from "viem";
+import { parseAbi, parseAbiItem, parseEther, parseUnits, type Address, type Hex } from "viem";
 import { checkNetwork, InputError, resolveInput } from "../src/lib/checker.ts";
 import { networkById } from "../src/lib/networks.ts";
-import { buildWorld, USER } from "./fixtures.ts";
+import { buildWorld, USDC_L1, USER } from "./fixtures.ts";
 
 const world = buildWorld();
 before(() => {
@@ -29,6 +29,114 @@ describe("Arbitrum", () => {
     assert.equal(usdc.asset.decimals, 6);
     assert.equal(usdc.asset.usd, 2500);
     assert.match(usdc.txUrl, /^https:\/\/arbiscan\.io\/tx\/0x/);
+  });
+});
+
+describe("Arbitrum Orbit chains", () => {
+  const ARBSYS: Address = "0x0000000000000000000000000000000000000064";
+  const l2ToL1Tx = parseAbiItem(
+    "event L2ToL1Tx(address caller, address indexed destination, uint256 indexed hash, uint256 indexed position, uint256 arbBlockNum, uint256 ethBlockNum, uint256 timestamp, uint256 callvalue, bytes data)",
+  );
+  const gatewayEvent = parseAbiItem(
+    "event WithdrawalInitiated(address l1Token, address indexed _from, address indexed _to, uint256 indexed _l2ToL1Id, uint256 _exitNum, uint256 _amount)",
+  );
+  const DAY = 86_400;
+  const t0 = Math.floor(Date.now() / 1000);
+  const h = (n: number) => `0x${n.toString(16).padStart(64, "0")}` as Hex;
+  const msg = (position: bigint, destination: Address, callvalue: bigint) => ({
+    address: ARBSYS,
+    event: l2ToL1Tx,
+    args: { caller: USER, destination, hash: position, position, arbBlockNum: 1n, ethBlockNum: 1n, timestamp: 1n, callvalue, data: "0x" },
+  });
+  const withdrawal = (chainId: number, hash: Hex, block: bigint, ageDays: number, logs: ReturnType<typeof msg>[]) =>
+    world.addTx({ chainId, hash, from: USER, to: ARBSYS, blockNumber: block, timestamp: t0 - ageDays * DAY, logs });
+  const outbox = (address: Address, spent: bigint[]) =>
+    world.addContract(1, address, parseAbi(["function isSpent(uint256) view returns (bool)"]), { isSpent: ([i]) => spent.includes(i as bigint) });
+  const PLUME_L1: Address = "0x4C1746A800D224393fE2470C70A35717eD4eA5F1";
+  const G_L1: Address = "0x9C7BEBa8F6eF6643aBd725e45a4E8387eF260649";
+
+  before(() => {
+    // Plume (PLUME gas token, Blockscout): 29.86 PLUME unclaimed, 49,000 PLUME claimed, 0.2 USDC through the gateway.
+    withdrawal(98866, h(0x91), 20_000_000n, 143, [msg(49129n, USER, parseEther("29.859909"))]);
+    withdrawal(98866, h(0x92), 20_000_001n, 150, [msg(100n, USER, parseEther("49000"))]);
+    world.addTx({
+      chainId: 98866,
+      hash: h(0x93),
+      from: USER,
+      to: "0xEFE6F45507C24Bb85Fa25d417fe7d43763b9dE3d",
+      blockNumber: 20_000_002n,
+      timestamp: t0 - 200 * DAY,
+      logs: [
+        msg(5n, "0xE2C902BC61296531e556962ffC81A082b82f5F28", 0n),
+        {
+          address: "0x3955A911411cfae01c8B6Fd0D57c08DfE4428e38",
+          event: gatewayEvent,
+          args: { l1Token: USDC_L1, _from: USER, _to: USER, _l2ToL1Id: 5n, _exitNum: 0n, _amount: 200_000n },
+        } as never,
+      ],
+    });
+    outbox("0x7e4627bC114Fcd12ba912103279FD2858E644E71", [100n]);
+    world.prices[`ethereum:${PLUME_L1.toLowerCase()}`] = 0.02;
+    // Gravity (G gas token, no explorer API: found through the RPC node's event search).
+    withdrawal(1625, h(0x81), 9_000_000n, 493, [msg(1352n, USER, parseEther("293.38"))]);
+    outbox("0x1153a1e4B1523DFf36f77d696bd6eBF2B0e7DAbF", []);
+    world.prices[`ethereum:${G_L1.toLowerCase()}`] = 0.005;
+    // Robinhood Chain (ETH, RPC only, 10M blocks per eth_getLogs): withdrawals in different chunks.
+    world.logsRangeLimit[4663] = 10_000_000;
+    withdrawal(4663, h(0x71), 3_000_000n, 87, [msg(49n, USER, parseEther("0.042209"))]);
+    withdrawal(4663, h(0x72), 25_000_000n, 60, [msg(64n, USER, parseEther("0.41"))]);
+    withdrawal(4663, h(0x73), 29_999_999n, 1, [msg(2700n, USER, parseEther("1"))]);
+    outbox("0xf0ce991ea4A0d2400A4AB49b20ae333f6Dce3DE9", [64n]);
+  });
+
+  test("Plume: gas-token withdrawals are paid out in PLUME, not ETH", async () => {
+    const r = await run("plume");
+    assert.equal(r.state, "done", r.error ?? "");
+    assert.equal(r.completed, 1);
+    const plume = r.findings.find((f) => f.asset.symbol === "PLUME")!;
+    assert.equal(plume.status, "ready");
+    assert.equal(plume.asset.amount, parseEther("29.859909"));
+    assert.equal(plume.asset.decimals, 18);
+    assert.equal(plume.asset.token, PLUME_L1, "priced as PLUME on Ethereum");
+    assert.ok(Math.abs(plume.asset.usd! - 0.597) < 0.001, String(plume.asset.usd));
+    assert.equal(plume.txUrl, `https://explorer.plume.org/tx/${h(0x91)}`);
+    const usdc = r.findings.find((f) => f.asset.symbol === "USDC")!;
+    assert.equal(usdc.asset.amount, 200_000n);
+    assert.equal(r.findings.length, 2);
+  });
+
+  test("Gravity: G withdrawals found through the RPC node", async () => {
+    const r = await run("gravity");
+    assert.equal(r.state, "done", r.error ?? "");
+    assert.equal(r.findings.length, 1);
+    assert.equal(r.findings[0].asset.symbol, "G");
+    assert.equal(r.findings[0].asset.amount, parseEther("293.38"));
+    assert.equal(r.findings[0].asset.token, G_L1);
+    assert.ok(Math.abs(r.findings[0].asset.usd! - 1.4669) < 0.001);
+  });
+
+  test("Robinhood Chain: searches its history in 10M-block chunks", async () => {
+    const r = await run("robinhood");
+    assert.equal(r.state, "done", r.error ?? "");
+    assert.equal(r.completed, 1, "position 64 (third chunk) was claimed");
+    const got = r.findings.map((f) => `${f.status} ${f.asset.amount} ${f.asset.symbol}`).sort();
+    assert.deepEqual(got, [`ready ${parseEther("0.042209")} ETH`, `recent ${parseEther("1")} ETH`]);
+  });
+
+  test("Robinhood Chain: one failed chunk fails the check (never a silent miss)", async () => {
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      const body = typeof init?.body === "string" ? init.body : "";
+      if (String(input).includes("robinhood") && body.includes('"fromBlock":"0x1312d00"'))
+        return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, error: { code: -32000, message: "internal error" } }));
+      return world.fetch(input, init);
+    }) as typeof fetch;
+    try {
+      const r = await run("robinhood");
+      assert.equal(r.state, "error");
+      assert.match(r.error ?? "", /internal error/);
+    } finally {
+      globalThis.fetch = world.fetch as typeof fetch;
+    }
   });
 });
 

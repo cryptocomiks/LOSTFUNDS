@@ -8,6 +8,7 @@ import { checkDebridge } from "./checks/debridge";
 import { checkGnosisBridge } from "./checks/gnosis";
 import { checkLinea } from "./checks/linea";
 import { checkOpStack } from "./checks/opstack";
+import { checkPolygon, POLYGON } from "./checks/polygon";
 import { checkScroll } from "./checks/scroll";
 import { checkWormhole } from "./checks/wormhole";
 import { NETWORKS, type Family, type Network } from "./networks";
@@ -49,8 +50,7 @@ export const SOURCES: CheckSource[] = [
     accepts: ["evm" as const],
     run: (user: string) => FAMILY[n.family](n, user as Address),
   })),
-  // Polygon PoS (checks/polygon.ts) is implemented and unit-tested, but not enabled until it has been
-  // validated against real withdrawals: its only full-history source (Tenderly) rate-limits heavily.
+  { id: POLYGON.id, name: POLYGON.name, group: "l2", bridgeUrl: "portal.polygon.technology", accepts: ["evm"], run: (user) => checkPolygon(user as Address) },
   { id: "wormhole", name: "Wormhole", group: "solana", bridgeUrl: "portalbridge.com", accepts: ["evm", "solana"], run: checkWormhole },
   { id: "debridge", name: "deBridge", group: "solana", bridgeUrl: "app.debridge.finance", accepts: ["evm", "solana"], run: checkDebridge },
   {
