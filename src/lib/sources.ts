@@ -2,8 +2,10 @@ import type { Address } from "viem";
 import { AIRDROP_LIST, checkAirdrops } from "./checks/airdrops";
 import { checkArbitrum } from "./checks/arbitrum";
 import { checkCctp, checkCctpFromSolana } from "./checks/cctp";
+import { checkCeler } from "./checks/celer";
 import type { CheckOutput } from "./checks/common";
 import { checkDebridge } from "./checks/debridge";
+import { checkGnosisBridge } from "./checks/gnosis";
 import { checkLinea } from "./checks/linea";
 import { checkOpStack } from "./checks/opstack";
 import { checkScroll } from "./checks/scroll";
@@ -59,6 +61,15 @@ export const SOURCES: CheckSource[] = [
     accepts: ["evm", "solana"],
     run: (user) => (user.startsWith("0x") ? checkCctp(user as Address) : checkCctpFromSolana(user)),
   },
+  {
+    id: "gnosis",
+    name: "Gnosis Bridge",
+    group: "solana",
+    bridgeUrl: "bridge.gnosischain.com",
+    accepts: ["evm"],
+    run: (user) => checkGnosisBridge(user as Address),
+  },
+  { id: "celer", name: "Celer cBridge", group: "solana", bridgeUrl: "cbridge.celer.network", accepts: ["evm"], run: (user) => checkCeler(user as Address) },
   ...AIRDROP_LIST.map((a) => ({
     id: `airdrop-${a.id}`,
     name: a.name,

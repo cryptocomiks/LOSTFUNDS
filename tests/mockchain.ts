@@ -47,6 +47,9 @@ const STATIC_HOSTS = new Set([
   "lostfunds.vercel.app",
 ]);
 
+/** RPC nodes used only for event searches (not in the chain registries): URL → chain id. */
+const EXTRA_RPCS: Record<string, number> = { "https://rpc.gnosis.gateway.fm": 100 };
+
 type ContractFn = (args: readonly unknown[]) => unknown;
 
 export class MockChain {
@@ -60,6 +63,8 @@ export class MockChain {
   wormhole = { transactions: {} as Record<string, object[]>, vaas: {} as Record<string, { vaa: string; txHash?: string }> };
   /** deBridge API: listed orders and their details. */
   debridge = { orders: [] as Record<string, unknown>[], details: {} as Record<string, object> };
+  /** cBridge API: transfer history by (lowercase) sender, transfer status by id. */
+  celer = { history: {} as Record<string, { ts: string }[]>, status: {} as Record<string, object> };
   /** Static JSON files served by URL (e.g. airdrop eligibility lists). */
   static: Record<string, unknown> = {};
   /** Solana accounts (base58 → raw data), missing = doesn't exist. */
@@ -284,6 +289,21 @@ export class MockChain {
       if (d && this.debridge.details[d[1]]) return json(this.debridge.details[d[1]]);
       return new Response("{}", { status: 404 });
     }
+    if (url.host === "cbridge-prod2.celer.app") {
+      if (url.pathname === "/v1/transferHistory") {
+        // Newest first, paged by timestamp (next_page_token = ts of the last row).
+        const rows = [...(this.celer.history[(url.searchParams.get("acct_addr[]") ?? "").toLowerCase()] ?? [])].sort((a, b) => Number(b.ts) - Number(a.ts));
+        const size = Number(url.searchParams.get("page_size") ?? 50);
+        const before = url.searchParams.get("next_page_token");
+        const page = rows.filter((r) => !before || Number(r.ts) < Number(before)).slice(0, size);
+        return json({ err: null, history: page, next_page_token: page.at(-1)?.ts ?? "0", current_size: String(page.length) });
+      }
+      if (url.pathname === "/v2/getTransferStatus") {
+        const { transfer_id } = JSON.parse(String(init?.body)) as { transfer_id: string };
+        return json(this.celer.status[transfer_id] ?? { err: null, status: 0, wd_onchain: null, sorted_sigs: [], signers: [], powers: [], bridge_type: 0 });
+      }
+      return new Response("{}", { status: 404 });
+    }
     if (url.host === "iris-api.circle.com") return new Response(JSON.stringify({ error: "Message not found" }), { status: 404 });
     if (url.host === "solana-rpc.publicnode.com" || url.host === "api.mainnet-beta.solana.com") {
       const body = JSON.parse(String(init?.body)) as { id: number; method: string; params: [string[]] };
@@ -321,7 +341,10 @@ export class MockChain {
     const rpcNet = [...NETWORKS, L1].find((n) =>
       [...n.rpcs, ...(("logsRpcs" in n && n.logsRpcs) || [])].some((r) => r && r.replace(/\/$/, "") === url.href.replace(/\/$/, "")),
     );
-    const rpcChain = rpcNet?.chain.id ?? EVM_CHAINS.find((c) => c.rpcs.some((r) => r.replace(/\/$/, "") === url.href.replace(/\/$/, "")))?.id;
+    const rpcChain =
+      rpcNet?.chain.id ??
+      EVM_CHAINS.find((c) => c.rpcs.some((r) => r.replace(/\/$/, "") === url.href.replace(/\/$/, "")))?.id ??
+      EXTRA_RPCS[url.href.replace(/\/$/, "")];
     if (rpcChain) {
       const body = JSON.parse(String(init?.body));
       const out = Array.isArray(body) ? body.map((r) => this.rpc(rpcChain, r)) : this.rpc(rpcChain, body);

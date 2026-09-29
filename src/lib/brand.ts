@@ -25,6 +25,8 @@ export const NETWORK_COLORS: Record<string, string> = {
   wormhole: "linear-gradient(135deg,#1b1b1b,#8a8a8a)",
   debridge: "#FBFF3A",
   cctp: "#2775CA",
+  gnosis: "linear-gradient(135deg,#3E6957,#133629)",
+  celer: "linear-gradient(135deg,#6E3FF3,#1B1B1B)",
   airdrops: "#FF007A",
   "airdrop-uni-2020": "#FF007A",
   "airdrop-zora-2025": "radial-gradient(circle at 30% 30%,#FCB8D4,#2B5DF0 60%,#1a1a1a)",
