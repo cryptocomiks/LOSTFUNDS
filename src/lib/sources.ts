@@ -1,5 +1,5 @@
 import type { Address } from "viem";
-import { checkAirdrops } from "./checks/airdrops";
+import { AIRDROP_LIST, checkAirdrops } from "./checks/airdrops";
 import { checkArbitrum } from "./checks/arbitrum";
 import { checkCctp, checkCctpFromSolana } from "./checks/cctp";
 import type { CheckOutput } from "./checks/common";
@@ -59,14 +59,14 @@ export const SOURCES: CheckSource[] = [
     accepts: ["evm", "solana"],
     run: (user) => (user.startsWith("0x") ? checkCctp(user as Address) : checkCctpFromSolana(user)),
   },
-  {
-    id: "airdrops",
-    name: "Uniswap (UNI)",
-    group: "airdrops",
-    bridgeUrl: "app.uniswap.org, or the MerkleDistributor contract on Etherscan",
-    accepts: ["evm"],
-    run: (user) => checkAirdrops(user as Address),
-  },
+  ...AIRDROP_LIST.map((a) => ({
+    id: `airdrop-${a.id}`,
+    name: a.name,
+    group: "airdrops" as const,
+    bridgeUrl: a.claimAt,
+    accepts: ["evm" as const],
+    run: (user: string) => checkAirdrops(user as Address, [a]),
+  })),
 ];
 
 export const sourceById = (id: string) => SOURCES.find((s) => s.id === id);

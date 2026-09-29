@@ -15,14 +15,14 @@ export const GUIDES: Guide[] = [
   {
     id: "airdrops",
     title: "Unclaimed airdrops",
-    subtitle: "Uniswap (UNI, 2020): no deadline",
+    subtitle: "Uniswap (UNI), Zora (ZORA), Sonic (S)",
     live: true,
     steps: [
-      "Uniswap's September 2020 airdrop never expires. Around 12.5 million UNI are still waiting to be claimed.",
-      "Open the official Uniswap app and connect the eligible wallet. If a Claim UNI prompt shows, confirm it.",
-      "No prompt? Claim directly on the contract: open the MerkleDistributor (0x090D4613473dEE047c3f2706764f49E0821D256e) on Etherscan, Write Contract → claim, with your index, address, amount and proof from Uniswap's published list (github.com/Uniswap/mrkl-drop-data-chunks).",
+      "Uniswap, September 2020: never expires, around 12.5 million UNI still unclaimed. Open the official Uniswap app with the eligible wallet; if no Claim UNI prompt shows, claim on the MerkleDistributor (0x090D4613473dEE047c3f2706764f49E0821D256e) on Etherscan, Write Contract → claim, with your index, amount and proof from Uniswap's published list (github.com/Uniswap/mrkl-drop-data-chunks).",
+      "Zora, April 2025 (Base): no deadline. Open zora.co with the eligible wallet, or call claim(your address) on the claim contract (0x0000000002ba96c69b95e32caab8fc38bab8b3f8) on Basescan, from the eligible wallet.",
+      "Sonic (Sonic chain): only if you still hold Sonic airdrop NFTs. Unlock them at my.soniclabs.com/airdrop before October 15, 2026: whatever is still locked then is burned.",
     ],
-    note: "The UNI can only be sent to the eligible address itself, whoever submits the claim. Never sign anything on a site that asks you to \"approve\" tokens to receive an airdrop.",
+    note: "Airdropped tokens can only go to the eligible wallet. Never sign anything on a site that asks you to \"approve\" tokens to receive an airdrop.",
   },
   {
     id: "opstack",

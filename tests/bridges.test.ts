@@ -277,7 +277,7 @@ describe("Wallet kinds", () => {
     );
   });
   test("an Ethereum address runs everything", () => {
-    assert.equal(sourcesFor("evm").length, 25);
+    assert.equal(sourcesFor("evm").length, 27);
   });
 });
 
@@ -297,17 +297,34 @@ describe("Airdrops", () => {
     world.addContract(1, "0x090D4613473dEE047c3f2706764f49E0821D256e", parseAbi(["function isClaimed(uint256) view returns (bool)"]), {
       isClaimed: ([i]) => i === 8n,
     });
+    // Zora: ELIGIBLE never claimed 20,000 ZORA, CLAIMED did.
+    world.addContract(8453, "0x0000000002ba96c69b95e32caab8fc38bab8b3f8", parseAbi(["function accountClaim(address) view returns ((uint96 allocation, bool claimed))"]), {
+      accountClaim: ([a]) =>
+        a === ELIGIBLE ? { allocation: 20_000n * 10n ** 18n, claimed: false } : a === CLAIMED ? { allocation: 5n * 10n ** 18n, claimed: true } : { allocation: 0n, claimed: false },
+    });
+    // Sonic: ELIGIBLE still holds season 2 NFTs; one season's burn deadline has passed.
+    const soon = BigInt(Math.floor(Date.now() / 1000) + 10 * 86400);
+    world.addContract(146, "0xE1401171219FD2fD37c8C04a8A753B07706F3567", parseAbi([
+      "function getSeasonData(uint8) view returns (uint256 startTime, uint256 maturationTime, uint256 claimsBurnTime, uint256 lockedBurnTime, uint256 instantClaimAvailableBps, bytes32 merkleRoot)",
+      "function getSeasonBalances(uint8 season, address user) view returns (uint128 balance, uint128 vested, uint128 penalty)",
+    ]), {
+      getSeasonData: ([season]) => [0n, 0n, 0n, season === 1 ? 1n : soon, 0n, `0x${"0".repeat(64)}`],
+      getSeasonBalances: ([, user]) => (user === ELIGIBLE ? [1000n * 10n ** 18n, 0n, 0n] : [0n, 0n, 0n]),
+    });
   });
 
-  test("finds 400 UNI never claimed from the 2020 airdrop", async () => {
+  test("finds every airdrop never claimed: UNI 2020, Zora, and Sonic before its burn date", async () => {
     const r = await checkAirdrops(ELIGIBLE);
-    assert.equal(r.findings.length, 1);
-    assert.equal(r.findings[0].asset.amount, 400n * 10n ** 18n);
-    assert.equal(r.findings[0].asset.symbol, "UNI");
+    const by = Object.fromEntries(r.findings.map((f) => [f.asset.symbol, f]));
+    assert.deepEqual(Object.keys(by).sort(), ["S", "UNI", "ZORA"]);
+    assert.equal(by.UNI.asset.amount, 400n * 10n ** 18n);
+    assert.equal(by.ZORA.asset.amount, 20_000n * 10n ** 18n);
+    assert.equal(by.S.asset.amount, 1000n * 10n ** 18n, "the season past its burn date is left out");
+    assert.match(by.S.note ?? "", /burned/);
   });
   test("counts a claimed airdrop as completed", async () => {
     const r = await checkAirdrops(CLAIMED);
-    assert.deepEqual([r.findings.length, r.completed], [0, 1]);
+    assert.deepEqual([r.findings.length, r.completed], [0, 2]);
   });
   test("ignores addresses that weren't eligible", async () => {
     const r = await checkAirdrops("0x32b5555555555555555555555555555555555555");
