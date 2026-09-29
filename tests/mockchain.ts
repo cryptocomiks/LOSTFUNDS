@@ -5,8 +5,8 @@
 import {
   decodeFunctionData,
   encodeAbiParameters,
-  encodeEventTopics,
   encodeErrorResult,
+  encodeEventTopics,
   encodeFunctionResult,
   multicall3Abi,
   numberToHex,
@@ -78,7 +78,8 @@ const STATIC_HOSTS = new Set([
 /** RPC nodes used only for event searches (not in the chain registries): URL → chain id. */
 const EXTRA_RPCS: Record<string, number> = { "https://rpc.gnosis.gateway.fm": 100 };
 
-type ContractFn = (args: readonly unknown[]) => unknown;
+/** A contract function; throwing an Error makes the call revert with its message as reason. */
+type ContractFn = (args: readonly unknown[], ctx: { from?: Address }) => unknown;
 
 export class MockChain {
   logs: StoredLog[] = [];
@@ -88,7 +89,12 @@ export class MockChain {
   prices: Record<string, number> = {};
   requests: string[] = [];
   /** Wormholescan: transactions by (lowercase) address, VAAs by id. */
-  wormhole = { transactions: {} as Record<string, object[]>, vaas: {} as Record<string, { vaa: string; txHash?: string }> };
+  wormhole = {
+    transactions: {} as Record<string, object[]>,
+    /** /operations (VAAs inline), by (lowercase) address. */
+    operations: {} as Record<string, object[]>,
+    vaas: {} as Record<string, { vaa: string; txHash?: string }>,
+  };
   /** deBridge API: listed orders and their details. */
   debridge = { orders: [] as Record<string, unknown>[], details: {} as Record<string, object> };
   /** cBridge API: transfer history by (lowercase) sender, transfer status by id. */
@@ -144,23 +150,30 @@ export class MockChain {
     this.contracts.set(`${chainId}:${address.toLowerCase()}`, { abi, fns });
   }
 
-  private call(chainId: number, to: string, data: Hex): { ok: boolean; data: Hex; reason?: string } {
+  private call(chainId: number, to: string, data: Hex, from?: Address): { ok: boolean; data: Hex; reason?: string } {
     const c = this.contracts.get(`${chainId}:${to.toLowerCase()}`);
     if (!c) return { ok: false, data: "0x" };
+    let decoded: { functionName: string; args?: readonly unknown[] };
     try {
-      const { functionName, args } = decodeFunctionData({ abi: c.abi, data });
-      const fn = c.fns[functionName];
-      if (!fn) return { ok: false, data: "0x" };
-      const result = fn(args ?? []);
+      decoded = decodeFunctionData({ abi: c.abi, data });
+    } catch {
+      return { ok: false, data: "0x" };
+    }
+    const { functionName, args } = decoded;
+    const fn = c.fns[functionName];
+    if (!fn) return { ok: false, data: "0x" };
+    try {
+      const result = fn(args ?? [], { from });
       if (result === undefined) return { ok: true, data: "0x" }; // function with no return value
       return { ok: true, data: encodeFunctionResult({ abi: c.abi, functionName, result } as never) };
     } catch (e) {
       if (e instanceof MockRevertData) return { ok: false, data: e.data };
-      // `revert("reason")` in a contract fn: a real Error(string) revert.
-      if (e instanceof MockRevert)
-        return { ok: false, reason: e.message, data: encodeErrorResult({ abi: [ERROR_STRING], errorName: "Error", args: [e.message] }) };
-      // A contract function can also revert with data by throwing { data } (e.g. an encoded custom error).
-      return { ok: false, data: ((e as { data?: Hex } | undefined)?.data ?? "0x") as Hex };
+      // A contract function can revert with data by throwing { data } (e.g. an encoded custom error)…
+      const thrown = (e as { data?: Hex } | undefined)?.data;
+      if (thrown && !(e instanceof MockRevert)) return { ok: false, data: thrown };
+      // …or with a reason string (revert("reason") or any Error): a real Error(string) revert.
+      const reason = (e as Error)?.message;
+      return reason ? { ok: false, reason, data: encodeErrorResult({ abi: [ERROR_STRING], errorName: "Error", args: [reason] }) } : { ok: false, data: "0x" };
     }
   }
 
@@ -223,17 +236,17 @@ export class MockChain {
         return reply(this.txs.get(`${chainId}:${hash}`)?.zk?.proofs?.[index] ?? null);
       }
       case "eth_call": {
-        const { to, data } = req.params[0] as { to: string; data: Hex };
+        const { to, data, from } = req.params[0] as { to: string; data: Hex; from?: Address };
         if (to.toLowerCase() === MULTICALL3) {
           const { args } = decodeFunctionData({ abi: multicall3Abi, data });
           const calls = args[0] as readonly { target: Address; callData: Hex }[];
           const results = calls.map((c) => {
-            const r = this.call(chainId, c.target, c.callData);
+            const r = this.call(chainId, c.target, c.callData, MULTICALL3);
             return { success: r.ok, returnData: r.data };
           });
           return reply(encodeFunctionResult({ abi: multicall3Abi, functionName: "aggregate3", result: results }));
         }
-        const r = this.call(chainId, to, data);
+        const r = this.call(chainId, to, data, from);
         return r.ok ? reply(r.data) : fail(r);
       }
       case "eth_getLogs": {
@@ -334,6 +347,8 @@ export class MockChain {
     if (url.host === "api.wormholescan.io") {
       const tx = url.pathname.match(/^\/api\/v1\/transactions$/);
       if (tx) return json({ transactions: this.wormhole.transactions[(url.searchParams.get("address") ?? "").toLowerCase()] ?? [] });
+      if (url.pathname === "/api/v1/operations")
+        return json({ operations: this.wormhole.operations[(url.searchParams.get("address") ?? "").toLowerCase()] ?? [] });
       const vaa = url.pathname.match(/^\/api\/v1\/vaas\/(.+)$/);
       if (vaa && this.wormhole.vaas[vaa[1]]) return json({ data: this.wormhole.vaas[vaa[1]] });
       return new Response(JSON.stringify({ message: "not found" }), { status: 404 });

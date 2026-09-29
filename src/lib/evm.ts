@@ -36,6 +36,7 @@ import {
   story,
   zilliqa,
 } from "viem/chains";
+import { acala, aurora, blast, celo, creditCoin3Mainnet, ink, kaia, karura, mezo, moonbeam, scroll, unichain, worldchain, xLayer, xrplevm, zeroGMainnet } from "viem/chains";
 
 /**
  * EVM chains that cross-chain bridges (deBridge, CCTP, Wormhole…) can start or end on.
@@ -102,6 +103,29 @@ export const EVM_CHAINS: EvmChain[] = [
   def(zilliqa, "Zilliqa", "zilliqa", "coingecko:zilliqa", ["https://api.zilliqa.com"]),
   def(bitrock, "Bitrock", "bitrock", "coingecko:bitrock", ["https://brockrpc.io"]),
 ];
+
+/**
+ * More chains the Wormhole Token Bridge or NTT reach (RPCs answered with CORS on Sep 29, 2026).
+ * Kept apart from the list above so other bridges' additions merge cleanly.
+ */
+EVM_CHAINS.push(
+  def(kaia, "Kaia", "klaytn", "coingecko:kaia", [drpc("kaia"), "https://public-en.node.kaia.io", "https://klaytn.api.onfinality.io/public"]),
+  def(celo, "Celo", "celo", "coingecko:celo", [pn("celo-rpc"), "https://forno.celo.org", drpc("celo")]),
+  def(moonbeam, "Moonbeam", "moonbeam", "coingecko:moonbeam", [drpc("moonbeam"), "https://moonbeam.api.onfinality.io/public"]),
+  def(unichain, "Unichain", "unichain", "coingecko:ethereum", [pn("unichain-rpc"), "https://mainnet.unichain.org", drpc("unichain")]),
+  def(worldchain, "World Chain", "wc", "coingecko:ethereum", ["https://worldchain-mainnet.g.alchemy.com/public", drpc("worldchain")]),
+  def(ink, "Ink", "ink", "coingecko:ethereum", [pn("ink-rpc"), "https://rpc-gel.inkonchain.com", drpc("ink")]),
+  def(xrplevm, "XRPL EVM", "xrplevm", "coingecko:ripple", ["https://rpc.xrplevm.org"]),
+  def(zeroGMainnet, "0G", "0g", "coingecko:zero-gravity", ["https://evmrpc.0g.ai", drpc("0g")]),
+  def(scroll, "Scroll", "scroll", "coingecko:ethereum", [pn("scroll-rpc"), "https://rpc.scroll.io", drpc("scroll")]),
+  def(blast, "Blast", "blast", "coingecko:ethereum", [pn("blast-rpc"), "https://rpc.blast.io", drpc("blast")]),
+  def(xLayer, "X Layer", "xlayer", "coingecko:okb", ["https://rpc.xlayer.tech", "https://xlayerrpc.okx.com", drpc("xlayer")]),
+  def(aurora, "Aurora", "aurora", "coingecko:ethereum", ["https://mainnet.aurora.dev", drpc("aurora")]),
+  def(karura, "Karura", "karura", "coingecko:karura", ["https://eth-rpc-karura.aca-api.network"]),
+  def(acala, "Acala", "acala", "coingecko:acala", ["https://eth-rpc-acala.aca-api.network"]),
+  def(mezo, "Mezo", "mezo", "coingecko:bitcoin", [drpc("mezo"), "https://rpc-http.mezo.boar.network"]),
+  def(creditCoin3Mainnet, "Creditcoin", "creditcoin", "coingecko:creditcoin-2", ["https://mainnet3.creditcoin.network", drpc("creditcoin")]),
+);
 
 export const evmChain = (id: number) => EVM_CHAINS.find((c) => c.id === id);
 

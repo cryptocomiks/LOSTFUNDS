@@ -230,14 +230,14 @@ export const GUIDES: Guide[] = [
   {
     id: "wormhole",
     title: "Wormhole",
-    subtitle: "Transfers that were never redeemed on the destination",
+    subtitle: "Portal and NTT transfers never redeemed on the destination, on any route",
     live: true,
     steps: [
       "Open the official Wormhole Portal and choose the redeem / resume transaction option.",
       "Paste the source transaction hash (or open it from Wormholescan). The signed message (VAA) is fetched automatically.",
-      "Connect your wallet on the destination chain and redeem. Signed transfers don't expire.",
+      "Connect your wallet on the destination chain and redeem. For NTT tokens, use the token's own bridge app (or Wormhole Connect).",
     ],
-    note: "Redeeming to Solana needs a little SOL for fees; redeeming to Ethereum needs ETH for gas.",
+    note: "Redeeming needs a little gas on the destination chain (SOL on Solana, ETH on Ethereum…). Transfers signed by an old guardian set (before late June 2026) can't be redeemed until the guardians sign them again: ask Wormhole support to re-observe the transfer.",
   },
   {
     id: "rainbow",

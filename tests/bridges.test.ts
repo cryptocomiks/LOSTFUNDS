@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { before, describe, test } from "node:test";
-import { concat, numberToHex, pad, parseAbi, parseAbiItem, toEventSelector, toRlp, zeroAddress, type Address, type Hex } from "viem";
+import { concat, numberToHex, pad, parseAbi, parseAbiItem, size, toEventSelector, toHex, toRlp, zeroAddress, type Address, type Hex } from "viem";
 import { checkAirdrops } from "../src/lib/checks/airdrops.ts";
 import { checkCctp } from "../src/lib/checks/cctp.ts";
 import { checkDebridge } from "../src/lib/checks/debridge.ts";
 import { checkPolygon, decodeExitPayload } from "../src/lib/checks/polygon.ts";
-import { checkWormhole, decodeTransferVaa } from "../src/lib/checks/wormhole.ts";
+import { checkWormhole, decodeNttVaa, decodeTransferVaa } from "../src/lib/checks/wormhole.ts";
 import { associatedTokenAddress, findProgramAddress, hexBytes, u16be, u64be } from "../src/lib/solana.ts";
 import { base58 } from "@scure/base";
 import { sourcesFor } from "../src/lib/checker.ts";
@@ -26,6 +26,22 @@ const SOL_EMITTER = "ec7372995d5cc8732397fb0ad35c0121e0eaa90d26f828a534cab54391b
 const TOKEN_BRIDGE: Address = "0x3ee18B2214AFF97000D974cf647E7C347E8fa585";
 const WRAPPED_USDC: Address = "0x41f7B8b9b897276b7AAE926a9016935280b44E97";
 const enc = (s: string) => new TextEncoder().encode(s);
+const erc20 = parseAbi(["function decimals() view returns (uint8)", "function symbol() view returns (string)"]);
+const tokenBridgeAbi = parseAbi([
+  "function isTransferCompleted(bytes32) view returns (bool)",
+  "function wrappedAsset(uint16, bytes32) view returns (address)",
+  "function completeTransfer(bytes)",
+]);
+const nttManagerAbi = parseAbi([
+  "function isMessageExecuted(bytes32) view returns (bool)",
+  "function getInboundQueuedTransfer(bytes32) view returns ((uint72 amount, uint64 txTimestamp, address recipient))",
+  "function rateLimitDuration() view returns (uint64)",
+  "function getTransceivers() view returns (address[])",
+  "function getThreshold() view returns (uint8)",
+  "function token() view returns (address)",
+  "function getMode() view returns (uint8)",
+]);
+const transceiverAbi = parseAbi(["function getWormholePeer(uint16) view returns (bytes32)", "function receiveMessage(bytes)"]);
 
 const world = new MockChain();
 let redeemed = false;
@@ -56,6 +72,8 @@ describe("Wormhole", () => {
     assert.equal(t.emitterChain, 1);
     assert.equal(t.emitterAddress, SOL_EMITTER);
     assert.equal(t.sequence, 242189n);
+    assert.equal(t.guardianSet, 2);
+    assert.equal(t.payloadType, 1);
     assert.equal(t.toChain, 2);
     assert.equal(`0x${t.to.slice(26)}`, WORMHOLE_VAA_242189_RECIPIENT.toLowerCase());
     assert.equal(t.amount, 1147420562n);
@@ -65,8 +83,10 @@ describe("Wormhole", () => {
   test("rejects garbage and non-transfer payloads", () => {
     assert.equal(decodeTransferVaa("not base64!"), null);
     assert.equal(decodeTransferVaa(btoa("\x01short")), null);
+    assert.equal(decodeNttVaa(WORMHOLE_VAA_242189), null);
   });
 
+  let expired = false;
   const setup = () => {
     const id = `1/${SOL_EMITTER}/242189`;
     world.wormhole.transactions[WORMHOLE_VAA_242189_RECIPIENT.toLowerCase()] = [
@@ -75,24 +95,20 @@ describe("Wormhole", () => {
       { id: "1/abcdef/1", timestamp: "2022-11-09T15:56:16Z", emitterChain: 1, emitterAddress: "abcdef" },
     ];
     world.wormhole.vaas[id] = { vaa: WORMHOLE_VAA_242189, txHash: "5xSolanaTx" };
-    world.addContract(
-      1,
-      TOKEN_BRIDGE,
-      parseAbi([
-        "function isTransferCompleted(bytes32) view returns (bool)",
-        "function wrappedAsset(uint16, bytes32) view returns (address)",
-      ]),
-      { isTransferCompleted: () => redeemed, wrappedAsset: () => WRAPPED_USDC },
-    );
-    world.addContract(1, WRAPPED_USDC, parseAbi(["function decimals() view returns (uint8)", "function symbol() view returns (string)"]), {
-      decimals: () => 6,
-      symbol: () => "USDC",
+    world.addContract(1, TOKEN_BRIDGE, tokenBridgeAbi, {
+      isTransferCompleted: () => redeemed,
+      wrappedAsset: () => WRAPPED_USDC,
+      completeTransfer: () => {
+        if (expired) throw new Error("guardian set has expired");
+      },
     });
+    world.addContract(1, WRAPPED_USDC, erc20, { decimals: () => 6, symbol: () => "USDC" });
   };
 
   test("finds a Solana → Ethereum transfer never redeemed, verified on Ethereum", async () => {
     setup();
     redeemed = false;
+    expired = false;
     const r = await checkWormhole(WORMHOLE_VAA_242189_RECIPIENT as Address);
     assert.equal(r.findings.length, 1);
     const f = r.findings[0];
@@ -103,6 +119,16 @@ describe("Wormhole", () => {
     assert.equal(f.asset.decimals, 6);
     assert.equal(f.asset.priceKey, "solana:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
     assert.equal(f.txUrl, "https://solscan.io/tx/5xSolanaTx");
+  });
+
+  test("an unredeemed VAA signed by an expired guardian set can't be redeemed as it is", async () => {
+    setup();
+    redeemed = false;
+    expired = true;
+    const r = await checkWormhole(WORMHOLE_VAA_242189_RECIPIENT as Address);
+    assert.equal(r.findings.length, 1);
+    assert.equal(r.findings[0].status, "manual");
+    assert.match(r.findings[0].note ?? "", /guardian set 2/);
   });
 
   test("counts it as completed once redeemed", async () => {
@@ -116,6 +142,270 @@ describe("Wormhole", () => {
   test("another address sees nothing", async () => {
     const r = await checkWormhole(STRANGER);
     assert.deepEqual(r, { findings: [], completed: 0 });
+  });
+});
+
+describe("Wormhole on every route", () => {
+  const BASE_TB: Address = "0x8d2de8d2f73F1F4cAB472AC9A881C9b123C79627";
+  const POLYGON_TB: Address = "0x5a58505a96D1dbf8dF91cB21B54419FC36e93fdE";
+  const emitter = (tb: Address) => pad(tb.toLowerCase() as Hex, { size: 32 }).slice(2);
+  const ARB_EMITTER = emitter("0x0b2402144Bb366A632D14B83F244D2e0e21bD39c");
+  const ETH_EMITTER = emitter(TOKEN_BRIDGE);
+  const BSC_EMITTER = emitter("0xB6F6D86a8f9879A9c87f643768d9efc38c1Da6E7");
+  const USDC: Address = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+  const WETH: Address = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+  const BASE_USDC: Address = "0x00000000000000000000000000000000000b0b0b"; // Wormhole-wrapped USDC on Base
+  const CAKE: Address = "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82";
+  const month = Math.floor(Date.now() / 1000) - 30 * 86400;
+  const iso = (t: number) => new Date(t * 1000).toISOString();
+
+  /** A signed VAA (no signatures: the mock chains don't verify them). */
+  const vaa = (p: { gs?: number; chain: number; emitter: string; seq: bigint; payload: Hex }) =>
+    Buffer.from(
+      concat([
+        "0x01",
+        toHex(p.gs ?? 7, { size: 4 }),
+        "0x00",
+        toHex(month, { size: 4 }),
+        toHex(0, { size: 4 }),
+        toHex(p.chain, { size: 2 }),
+        `0x${p.emitter}`,
+        toHex(p.seq, { size: 8 }),
+        "0x01",
+        p.payload,
+      ]).slice(2),
+      "hex",
+    ).toString("base64");
+  const transfer = (p: { amount: bigint; token: Address; tokenChain: number; to: Address; toChain: number; type?: number }) =>
+    concat([
+      toHex(p.type ?? 1, { size: 1 }),
+      toHex(p.amount, { size: 32 }),
+      pad(p.token, { size: 32 }),
+      toHex(p.tokenChain, { size: 2 }),
+      pad(p.to, { size: 32 }),
+      toHex(p.toChain, { size: 2 }),
+      toHex(0, { size: 32 }),
+    ]);
+
+  // Every VAA below is listed by Wormholescan for USER; `from` is the source transaction's sender.
+  const list = (address: string, entries: { chain: number; emitter: string; seq: bigint; vaa: string; from?: string; ntt?: boolean }[]) => {
+    world.wormhole.transactions[address.toLowerCase()] = entries.map((e) => ({
+      id: `${e.chain}/${e.emitter}/${e.seq}`,
+      timestamp: iso(month),
+      emitterChain: e.chain,
+      emitterAddress: e.emitter,
+      standardizedProperties: { appIds: [e.ntt ? "NATIVE_TOKEN_TRANSFER" : "PORTAL_TOKEN_BRIDGE"] },
+      globalTx: { originTx: { from: e.from ?? STRANGER.toLowerCase(), txHash: `0x${e.seq.toString(16).padStart(64, "0")}` } },
+    }));
+    for (const e of entries) world.wormhole.vaas[`${e.chain}/${e.emitter}/${e.seq}`] = { vaa: e.vaa };
+  };
+
+  // Arbitrum → Base, to USER: #1 never redeemed, #2 redeemed, #3 signed by an expired guardian set.
+  const toBase = (seq: bigint, gs = 7) =>
+    vaa({ gs, chain: 23, emitter: ARB_EMITTER, seq, payload: transfer({ amount: 250_000_000n, token: USDC, tokenChain: 2, to: USER, toChain: 30 }) });
+  const ARB_1 = toBase(1n);
+  const ARB_2 = toBase(2n);
+  const ARB_3 = toBase(3n, 3);
+  // BSC → Polygon, sent by USER to STRANGER: CAKE was never registered on Polygon.
+  const BSC_4 = vaa({ chain: 4, emitter: BSC_EMITTER, seq: 4n, payload: transfer({ amount: 5n * 10n ** 8n, token: CAKE, tokenChain: 4, to: STRANGER, toChain: 5 }) });
+  // Not USER's (someone else's transfer), to a chain we can't check (Sui), and an empty transfer.
+  const OTHER = vaa({ chain: 23, emitter: ARB_EMITTER, seq: 5n, payload: transfer({ amount: 1n, token: USDC, tokenChain: 2, to: STRANGER, toChain: 30 }) });
+  const SUI = vaa({ chain: 23, emitter: ARB_EMITTER, seq: 6n, payload: transfer({ amount: 1n, token: USDC, tokenChain: 2, to: USER, toChain: 21 }) });
+  const EMPTY = vaa({ chain: 23, emitter: ARB_EMITTER, seq: 7n, payload: transfer({ amount: 0n, token: USDC, tokenChain: 2, to: USER, toChain: 30 }) });
+  // Ethereum → Solana, sent by USER: #8 redeemable, #9 claimed, #10 signed by expired guardian set 3.
+  const toSolana = (seq: bigint, gs = 7) =>
+    vaa({ gs, chain: 2, emitter: ETH_EMITTER, seq, payload: transfer({ amount: 1_000_000n, token: WETH, tokenChain: 2, to: `0x${"ab".repeat(20)}`, toChain: 1 }) });
+  const ETH_8 = toSolana(8n);
+  const ETH_9 = toSolana(9n);
+  const ETH_10 = toSolana(10n, 3);
+
+  const hashOf = (v: string) => decodeTransferVaa(v)!.hash;
+  before(() => {
+    const me = USER.toLowerCase();
+    list(USER, [
+      { chain: 23, emitter: ARB_EMITTER, seq: 1n, vaa: ARB_1 },
+      { chain: 23, emitter: ARB_EMITTER, seq: 2n, vaa: ARB_2 },
+      { chain: 23, emitter: ARB_EMITTER, seq: 3n, vaa: ARB_3 },
+      { chain: 4, emitter: BSC_EMITTER, seq: 4n, vaa: BSC_4, from: me },
+      { chain: 23, emitter: ARB_EMITTER, seq: 5n, vaa: OTHER },
+      { chain: 23, emitter: ARB_EMITTER, seq: 6n, vaa: SUI },
+      { chain: 23, emitter: ARB_EMITTER, seq: 7n, vaa: EMPTY },
+      { chain: 2, emitter: ETH_EMITTER, seq: 8n, vaa: ETH_8, from: me },
+      { chain: 2, emitter: ETH_EMITTER, seq: 9n, vaa: ETH_9, from: me },
+      { chain: 2, emitter: ETH_EMITTER, seq: 10n, vaa: ETH_10, from: me },
+    ]);
+    world.addContract(8453, BASE_TB, tokenBridgeAbi, {
+      isTransferCompleted: ([h]) => h === hashOf(ARB_2),
+      wrappedAsset: ([chain, token]) => (chain === 2 && token === pad(USDC.toLowerCase() as Hex, { size: 32 }) ? BASE_USDC : zeroAddress),
+      completeTransfer: ([vm]) => {
+        if (vm === toHex(Buffer.from(ARB_3, "base64"))) throw new Error("guardian set has expired");
+      },
+    });
+    world.addContract(8453, BASE_USDC, erc20, { decimals: () => 6, symbol: () => "USDC" });
+    world.addContract(137, POLYGON_TB, tokenBridgeAbi, {
+      isTransferCompleted: () => false,
+      wrappedAsset: () => zeroAddress,
+      completeTransfer: () => {
+        throw new Error("no wrapper for this token created yet");
+      },
+    });
+    world.addContract(56, CAKE, erc20, { decimals: () => 18, symbol: () => "Cake" });
+    world.addContract(1, WETH, erc20, { decimals: () => 18, symbol: () => "WETH" });
+    // Solana: #9 was claimed, guardian set 7 is active and set 3 expired, WETH is registered.
+    const SOL_TB = "wormDTUJ6AWPNvk59vGQbDvGJmqbDTdgWgAqcLBCgUb";
+    const CORE = "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth";
+    world.solana[findProgramAddress([hexBytes(ETH_EMITTER), u16be(2), u64be(9n)], SOL_TB)] = new Uint8Array(1);
+    world.solana[findProgramAddress([enc("wrapped"), u16be(2), hexBytes(pad(WETH, { size: 32 }))], SOL_TB)] = new Uint8Array(82);
+    const guardianSet = (index: number, expiration: number) => {
+      const d = new Uint8Array(16 + 19 * 20);
+      const view = new DataView(d.buffer);
+      view.setUint32(0, index, true);
+      view.setUint32(4, 19, true);
+      view.setUint32(12 + 19 * 20, expiration, true);
+      const seed = new Uint8Array(4);
+      new DataView(seed.buffer).setUint32(0, index);
+      world.solana[findProgramAddress([enc("GuardianSet"), seed], CORE)] = d;
+    };
+    guardianSet(3, 1713367800); // 2024-04-17
+    guardianSet(7, 0);
+  });
+
+  test("checks EVM ↔ EVM transfers on the destination chain", async () => {
+    const r = await checkWormhole(USER);
+    const route = (seq: bigint) => r.findings.find((f) => f.id.endsWith(`/${seq}`));
+    const arb = route(1n)!;
+    assert.equal(arb.networkName, "Wormhole · Arbitrum → Base");
+    assert.equal(arb.status, "ready");
+    assert.equal(arb.asset.symbol, "USDC");
+    assert.equal(arb.asset.amount, 250_000_000n);
+    assert.equal(arb.asset.decimals, 6);
+    assert.equal(arb.asset.priceKey, `ethereum:${USDC.toLowerCase()}`);
+    assert.equal(arb.txUrl, `https://arbiscan.io/tx/0x${"1".padStart(64, "0")}`);
+    assert.equal(route(2n), undefined, "redeemed on Base");
+
+    const old = route(3n)!;
+    assert.equal(old.status, "manual");
+    assert.match(old.note ?? "", /guardian set 3/);
+
+    const sent = route(4n)!;
+    assert.equal(sent.networkName, "Wormhole · BNB Chain → Polygon");
+    assert.equal(sent.status, "manual");
+    assert.match(sent.note ?? "", /no wrapped version/);
+    assert.match(sent.note ?? "", /0x9999…9999/);
+    assert.equal(sent.asset.symbol, "Cake");
+    assert.equal(sent.asset.decimals, 8, "Token Bridge amounts have at most 8 decimals");
+    assert.equal(sent.asset.priceKey, `bsc:${CAKE.toLowerCase()}`);
+
+    for (const seq of [5n, 6n, 7n]) assert.equal(route(seq), undefined, `transfer ${seq} is not the user's money`);
+  });
+
+  test("checks EVM → Solana transfers on Solana, guardian set included", async () => {
+    const r = await checkWormhole(USER);
+    const route = (seq: bigint) => r.findings.find((f) => f.id.endsWith(`/${seq}`));
+    const ok = route(8n)!;
+    assert.equal(ok.networkName, "Wormhole · Ethereum → Solana");
+    assert.equal(ok.status, "ready");
+    assert.equal(ok.asset.symbol, "WETH");
+    assert.equal(ok.asset.decimals, 8);
+    assert.equal(ok.asset.amount, 1_000_000n);
+    assert.equal(route(9n), undefined, "claimed on Solana");
+    assert.equal(route(10n)!.status, "manual");
+    assert.equal(r.completed, 2, "one redeemed on Base, one claimed on Solana");
+    assert.equal(r.findings.length, 5);
+  });
+
+  test("uses the VAAs /operations returns inline", async () => {
+    const OPS_USER = "0x2222222222222222222222222222222222222222";
+    const v = vaa({ chain: 23, emitter: ARB_EMITTER, seq: 11n, payload: transfer({ amount: 7_000_000n, token: USDC, tokenChain: 2, to: OPS_USER, toChain: 30 }) });
+    const id = `23/${ARB_EMITTER}/11`;
+    world.wormhole.operations[OPS_USER] = [{ id, vaa: { raw: v }, sourceChain: { timestamp: iso(month), from: STRANGER, transaction: { txHash: "0xabc" } } }];
+    world.wormhole.transactions[OPS_USER] = [{ id, timestamp: iso(month), emitterChain: 23, emitterAddress: ARB_EMITTER }];
+    const before = world.requests.length;
+    const r = await checkWormhole(OPS_USER);
+    assert.equal(r.findings.length, 1);
+    assert.equal(r.findings[0].asset.amount, 7_000_000n);
+    assert.ok(!world.requests.slice(before).some((u) => u.includes("/vaas/")), "no VAA download needed");
+  });
+});
+
+describe("Wormhole NTT", () => {
+  const MANAGER: Address = "0x00000000000000000000000000000000000a11ce";
+  const FAKE: Address = "0x00000000000000000000000000000000000fa4e0";
+  const TRANSCEIVER: Address = "0x00000000000000000000000000000000000c0de1";
+  const TOKEN: Address = "0x00000000000000000000000000000000000b1d00";
+  const SRC_TRANSCEIVER = pad("0x65739e922b1879814f2962cbfff01950075397a6", { size: 32 }).slice(2);
+  const NTT_USER: Address = "0x3333333333333333333333333333333333333333";
+  const month = Math.floor(Date.now() / 1000) - 30 * 86400;
+
+  const nttVaa = (seq: bigint, manager: Address, amount: bigint) => {
+    const ntt = concat(["0x994e5454", "0x08", toHex(amount, { size: 8 }), pad(TOKEN, { size: 32 }), pad(NTT_USER, { size: 32 }), toHex(30, { size: 2 })]);
+    const message = concat([toHex(seq, { size: 32 }), pad(NTT_USER, { size: 32 }), toHex(size(ntt), { size: 2 }), ntt]);
+    const payload = concat(["0x9945ff10", pad(MANAGER, { size: 32 }), pad(manager, { size: 32 }), toHex(size(message), { size: 2 }), message, "0x0000"]);
+    const body = concat([toHex(month, { size: 4 }), toHex(0, { size: 4 }), toHex(4, { size: 2 }), `0x${SRC_TRANSCEIVER}`, toHex(seq, { size: 8 }), "0x0f", payload]);
+    return Buffer.from(concat(["0x01", toHex(7, { size: 4 }), "0x00", body]).slice(2), "hex").toString("base64");
+  };
+  const STUCK = nttVaa(1n, MANAGER, 1_325_464_681_533n);
+  const DONE = nttVaa(2n, MANAGER, 5n * 10n ** 8n);
+  const SPOOF = nttVaa(3n, FAKE, 10n ** 15n); // a manager that claims TOKEN but can't mint it
+  const QUEUED = nttVaa(4n, MANAGER, 3n * 10n ** 8n);
+  const digest = (v: string) => decodeNttVaa(v)!.digest;
+
+  before(() => {
+    const ids = [STUCK, DONE, SPOOF, QUEUED].map((v, i) => ({ id: `4/${SRC_TRANSCEIVER}/${i + 1}`, v }));
+    world.wormhole.transactions[NTT_USER.toLowerCase()] = ids.map(({ id }) => ({
+      id,
+      timestamp: new Date(month * 1000).toISOString(),
+      emitterChain: 4,
+      emitterAddress: SRC_TRANSCEIVER,
+      standardizedProperties: { appIds: ["NATIVE_TOKEN_TRANSFER"] },
+    }));
+    for (const { id, v } of ids) world.wormhole.vaas[id] = { vaa: v };
+    const managerFns = {
+      isMessageExecuted: ([d]: readonly unknown[]) => d === digest(DONE) || d === digest(QUEUED),
+      getInboundQueuedTransfer: ([d]: readonly unknown[]) => ({
+        amount: 0n,
+        txTimestamp: d === digest(QUEUED) ? BigInt(month) : 0n,
+        recipient: NTT_USER,
+      }),
+      rateLimitDuration: () => 86_400n,
+      getTransceivers: () => [TRANSCEIVER],
+      getThreshold: () => 1,
+      token: () => TOKEN,
+      getMode: () => 1, // burning: the manager mints on delivery
+    };
+    world.addContract(8453, MANAGER, nttManagerAbi, managerFns);
+    world.addContract(8453, FAKE, nttManagerAbi, { ...managerFns, isMessageExecuted: () => false });
+    world.addContract(8453, TRANSCEIVER, transceiverAbi, {
+      getWormholePeer: ([chain]) => (chain === 4 ? `0x${SRC_TRANSCEIVER}` : `0x${"00".repeat(32)}`),
+      receiveMessage: () => undefined,
+    });
+    world.addContract(8453, TOKEN, [...erc20, ...parseAbi(["function mint(address, uint256)", "function balanceOf(address) view returns (uint256)"])], {
+      decimals: () => 18,
+      symbol: () => "BID",
+      balanceOf: () => 0n,
+      mint: (_, { from }) => {
+        if (from?.toLowerCase() !== MANAGER.toLowerCase()) throw new Error("caller is not the minter");
+      },
+    });
+    world.static["https://api.wormholescan.io/api/v1/native-token-transfer/token-list"] = [{ symbol: "bid", platforms: { base: TOKEN.toLowerCase() } }];
+  });
+
+  test("finds NTT transfers never delivered, and ignores managers that can't release the token", async () => {
+    const r = await checkWormhole(NTT_USER);
+    assert.equal(r.completed, 1);
+    assert.equal(r.findings.length, 2);
+    const stuck = r.findings.find((f) => f.id.endsWith("/1"))!;
+    assert.equal(stuck.networkName, "Wormhole · BNB Chain → Base");
+    assert.equal(stuck.status, "ready");
+    assert.equal(stuck.asset.symbol, "BID");
+    assert.equal(stuck.asset.amount, 1_325_464_681_533n);
+    assert.equal(stuck.asset.decimals, 8);
+    assert.equal(stuck.asset.priceKey, `base:${TOKEN.toLowerCase()}`);
+    assert.match(stuck.note ?? "", /NTT/);
+    const queued = r.findings.find((f) => f.id.endsWith("/4"))!;
+    assert.equal(queued.status, "ready", "the rate-limit delay is over");
+    assert.match(queued.note ?? "", /rate limit/);
+    assert.equal(r.findings.find((f) => f.id.endsWith("/3")), undefined, "spoofed manager");
   });
 });
 
