@@ -123,6 +123,18 @@ export const GUIDES: Guide[] = [
     ],
   },
   {
+    id: "celer",
+    title: "Celer cBridge",
+    subtitle: "Failed transfers whose refund was never collected",
+    live: true,
+    steps: [
+      "Open the official cBridge app (cbridge.celer.network) and connect the wallet that sent the transfer.",
+      "Open the transfer history and find the failed transfer. It offers to confirm the refund (older ones may first ask you to request it).",
+      "Confirm the transaction on the chain you sent from. The refund goes back to the sending address; WETH is refunded as ETH.",
+    ],
+    note: "The refund is paid by cBridge's pool on the chain you sent from, so you need a little gas there.",
+  },
+  {
     id: "synapse",
     title: "Synapse",
     subtitle: "Bridge requests the validator never minted",
@@ -243,11 +255,18 @@ export const GUIDES: Guide[] = [
   },
   {
     id: "gnosis",
-    title: "Gnosis Chain",
+    title: "Gnosis Bridge",
+    subtitle: "OmniBridge and xDAI bridge transfers to Ethereum never claimed",
+    live: true,
     steps: [
-      "Open the official Gnosis bridge and connect your wallet.",
-      "Find the withdrawal. When enough validators have signed it, it shows Claim.",
-      "Click Claim and confirm on Ethereum.",
+      "Open the official Gnosis bridge app (bridge.gnosischain.com) and connect the wallet that sent the transfer (for the xDAI bridge, the wallet receiving the DAI).",
+      "Find the transfer in your transactions, or look it up by its Gnosis transaction hash. Once the bridge validators have signed it, it shows Claim.",
+      "Click Claim and confirm on Ethereum. The tokens (DAI or USDS for the xDAI bridge) go to the address chosen when the transfer was sent.",
+    ],
+    note: "Claim soon. A transfer can only be claimed with signatures from the current bridge validators: after the validators change, older unclaimed transfers are rejected on Ethereum and only the Gnosis bridge team can help. Nobody legitimate will DM you first.",
+    manual: [
+      "Anyone can send the claim for you: it's executeSignatures(message, signatures) on Ethereum, on the AMB (0x4C36d2919e407f0Cc2Ee3c993ccF8ac26d9CE64e) for OmniBridge or on the xDAI bridge (0x4aa42145Aa6Ebf72e164C9bBC74fbD3788045016).",
+      "The message and the validators' signatures are stored on Gnosis, on the AMB (0x75Df5AF045d91108662D8080fD1FEFAd6aA0bb59) or the xDAI bridge (0x7301CFA0e1756B71869E93d4e4Dca5c7d0eb0AA6): numMessagesSigned and signature, keyed by the keccak256 of the message.",
     ],
   },
   {
