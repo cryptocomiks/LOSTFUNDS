@@ -7,18 +7,18 @@ Free, read-only, no wallet connection. Everything runs in the browser.
 
 | Network | How |
 | --- | --- |
-| Base, OP Mainnet, Zora, Mode, Unichain, Ink, Soneium, World Chain, Blast, Lisk, Fraxtal, BOB, MegaETH, Shape, Metal L2, Superseed, Codex | L2 bridge / message-passer events → `getWithdrawalStatus` (viem) against the OptimismPortal on Ethereum; when viem can't read a chain's dispute games, the portal is read directly. Pre-Bedrock OP withdrawals are checked against `L1CrossDomainMessenger.successfulMessages`. |
+| Base, OP Mainnet, Mantle, Zora, Mode, Unichain, Ink, Soneium, World Chain, Blast, Celo, Manta Pacific, Lisk, Fraxtal, BOB, MegaETH, Shape, Boba Network, HashKey Chain, Hemi, Metal L2, Superseed, Codex, DBK Chain, Cyber, Orderly, RISE, Derive, Funki, Nillion, Towns, Phala | L2 bridge / message-passer events → `getWithdrawalStatus` (viem) against the OptimismPortal on Ethereum; when viem can't read a chain's dispute games, the portal is read directly, and on output-oracle portals a proof only counts while its output root is still in the oracle. Pre-Bedrock OP withdrawals are checked against `L1CrossDomainMessenger.successfulMessages`. Mantle's own `MessagePassed` event (MNT + ETH values) is decoded; native amounts on Celo, HashKey Chain and Mantle are shown in CELO, HSK and MNT. |
 | Arbitrum One, Arbitrum Nova | `L2ToL1Tx` (ArbSys) + gateway events → `Outbox.isSpent(position)` on Ethereum. |
 | Scroll | Gateway / messenger events → `L1ScrollMessenger.isL2MessageExecuted(hash)`. |
 | Linea | `MessageSent` / token-bridge events → `LineaRollup.isMessageClaimed(nonce)` + L1 `MessageClaimed` events. |
 | deBridge (any route: 30+ EVM chains, Solana, Tron) | Stuck orders from deBridge's public API → `DlnSource.giveOrders` / `DlnDestination.takeOrders` on each EVM side (`src/lib/evm.ts`). |
 
-Data sources, all keyless: Blockscout's v2 API (transactions the wallet sent), then its Etherscan-compatible API, then Routescan's Etherscan-compatible API (Blast), full-history event search on RPC nodes that allow it (Zora, Mode, Fraxtal, BOB, MegaETH, Metal L2, Superseed, Codex, Arbitrum One, Scroll); several public RPC nodes per network; DefiLlama for USD prices. `npx tsx tests/live.ts 0x…` runs every check against the real chains (set NODE_USE_ENV_PROXY=1 behind a proxy).
+Data sources, all keyless: Blockscout's v2 API (transactions the wallet sent), then its Etherscan-compatible API, then Routescan's Etherscan-compatible API (Blast, Mantle, Boba, Hemi) or the chain's own (DBK Chain), full-history event search on RPC nodes that allow it (Zora, Mode, Fraxtal, BOB, MegaETH, Metal L2, Superseed, Codex, Mantle, Celo, Boba, Derive, Orderly, Nillion, Phala, Arbitrum One, Scroll); several public RPC nodes per network; DefiLlama for USD prices. `npx tsx tests/live.ts 0x…` runs every check against the real chains (set NODE_USE_ENV_PROXY=1 behind a proxy).
 Optionally set `NEXT_PUBLIC_ETHERSCAN_API_KEY` to use Etherscan V2 as a fallback for history search.
 
 Solana addresses are accepted too: they run the Wormhole, deBridge and Circle CCTP (Solana → Ethereum) checks.
 
-OP Stack chains left out because they are offline or have no full-history source: Ancient8, Form, PGN, Redstone, RSS3 VSL, SnaxChain, Zircuit.
+OP Stack chains left out because they are offline or have no full-history source: Ancient8, Form, PGN, Redstone, RSS3 VSL, SnaxChain, Swan Chain, Swellchain, Zircuit. Not covered either: Mantle withdrawals from before its v2 upgrade (March 2024) and Boba's from before Anchorage (April 2024), which have no `MessagePassed` event.
 
 Another 20+ bridges (Polygon, ZKsync, Starknet, CCTP, LayerZero, Wormhole…) have step-by-step claim guides.
 

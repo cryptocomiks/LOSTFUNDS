@@ -116,14 +116,15 @@ export class MockChain {
       if (!fn) return { ok: false, data: "0x" };
       const result = fn(args ?? []);
       return { ok: true, data: encodeFunctionResult({ abi: c.abi, functionName, result } as never) };
-    } catch {
-      return { ok: false, data: "0x" };
+    } catch (e) {
+      // A contract function can revert with data by throwing { data } (e.g. an encoded custom error).
+      return { ok: false, data: ((e as { data?: Hex } | undefined)?.data ?? "0x") as Hex };
     }
   }
 
   private rpc(chainId: number, req: { id: number; method: string; params: unknown[] }) {
     const reply = (result: unknown) => ({ jsonrpc: "2.0", id: req.id, result });
-    const fail = (message: string) => ({ jsonrpc: "2.0", id: req.id, error: { code: 3, message: "execution reverted", data: "0x" + message } });
+    const fail = (data: Hex) => ({ jsonrpc: "2.0", id: req.id, error: { code: 3, message: "execution reverted", data } });
     switch (req.method) {
       case "eth_chainId":
         return reply(numberToHex(chainId));
@@ -171,7 +172,7 @@ export class MockChain {
           return reply(encodeFunctionResult({ abi: multicall3Abi, functionName: "aggregate3", result: results }));
         }
         const r = this.call(chainId, to, data);
-        return r.ok ? reply(r.data) : fail("");
+        return r.ok ? reply(r.data) : fail(r.data);
       }
       case "eth_getLogs": {
         const f = req.params[0] as { address: string; topics: (string | null)[] };

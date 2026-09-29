@@ -1,20 +1,32 @@
-import type { Address, Chain } from "viem";
+import { defineChain, type Address, type Chain } from "viem";
 import {
   arbitrum,
   arbitrumNova,
   base,
   blast,
+  boba,
   bob,
+  celo,
   codex,
+  cyber,
+  dbkchain,
   fraxtal,
+  funkiMainnet,
+  hashkey,
+  hemi,
   ink,
   linea,
   lisk,
+  lyra,
   mainnet,
+  manta,
+  mantle,
   megaeth,
   metalL2,
   mode,
   optimism,
+  orderly,
+  rise,
   scroll,
   shape,
   soneium,
@@ -23,6 +35,7 @@ import {
   worldchain,
   zora,
 } from "viem/chains";
+import { chainConfig } from "viem/op-stack";
 
 export type Family = "opstack" | "arbitrum" | "scroll" | "linea";
 
@@ -48,6 +61,8 @@ export interface Network {
   bridgeUrl: string;
   /** Family-specific L1 / L2 contract addresses. */
   contracts: Record<string, Address | Address[]>;
+  /** L2s whose native currency isn't ETH: the Ethereum token it is bridged from (+ price key if DefiLlama lacks it). */
+  nativeToken?: { l1Token: Address; priceKey?: string };
 }
 
 export const L1 = {
@@ -66,11 +81,25 @@ export const L1 = {
 };
 
 /**
- * Several OP Stack chains moved to fault proofs after viem's chain definitions were written:
- * point them at the DisputeGameFactory their OptimismPortal uses today (read on-chain).
+ * viem's OP Stack actions read a chain's Ethereum contracts from its definition. Adds the ones it lacks:
+ * the OptimismPortal, and the DisputeGameFactory or L2OutputOracle that portal uses today (read on-chain).
+ * Several chains also moved to fault proofs after viem's definitions were written.
  */
-function withGames(chain: Chain, disputeGameFactory: Address): Chain {
-  return { ...chain, contracts: { ...chain.contracts, disputeGameFactory: { [mainnet.id]: { address: disputeGameFactory } } } };
+function withL1(chain: Chain, contracts: { portal?: Address; disputeGameFactory?: Address; l2OutputOracle?: Address }): Chain {
+  const l1 = Object.fromEntries(Object.entries(contracts).map(([name, address]) => [name, { [mainnet.id]: { address } }]));
+  return { ...chain, contracts: { ...chain.contracts, ...l1 } };
+}
+
+/** OP Stack chains viem doesn't define (ETH as native currency). */
+function opChain(id: number, name: string, rpc: string, explorer: string): Chain {
+  return defineChain({
+    ...chainConfig,
+    id,
+    name,
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    rpcUrls: { default: { http: [rpc] } },
+    blockExplorers: { default: { name, url: explorer } },
+  });
 }
 
 const OP_STACK: Network[] = [
@@ -93,6 +122,19 @@ const OP_STACK: Network[] = [
     llama: "optimism",
     explorer: "https://optimistic.etherscan.io",
     bridgeUrl: "superbridge.app/optimism",
+  },
+  {
+    id: "mantle",
+    name: "Mantle",
+    chain: withL1(mantle, { portal: "0xc54cb22944F2bE476E02dECfCD7e3E7d3e15A8Fb", l2OutputOracle: "0x31d543e7BE1dA6eFDc2206Ef7822879045B9f481" }),
+    // Not mantle-rpc.publicnode.com: it answers null for old receipts.
+    rpcs: ["https://rpc.mantle.xyz", "https://mantle.gateway.tenderly.co", "https://mantle.drpc.org"],
+    api: "https://api.routescan.io/v2/network/mainnet/evm/5000/etherscan", // Mantle's own Blockscout is down
+    logsRpcs: ["https://mantle.gateway.tenderly.co"],
+    llama: "mantle",
+    explorer: "https://mantlescan.xyz",
+    bridgeUrl: "app.mantle.xyz/bridge",
+    nativeToken: { l1Token: "0x3c3a81e81dc49A522A592e7622A7E711c06bf354" as Address }, // MNT
   },
   {
     id: "zora",
@@ -167,6 +209,29 @@ const OP_STACK: Network[] = [
     extraBridges: ["0x4300000000000000000000000000000000000005" as Address], // L2BlastBridge
   },
   {
+    id: "celo",
+    name: "Celo",
+    chain: withL1(celo, { portal: "0xc5c5D157928BDBD2ACf6d0777626b6C75a9EAEDC", disputeGameFactory: "0xFbAC162162f4009Bb007C6DeBC36B1dAC10aF683" }),
+    // Not forno.celo.org: it answers null for many receipts since Celo became an L2 (March 2025).
+    rpcs: ["https://celo.gateway.tenderly.co", "https://rpc.ankr.com/celo"],
+    blockscout: "https://celo.blockscout.com",
+    logsRpcs: ["https://celo.gateway.tenderly.co"],
+    llama: "celo",
+    explorer: "https://celo.blockscout.com",
+    bridgeUrl: "the official Celo bridge",
+    nativeToken: { l1Token: "0x057898f3C43F129a17517B9056D23851F124b19f" as Address, priceKey: "coingecko:celo" }, // CELO
+  },
+  {
+    id: "manta-pacific",
+    name: "Manta Pacific",
+    chain: withL1(manta, { portal: "0x9168765EE952de7C6f8fC6FaD5Ec209B960b7622", l2OutputOracle: "0x30c789674ad3B458886BBC9abf42EEe19EA05C1D" }),
+    rpcs: ["https://pacific-rpc.manta.network/http", "https://manta-pacific.drpc.org"],
+    blockscout: "https://pacific-explorer.manta.network",
+    llama: "manta",
+    explorer: "https://pacific-explorer.manta.network",
+    bridgeUrl: "pacific-bridge.manta.network",
+  },
+  {
     id: "lisk",
     name: "Lisk",
     chain: lisk,
@@ -189,7 +254,7 @@ const OP_STACK: Network[] = [
   {
     id: "bob",
     name: "BOB",
-    chain: withGames(bob, "0x96123dbFC3253185B594c6a7472EE5A21E9B1079"),
+    chain: withL1(bob, { disputeGameFactory: "0x96123dbFC3253185B594c6a7472EE5A21E9B1079" }),
     rpcs: ["https://rpc.gobob.xyz", "https://bob.drpc.org"],
     logsRpcs: ["https://rpc.gobob.xyz"],
     llama: "bob",
@@ -210,7 +275,7 @@ const OP_STACK: Network[] = [
   {
     id: "shape",
     name: "Shape",
-    chain: withGames(shape, "0x2c03e8BF8b16Af89079852BE87f0e9eC674a5952"),
+    chain: withL1(shape, { disputeGameFactory: "0x2c03e8BF8b16Af89079852BE87f0e9eC674a5952" }),
     rpcs: ["https://mainnet.shape.network", "https://shape.drpc.org"],
     blockscout: "https://shapescan.xyz",
     llama: "shape",
@@ -218,9 +283,42 @@ const OP_STACK: Network[] = [
     bridgeUrl: "the official Shape bridge",
   },
   {
+    id: "boba",
+    name: "Boba Network",
+    chain: withL1(boba, { portal: "0x7B02D13904D8e6E0f0Efaf756aB14Cb0FF21eE7e", disputeGameFactory: "0xF45a5f1e36fCeA3Cc830A98c6c3C5ceA7d6af852" }),
+    rpcs: ["https://mainnet.boba.network", "https://boba-ethereum.gateway.tenderly.co", "https://boba-eth.drpc.org"],
+    api: "https://api.routescan.io/v2/network/mainnet/evm/288/etherscan", // Boba has no Blockscout explorer
+    logsRpcs: ["https://boba-ethereum.gateway.tenderly.co"],
+    llama: "boba",
+    explorer: "https://bobascan.com",
+    bridgeUrl: "hub.boba.network",
+  },
+  {
+    id: "hashkey",
+    name: "HashKey Chain",
+    chain: withL1(hashkey, { portal: "0xe7Aa79B59CAc06F9706D896a047fEb9d3BDA8bD3", disputeGameFactory: "0x04Ec030f362CE5A0b5Fe2d4B4219f287C2EBDE50" }),
+    rpcs: ["https://mainnet.hsk.xyz"], // not hashkey.drpc.org: it answers null for old receipts
+    blockscout: "https://hsk.blockscout.com",
+    llama: "hsk",
+    explorer: "https://hsk.blockscout.com",
+    bridgeUrl: "the official HashKey Chain bridge",
+    nativeToken: { l1Token: "0xE7C6BF469e97eEB0bFB74C8dbFF5BD47D4C1C98a" as Address }, // HSK
+  },
+  {
+    id: "hemi",
+    name: "Hemi",
+    chain: withL1(hemi, { portal: "0x39a0005415256B9863aFE2d55Edcf75ECc3A4D7e", l2OutputOracle: "0x6daF3a3497D8abdFE12915aDD9829f83A79C0d51" }),
+    rpcs: ["https://rpc.hemi.network/rpc", "https://hemi.drpc.org"],
+    blockscout: "https://explorer.hemi.xyz",
+    api: "https://api.routescan.io/v2/network/mainnet/evm/43111/etherscan",
+    llama: "hemi",
+    explorer: "https://explorer.hemi.xyz",
+    bridgeUrl: "app.hemi.xyz",
+  },
+  {
     id: "metal",
     name: "Metal L2",
-    chain: withGames(metalL2, "0x7BFfF391A2dbbDc68A259792AC9748F50FcDE93E"),
+    chain: withL1(metalL2, { disputeGameFactory: "0x7BFfF391A2dbbDc68A259792AC9748F50FcDE93E" }),
     rpcs: ["https://rpc.metall2.com", "https://metall2.drpc.org"],
     blockscout: "https://explorer.metall2.com",
     logsRpcs: ["https://rpc.metall2.com"],
@@ -231,7 +329,7 @@ const OP_STACK: Network[] = [
   {
     id: "superseed",
     name: "Superseed",
-    chain: withGames(superseed, "0x657c1b0e31FFc69A02B207Be20699bDFF938c7E7"),
+    chain: withL1(superseed, { disputeGameFactory: "0x657c1b0e31FFc69A02B207Be20699bDFF938c7E7" }),
     rpcs: ["https://mainnet.superseed.xyz", "https://superseed.drpc.org"],
     logsRpcs: ["https://mainnet.superseed.xyz"],
     llama: "superseed",
@@ -247,6 +345,106 @@ const OP_STACK: Network[] = [
     llama: "codex",
     explorer: "https://explorer.codex.xyz",
     bridgeUrl: "the official Codex bridge",
+  },
+  {
+    id: "dbk",
+    name: "DBK Chain",
+    chain: withL1(dbkchain, { portal: "0x63CA00232F471bE2A3Bf3C4e95Bc1d2B3EA5DB92", l2OutputOracle: "0x0341bb689CB8a4c16c61307F4BdA254E1bFD525e" }),
+    rpcs: ["https://rpc.mainnet.dbkchain.io"],
+    api: "https://scan.dbkchain.io", // Etherscan-style API only (its Blockscout v2 API is disabled)
+    llama: "dbk",
+    explorer: "https://scan.dbkchain.io",
+    bridgeUrl: "the official DBK Chain bridge",
+  },
+  {
+    id: "cyber",
+    name: "Cyber",
+    chain: withL1(cyber, { portal: "0x1d59bc9fcE6B8E2B1bf86D4777289FFd83D24C99", disputeGameFactory: "0xaCc66304d26a01A9bd60d0584dCEdbaCeC8e10e0" }),
+    rpcs: ["https://rpc.cyber.co", "https://cyber.alt.technology"],
+    blockscout: "https://cyberscan.co",
+    llama: "cyber",
+    explorer: "https://cyberscan.co",
+    bridgeUrl: "the official Cyber bridge",
+  },
+  {
+    id: "orderly",
+    name: "Orderly",
+    chain: withL1(orderly, { portal: "0x91493a61ab83b62943E6dCAa5475Dd330704Cc84", disputeGameFactory: "0xC8BF04A73704051E5E274F1B43B1F2F153Db2136" }),
+    rpcs: ["https://rpc.orderly.network"],
+    logsRpcs: ["https://rpc.orderly.network"], // no explorer API
+    llama: "orderly",
+    explorer: "https://explorer.orderly.network",
+    bridgeUrl: "the official Orderly bridge",
+  },
+  {
+    id: "rise",
+    name: "RISE",
+    chain: withL1(rise, { portal: "0xad92Fa18EB74E46Db844240623124BF46589db4C", disputeGameFactory: "0x6A4139810986CF13408330e14C4ac9Daf0511aA3" }),
+    rpcs: ["https://rpc.risechain.com"],
+    blockscout: "https://explorer.risechain.com",
+    llama: "rise",
+    explorer: "https://explorer.risechain.com",
+    bridgeUrl: "the official RISE bridge",
+  },
+  {
+    id: "derive",
+    name: "Derive",
+    chain: withL1(lyra, { portal: "0x85eA9c11cf3D4786027F7FD08F4406b15777e5f8", disputeGameFactory: "0x87DAFf495b5F6c4f79CEeAAF85f1Ef3df3B30d21" }),
+    rpcs: ["https://rpc.derive.xyz", "https://rpc.lyra.finance"],
+    blockscout: "https://explorer.derive.xyz",
+    logsRpcs: ["https://rpc.derive.xyz"],
+    llama: "derive",
+    explorer: "https://explorer.derive.xyz",
+    bridgeUrl: "the official Derive bridge",
+  },
+  {
+    id: "funki",
+    name: "Funki",
+    chain: withL1(funkiMainnet, { portal: "0x5C9C7f98eD153a2deAA981eB5C97B31744AccF22", disputeGameFactory: "0xc371fD8C4AB7F585BDCA7aA19c2A680a70920c98" }),
+    rpcs: ["https://rpc-mainnet.funkichain.com"],
+    blockscout: "https://explorer.funkichain.com",
+    llama: "funki",
+    explorer: "https://explorer.funkichain.com",
+    bridgeUrl: "the official Funki bridge",
+  },
+  {
+    id: "nillion",
+    name: "Nillion",
+    chain: withL1(opChain(98875, "Nillion", "https://rpc.nillion.network", "https://explorer.nillion.network"), {
+      portal: "0x7b96e2c80696D5D2d673f0EA62b67352E18747C0",
+      disputeGameFactory: "0x5931f05809932a43C2A6c86f3F9BC2788f840b1C",
+    }),
+    rpcs: ["https://rpc.nillion.network"],
+    logsRpcs: ["https://rpc.nillion.network"], // no explorer API
+    llama: "nillion",
+    explorer: "https://explorer.nillion.network",
+    bridgeUrl: "the official Nillion bridge",
+  },
+  {
+    id: "towns",
+    name: "Towns",
+    chain: withL1(opChain(550, "Towns", "https://mainnet.rpc.river.build", "https://explorer.river.build"), {
+      portal: "0x9fDEEa19836A413C04e9672d3d09f482278e863c",
+      l2OutputOracle: "0x29E7177837652ca00f05fbD2e8aA867d207B2EF8",
+    }),
+    rpcs: ["https://mainnet.rpc.river.build"],
+    api: "https://explorer.river.build", // a Blockscout, but its v2 API takes 20-40 s: use the Etherscan-style one
+    llama: "towns",
+    explorer: "https://explorer.river.build",
+    bridgeUrl: "the official Towns bridge",
+  },
+  {
+    id: "phala",
+    name: "Phala",
+    chain: withL1(opChain(2035, "Phala", "https://rpc.phala.network", "https://explorer.phala.network"), {
+      portal: "0x96B124841Eff4Ab1b3C1F654D60402a1405fF51A",
+      disputeGameFactory: "0x2157F4d5934c4b12193C4983E99b9D6418798a2E",
+    }),
+    rpcs: ["https://rpc.phala.network"],
+    logsRpcs: ["https://rpc.phala.network"], // no explorer API
+    llama: "phala",
+    explorer: "https://explorer.phala.network",
+    bridgeUrl: "the official Phala bridge",
   },
 ].map(({ extraBridges, ...n }: Omit<Network, "family" | "guideId" | "contracts"> & { extraBridges?: Address[] }): Network => ({
   ...n,
