@@ -104,6 +104,82 @@ const sonicAbi = parseAbi([
   "function getSeasonBalances(uint8 season, address user) view returns (uint128 balance, uint128 vested, uint128 penalty)",
 ]);
 
+/** Uniswap-style MerkleDistributor with isClaimed(index), whose list comes from `find`. */
+function merkleDistributor(distributor: Address, find: (user: Address) => Promise<{ index: number; amount: bigint } | null>) {
+  return async (user: string): Promise<Lookup> => {
+    const entry = await find(user as Address);
+    if (!entry) return null;
+    const claimed = await l1Client().readContract({ address: distributor, abi: distributorAbi, functionName: "isClaimed", args: [BigInt(entry.index)] });
+    return claimed ? { claimed: true } : { claimed: false, amount: entry.amount };
+  };
+}
+
+/** Fetches a URL once per page load (JSON or text), retrying later if it failed. */
+function once<T>(url: string, parse: (r: Response) => Promise<T>) {
+  let p: Promise<T> | undefined;
+  return () =>
+    (p ??= fetch(url, { signal: AbortSignal.timeout(20_000) })
+      .then((r) => {
+        if (!r.ok) throw new Error(`eligibility list: HTTP ${r.status}`);
+        return parse(r);
+      })
+      .catch((e) => {
+        p = undefined;
+        throw e;
+      }));
+}
+
+/** Lido publishes its lists as CSV: index, account, amount (hex), proof. */
+function lidoCsv(url: string) {
+  const load = once(url, async (r) => {
+    const rows = new Map<string, { index: number; amount: bigint }>();
+    for (const m of (await r.text()).matchAll(/^(\d+),(0x[0-9a-fA-F]{40}),(0x[0-9a-fA-F]+),/gm))
+      rows.set(m[2].toLowerCase(), { index: Number(m[1]), amount: BigInt(m[3]) });
+    return rows;
+  });
+  return async (user: Address) => (await load()).get(user.toLowerCase()) ?? null;
+}
+
+/** Files published with the site (a compact copy of a project's list), from anywhere the checks run. */
+const siteFile = (path: string) => `${typeof window === "undefined" ? "https://lostfunds.vercel.app" : ""}${path}`;
+
+const CURVE_VESTING: Address = "0x575CCD8e2D300e2377B43478339E364000318E2c";
+const curveAbi = parseAbi([
+  "function balanceOf(address) view returns (uint256)",
+  "function initial_locked(address) view returns (uint256)",
+]);
+
+const safeVestingAbi = parseAbi([
+  "function vestings(bytes32) view returns (address account, uint8 curveType, bool managed, uint16 durationWeeks, uint64 startDate, uint128 amount, uint128 amountClaimed, uint64 pausingDate, bool cancelled)",
+  "function calculateVestedAmount(bytes32) view returns (uint128 vestedAmount, uint128 claimedAmount)",
+]);
+
+/** Safe's allocations are vestings (one address can have several): claimable = vested so far − already claimed. Never-redeemed ones expired in 2022–23. */
+async function safeLookup(user: string): Promise<Lookup> {
+  const res = await fetch(`https://safe-claiming-app-data.safe.global/allocations/1/${user}.json`, { signal: AbortSignal.timeout(20_000) });
+  if (res.status === 404 || res.status === 403) return null;
+  if (!res.ok) throw new Error(`Safe allocations: HTTP ${res.status}`);
+  const list = (await res.json()) as { vestingId: Hex; contract: Address }[];
+  let amount = 0n;
+  let redeemed = false;
+  for (const a of list) {
+    const read = <F extends "vestings" | "calculateVestedAmount">(functionName: F) =>
+      l1Client().readContract({ address: a.contract, abi: safeVestingAbi, functionName, args: [a.vestingId] } as never) as Promise<
+        F extends "vestings" ? readonly [Address, number, boolean, number, bigint, bigint, bigint, bigint, boolean] : readonly [bigint, bigint]
+      >;
+    const [account, , , , , , , , cancelled] = await read("vestings");
+    if (account === "0x0000000000000000000000000000000000000000" || cancelled) continue; // never redeemed: expired
+    redeemed = true;
+    const [vested, claimed] = await read("calculateVestedAmount");
+    if (vested > claimed) amount += vested - claimed;
+  }
+  if (!redeemed) return null;
+  return amount > 0n ? { claimed: false, amount } : { claimed: true };
+}
+
+const CONVEX_AIRDROP: Address = "0x2E088A0A19dda628B4304301d1EA70b114e4AcCd";
+const convexList = once(siteFile("/airdrops/convex-cvx.json"), (r) => r.json() as Promise<Record<string, string>>);
+
 /**
  * Kamino's Season 3 KMNO airdrop (Solana). Kamino's API gives each wallet's allocation;
  * a ClaimStatus account exists once it's claimed. Past its clawback date, but the tokens
@@ -150,6 +226,120 @@ export const AIRDROP_LIST: Airdrop[] = [
         args: [BigInt(entry.index)],
       });
       return claimed ? { claimed: true } : { claimed: false, amount: BigInt(entry.amount) };
+    },
+  },
+  {
+    id: "curve-2020",
+    accepts: ["evm"],
+    name: "Curve (CRV)",
+    label: "Curve early-user airdrop",
+    symbol: "CRV",
+    decimals: 18,
+    claimAt: "the vesting contract on Etherscan (claim, for your address)",
+    date: 1597322954, // Aug 13, 2020
+    note: "Curve's August 2020 early-user CRV finished vesting in 2021, and this address never claimed all of it. There is no deadline.",
+    txUrl: `https://etherscan.io/address/${CURVE_VESTING}#writeContract`,
+    asset: (amount) => ({ symbol: "CRV", decimals: 18, amount, token: "0xD533a949740bb3306d119CC777fa900bA034cd52", tokenChain: "ethereum" }),
+    lookup: async (user) => {
+      const c = l1Client();
+      const [left, locked] = await Promise.all([
+        c.readContract({ address: CURVE_VESTING, abi: curveAbi, functionName: "balanceOf", args: [user as Address] }),
+        c.readContract({ address: CURVE_VESTING, abi: curveAbi, functionName: "initial_locked", args: [user as Address] }),
+      ]);
+      if (!locked) return null;
+      return left > 0n ? { claimed: false, amount: left } : { claimed: true };
+    },
+  },
+  {
+    id: "safe-2022",
+    accepts: ["evm"],
+    name: "Safe (SAFE)",
+    label: "Safe airdrop",
+    symbol: "SAFE",
+    decimals: 18,
+    claimAt: "app.safe.global (SAFE claiming), or claimVestedTokens on the vesting contract",
+    date: 1663765355, // Sep 21, 2022
+    note: "This address redeemed its SAFE allocation in 2022 but never claimed all the tokens that have vested since. There is no deadline for vested tokens.",
+    txUrl: "https://etherscan.io/address/0xA0b937D5c8E32a80E3a8ed4227CD020221544ee6",
+    asset: (amount) => ({ symbol: "SAFE", decimals: 18, amount, token: "0x5aFE3855358E112B5647B952709E6165e1c1eEEe", tokenChain: "ethereum" }),
+    lookup: safeLookup,
+  },
+  {
+    id: "1inch-2020",
+    accepts: ["evm"],
+    name: "1inch (1INCH)",
+    label: "1inch airdrop",
+    symbol: "1INCH",
+    decimals: 18,
+    claimAt: "the MerkleDistributor on Etherscan (claim, with the index, amount and proof from 1inch's API)",
+    date: 1608829629, // Dec 24, 2020
+    note: "1inch's December 2020 airdrop has no deadline, and this address never claimed its 1INCH.",
+    txUrl: "https://etherscan.io/address/0xE295aD71242373C37C5FdA7B57F26f9eA1088AFe#writeContract",
+    asset: (amount) => ({ symbol: "1INCH", decimals: 18, amount, token: "0x111111111117dC0aa78b770fA6A738034120C302", tokenChain: "ethereum" }),
+    lookup: merkleDistributor("0xE295aD71242373C37C5FdA7B57F26f9eA1088AFe", async (user) => {
+      const res = await fetch(`https://governance.1inch.io/v1.0/distribution/${user}`, { signal: AbortSignal.timeout(20_000) });
+      const j = (await res.json().catch(() => null)) as { index?: number; amount?: string } | null;
+      if (j && typeof j.index === "number" && j.amount) return { index: j.index, amount: BigInt(j.amount) };
+      if (res.ok || (j && "error" in j)) return null; // no allocation
+      throw new Error(`1inch API: HTTP ${res.status}`);
+    }),
+  },
+  {
+    id: "lido-early-2021",
+    accepts: ["evm"],
+    name: "Lido early stakers (LDO)",
+    label: "Lido early-staker airdrop",
+    symbol: "LDO",
+    decimals: 18,
+    claimAt: "the MerkleDistributor on Etherscan (claim, with your row from github.com/lidofinance/airdrop-data)",
+    date: 1609783348, // Jan 4, 2021
+    note: "Lido's January 2021 airdrop for early stETH holders has no deadline, and this address never claimed its LDO.",
+    txUrl: "https://etherscan.io/address/0x4b3EDb22952Fb4A70140E39FB1adD05A6B49622B#writeContract",
+    asset: (amount) => ({ symbol: "LDO", decimals: 18, amount, token: "0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32", tokenChain: "ethereum" }),
+    lookup: merkleDistributor(
+      "0x4b3EDb22952Fb4A70140E39FB1adD05A6B49622B",
+      lidoCsv("https://raw.githubusercontent.com/lidofinance/airdrop-data/main/early_stakers_airdrop.csv"),
+    ),
+  },
+  {
+    id: "lido-1inch-2021",
+    accepts: ["evm"],
+    name: "Lido × 1inch LPs (LDO)",
+    label: "Lido airdrop for 1inch LPs",
+    symbol: "LDO",
+    decimals: 18,
+    claimAt: "the MerkleDistributor on Etherscan (claim, with your row from github.com/lidofinance/airdrop-data)",
+    date: 1614702071, // Mar 2, 2021
+    note: "Lido's March 2021 airdrop for stETH liquidity providers on 1inch has no deadline, and this address never claimed its LDO.",
+    txUrl: "https://etherscan.io/address/0xdB46C277dA1599390eAb394327602889E9546296#writeContract",
+    asset: (amount) => ({ symbol: "LDO", decimals: 18, amount, token: "0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32", tokenChain: "ethereum" }),
+    lookup: merkleDistributor(
+      "0xdB46C277dA1599390eAb394327602889E9546296",
+      lidoCsv("https://raw.githubusercontent.com/lidofinance/airdrop-data/main/oneinch_lido_airdrop.csv"),
+    ),
+  },
+  {
+    id: "convex-2021",
+    accepts: ["evm"],
+    name: "Convex (CVX)",
+    label: "Convex airdrop",
+    symbol: "CVX",
+    decimals: 18,
+    claimAt: "the MerkleAirdrop on Etherscan (claim, with your proof from github.com/convex-eth/platform)",
+    date: 1621246646, // May 17, 2021
+    note: "Convex's May 2021 airdrop has no deadline, and this address never claimed its CVX.",
+    txUrl: `https://etherscan.io/address/${CONVEX_AIRDROP}#writeContract`,
+    asset: (amount) => ({ symbol: "CVX", decimals: 18, amount, token: "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B", tokenChain: "ethereum" }),
+    lookup: async (user) => {
+      const amount = (await convexList())[user.toLowerCase()];
+      if (!amount) return null;
+      const claimed = await l1Client().readContract({
+        address: CONVEX_AIRDROP,
+        abi: parseAbi(["function hasClaimed(address) view returns (bool)"]),
+        functionName: "hasClaimed",
+        args: [user as Address],
+      });
+      return claimed ? { claimed: true } : { claimed: false, amount: BigInt(amount) };
     },
   },
   {

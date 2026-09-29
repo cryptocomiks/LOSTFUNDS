@@ -278,7 +278,7 @@ describe("Wallet kinds", () => {
     );
   });
   test("an Ethereum address runs everything", () => {
-    assert.equal(sourcesFor("evm").length, 27);
+    assert.equal(sourcesFor("evm").length, 33);
   });
 });
 
@@ -297,6 +297,37 @@ describe("Airdrops", () => {
     };
     world.addContract(1, "0x090D4613473dEE047c3f2706764f49E0821D256e", parseAbi(["function isClaimed(uint256) view returns (bool)"]), {
       isClaimed: ([i]) => i === 8n,
+    });
+    const e18 = 10n ** 18n;
+    const lower = (a: string) => a.toLowerCase();
+    // Curve: ELIGIBLE still has 1,000 vested CRV, CLAIMED took everything.
+    world.addContract(1, "0x575CCD8e2D300e2377B43478339E364000318E2c", parseAbi(["function balanceOf(address) view returns (uint256)", "function initial_locked(address) view returns (uint256)"]), {
+      balanceOf: ([a]) => (a === ELIGIBLE ? 1000n * e18 : 0n),
+      initial_locked: ([a]) => (a === ELIGIBLE || a === CLAIMED ? 1000n * e18 : 0n),
+    });
+    // 1inch: API rows, then isClaimed(index).
+    world.static[`https://governance.1inch.io/v1.0/distribution/${ELIGIBLE}`] = { index: 1, amount: "0x" + (50n * e18).toString(16), proof: [] };
+    world.static[`https://governance.1inch.io/v1.0/distribution/${CLAIMED}`] = { index: 2, amount: "0x1", proof: [] };
+    world.addContract(1, "0xE295aD71242373C37C5FdA7B57F26f9eA1088AFe", parseAbi(["function isClaimed(uint256) view returns (bool)"]), { isClaimed: ([i]) => i === 2n });
+    // Lido: CSV lists (the header spans two lines), then isClaimed(index).
+    const csv = (rows: string) => `index (uint256),account (address),amount (uint256),merkleProof (bytes32[]),"LDO airdrop amount\n(don't paste on Etherscan)"\n${rows}`;
+    world.static["https://raw.githubusercontent.com/lidofinance/airdrop-data/main/early_stakers_airdrop.csv"] = csv(`0,${ELIGIBLE},0x${(7n * e18).toString(16)},"[0x01]",7\n1,${CLAIMED},0x1,"[0x02]",0\n`);
+    world.static["https://raw.githubusercontent.com/lidofinance/airdrop-data/main/oneinch_lido_airdrop.csv"] = csv("");
+    world.addContract(1, "0x4b3EDb22952Fb4A70140E39FB1adD05A6B49622B", parseAbi(["function isClaimed(uint256) view returns (bool)"]), { isClaimed: ([i]) => i === 1n });
+    // Convex: compact list published with the site, then hasClaimed(address).
+    world.static["https://lostfunds.vercel.app/airdrops/convex-cvx.json"] = { [lower(ELIGIBLE)]: String(3n * e18), [lower(CLAIMED)]: "1" };
+    world.addContract(1, "0x2E088A0A19dda628B4304301d1EA70b114e4AcCd", parseAbi(["function hasClaimed(address) view returns (bool)"]), { hasClaimed: ([a]) => a === CLAIMED });
+    // Safe: ELIGIBLE redeemed a vesting with 40 SAFE vested but unclaimed; CLAIMED took all of it.
+    const VEST = "0xA0b937D5c8E32a80E3a8ed4227CD020221544ee6";
+    const vid = (n: number) => `0x${String(n).repeat(64)}`;
+    world.static[`https://safe-claiming-app-data.safe.global/allocations/1/${ELIGIBLE}.json`] = [{ vestingId: vid(1), contract: VEST }];
+    world.static[`https://safe-claiming-app-data.safe.global/allocations/1/${CLAIMED}.json`] = [{ vestingId: vid(2), contract: VEST }];
+    world.addContract(1, VEST, parseAbi([
+      "function vestings(bytes32) view returns (address account, uint8 curveType, bool managed, uint16 durationWeeks, uint64 startDate, uint128 amount, uint128 amountClaimed, uint64 pausingDate, bool cancelled)",
+      "function calculateVestedAmount(bytes32) view returns (uint128 vestedAmount, uint128 claimedAmount)",
+    ]), {
+      vestings: ([id]) => [id === vid(1) ? ELIGIBLE : CLAIMED, 0, false, 208, 0n, 100n * e18, 0n, 0n, false],
+      calculateVestedAmount: ([id]) => (id === vid(1) ? [100n * e18, 60n * e18] : [100n * e18, 100n * e18]),
     });
     // Zora: ELIGIBLE never claimed 20,000 ZORA, CLAIMED did.
     world.addContract(8453, "0x0000000002ba96c69b95e32caab8fc38bab8b3f8", parseAbi(["function accountClaim(address) view returns ((uint96 allocation, bool claimed))"]), {
@@ -317,7 +348,12 @@ describe("Airdrops", () => {
   test("finds every airdrop never claimed: UNI 2020, Zora, and Sonic before its burn date", async () => {
     const r = await checkAirdrops(ELIGIBLE);
     const by = Object.fromEntries(r.findings.map((f) => [f.asset.symbol, f]));
-    assert.deepEqual(Object.keys(by).sort(), ["S", "UNI", "ZORA"]);
+    assert.deepEqual(Object.keys(by).sort(), ["1INCH", "CRV", "CVX", "LDO", "S", "SAFE", "UNI", "ZORA"]);
+    assert.equal(by.CRV.asset.amount, 1000n * 10n ** 18n);
+    assert.equal(by.SAFE.asset.amount, 40n * 10n ** 18n, "vested minus already claimed");
+    assert.equal(by.LDO.asset.amount, 7n * 10n ** 18n);
+    assert.equal(by.CVX.asset.amount, 3n * 10n ** 18n);
+    assert.equal(by["1INCH"].asset.amount, 50n * 10n ** 18n);
     assert.equal(by.UNI.asset.amount, 400n * 10n ** 18n);
     assert.equal(by.ZORA.asset.amount, 20_000n * 10n ** 18n);
     assert.equal(by.S.asset.amount, 1000n * 10n ** 18n, "the season past its burn date is left out");
@@ -325,7 +361,7 @@ describe("Airdrops", () => {
   });
   test("counts a claimed airdrop as completed", async () => {
     const r = await checkAirdrops(CLAIMED);
-    assert.deepEqual([r.findings.length, r.completed], [0, 2]);
+    assert.deepEqual([r.findings.length, r.completed], [0, 7]);
   });
   test("Kamino (Solana): unclaimed, claimed, clawed back and not eligible", async () => {
     const PROGRAM = "KdisqEcXbXKaTrBFqeDLhMmBvymLTwj9GmhDcdJyGat";

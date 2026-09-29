@@ -30,4 +30,10 @@ export const NETWORK_COLORS: Record<string, string> = {
   "airdrop-zora-2025": "radial-gradient(circle at 30% 30%,#FCB8D4,#2B5DF0 60%,#1a1a1a)",
   "airdrop-sonic-2025": "linear-gradient(135deg,#FE9A4D,#0F2C5C)",
   "airdrop-kamino-s3": "linear-gradient(135deg,#4AA7FF,#1D2B53)",
+  "airdrop-curve-2020": "linear-gradient(135deg,#FF0000,#FFFF00 35%,#00FF00 55%,#0000FF)",
+  "airdrop-safe-2022": "#12FF80",
+  "airdrop-1inch-2020": "linear-gradient(135deg,#D82122,#1B314F)",
+  "airdrop-lido-early-2021": "#00A3FF",
+  "airdrop-lido-1inch-2021": "linear-gradient(135deg,#00A3FF,#D82122)",
+  "airdrop-convex-2021": "linear-gradient(135deg,#FF5A5A,#3A3A3A)",
 };

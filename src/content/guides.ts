@@ -15,12 +15,16 @@ export const GUIDES: Guide[] = [
   {
     id: "airdrops",
     title: "Unclaimed airdrops",
-    subtitle: "Uniswap (UNI), Zora (ZORA), Sonic (S)",
+    subtitle: "Uniswap, Curve, Safe, 1inch, Lido, Convex, Zora, Sonic, Kamino",
     live: true,
     steps: [
       "Uniswap, September 2020: never expires, around 12.5 million UNI still unclaimed. Open the official Uniswap app with the eligible wallet; if no Claim UNI prompt shows, claim on the MerkleDistributor (0x090D4613473dEE047c3f2706764f49E0821D256e) on Etherscan, Write Contract → claim, with your index, amount and proof from Uniswap's published list (github.com/Uniswap/mrkl-drop-data-chunks).",
       "Zora, April 2025 (Base): no deadline. Open zora.co with the eligible wallet, or call claim(your address) on the claim contract (0x0000000002ba96c69b95e32caab8fc38bab8b3f8) on Basescan, from the eligible wallet.",
+      "Curve, August 2020: early-user CRV, fully vested. On the vesting contract (0x575CCD8e2D300e2377B43478339E364000318E2c) on Etherscan, Write Contract → claim, with your address. Anyone can send it for you; the CRV always goes to the eligible address.",
+      "Safe, 2022: only if you redeemed your allocation back then. Open app.safe.global with the eligible wallet and claim the vested SAFE, or call claimVestedTokens on the vesting contract.",
+      "1inch (Dec 2020), Lido (early stakers, Jan 2021, and 1inch LPs, Mar 2021) and Convex (May 2021): no deadline. Call claim on the project's distributor on Etherscan with your index, amount and proof, from 1inch's API (governance.1inch.io), github.com/lidofinance/airdrop-data or github.com/convex-eth/platform.",
       "Sonic (Sonic chain): only if you still hold Sonic airdrop NFTs. Unlock them at my.soniclabs.com/airdrop before October 15, 2026: whatever is still locked then is burned.",
+      "Kamino Season 3 (Solana): the official claim period is over, but unclaimed KMNO are still on-chain until Kamino claws them back. Claim at app.kamino.finance with the eligible wallet, soon.",
     ],
     note: "Airdropped tokens can only go to the eligible wallet. Never sign anything on a site that asks you to \"approve\" tokens to receive an airdrop.",
   },
