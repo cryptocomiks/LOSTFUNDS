@@ -11,6 +11,7 @@ Free, read-only, no wallet connection. Everything runs in the browser.
 | Arbitrum One, Arbitrum Nova | `L2ToL1Tx` (ArbSys) + gateway events → `Outbox.isSpent(position)` on Ethereum. |
 | Scroll | Gateway / messenger events → `L1ScrollMessenger.isL2MessageExecuted(hash)`. |
 | Linea | `MessageSent` / token-bridge events → `LineaRollup.isMessageClaimed(nonce)` + L1 `MessageClaimed` events. |
+| Wormhole Token Bridge + NTT (any route between 30+ EVM chains and Solana) | Transfers from Wormholescan (`/operations`, `/transactions`) → signed VAA decoded → `TokenBridge.isTransferCompleted` / Solana claim account / `NttManager.isMessageExecuted` on the destination, then a simulated redeem (or the guardian set's expiry on Solana) to tell redeemable from expired-guardian-set transfers. |
 | deBridge (any route: 30+ EVM chains, Solana, Tron) | Stuck orders from deBridge's public API → `DlnSource.giveOrders` / `DlnDestination.takeOrders` on each EVM side (`src/lib/evm.ts`). |
 
 Data sources, all keyless: Blockscout's v2 API (transactions the wallet sent), then its Etherscan-compatible API, then Routescan's Etherscan-compatible API (Blast), full-history event search on RPC nodes that allow it (Zora, Mode, Fraxtal, BOB, MegaETH, Metal L2, Superseed, Codex, Arbitrum One, Scroll); several public RPC nodes per network; DefiLlama for USD prices. `npx tsx tests/live.ts 0x…` runs every check against the real chains (set NODE_USE_ENV_PROXY=1 behind a proxy).
