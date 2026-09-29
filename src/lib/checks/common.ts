@@ -7,6 +7,8 @@ export const now = () => Math.floor(Date.now() / 1000);
 export interface CheckOutput {
   findings: Finding[];
   completed: number;
+  /** Part of the check failed: the findings are shown, but the check reads as incomplete. */
+  error?: string;
 }
 
 /** What a finding needs to know about where it was found (a network or a bridge route). */

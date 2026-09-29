@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { before, describe, test } from "node:test";
-import { concat, numberToHex, pad, parseAbi, parseAbiItem, size, toEventSelector, toHex, toRlp, zeroAddress, type Address, type Hex } from "viem";
+import { concat, encodePacked, keccak256, numberToHex, pad, parseAbi, parseAbiItem, size, toEventSelector, toHex, toRlp, zeroAddress, type Address, type Hex } from "viem";
 import { checkAirdrops } from "../src/lib/checks/airdrops.ts";
-import { checkCctp } from "../src/lib/checks/cctp.ts";
+import { checkCctp, checkCctpFromSolana } from "../src/lib/checks/cctp.ts";
 import { checkDebridge } from "../src/lib/checks/debridge.ts";
 import { checkPolygon, decodeExitPayload } from "../src/lib/checks/polygon.ts";
 import { checkWormhole, decodeNttVaa, decodeTransferVaa } from "../src/lib/checks/wormhole.ts";
@@ -536,10 +536,16 @@ describe("Circle CCTP", () => {
     world.addTx(burn(`0x${"a2".repeat(32)}`, 500981n, 5)); // to Solana, minted
     world.addTx(burn(`0x${"a3".repeat(32)}`, 500990n, 6)); // to Base: not our route
     // Solana's used-nonces bitmap for nonces 499201–505600: only 500981 is set.
+    // Layout: discriminator(8) remote_domain u32 (0 = Ethereum) first_nonce u64, then the bitmap (little-endian).
     const data = new Uint8Array(820);
+    new DataView(data.buffer).setBigUint64(12, 499201n, true);
     const idx = 500981 - 499201;
     data[20 + Math.floor(idx / 64) * 8 + Math.floor((idx % 64) / 8)] |= 1 << (idx % 8);
     world.solana[CCTP_V1_USED_NONCES_499201] = data;
+    // Circle attested the unminted burn (old v1 messages come back without their bytes).
+    world.iris[`0:0x${"a1".repeat(32)}`] = {
+      messages: [{ cctpVersion: 1, eventNonce: "500977", status: "complete", attestation: `0x${"11".repeat(65)}`, message: null }],
+    };
   });
 
   test("finds USDC burned for Solana and never minted there", async () => {
@@ -551,6 +557,225 @@ describe("Circle CCTP", () => {
     assert.equal(f.asset.amount, 115_000_000n);
     assert.equal(f.asset.symbol, "USDC");
     assert.match(f.note ?? "", /Anyone can complete it/);
+  });
+});
+
+describe("Circle CCTP between EVM chains, and from Solana", () => {
+  const USDC_ARB: Address = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
+  const USDC_BASE: Address = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+  const ARB_V1 = { messenger: "0x19330d10D9Cc8751218eaf51E8885D058642E08A" as Address, minter: "0xE7Ed1fa7f45D05C508232aa32649D89b73b8bA48" as Address };
+  const BASE_V1_TRANSMITTER: Address = "0xAD09780d193884d503182aD4588450C416D6F9D4";
+  const V2_MESSENGER: Address = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d";
+  const V2_TRANSMITTER: Address = "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64";
+  const V2_MINTER: Address = "0xfd78EE919681417d192449715b2594ab58f5D002";
+  const V1_USER: Address = "0x2222222222222222222222222222222222222222";
+  const V2_USER: Address = "0x3333333333333333333333333333333333333333";
+  const SOL_OWNER = "2Xi26TTXbhRYNZ6BvUN1DZgYhijkmcMizdo2Uwgg8QD5";
+  const ATTESTATION: Hex = `0x${"22".repeat(65)}`;
+  const OLD = Math.floor(Date.now() / 1000) - 30 * 86400;
+  const transfer = parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 value)");
+  const v1Event = parseAbiItem(
+    "event DepositForBurn(uint64 indexed nonce, address indexed burnToken, uint256 amount, address indexed depositor, bytes32 mintRecipient, uint32 destinationDomain, bytes32 destinationTokenMessenger, bytes32 destinationCaller)",
+  );
+  const v2Event = parseAbiItem(
+    "event DepositForBurn(address indexed burnToken, uint256 amount, address indexed depositor, bytes32 mintRecipient, uint32 destinationDomain, bytes32 destinationTokenMessenger, bytes32 destinationCaller, uint256 maxFee, uint32 indexed minFinalityThreshold, bytes hookData)",
+  );
+  const transmitterAbi = parseAbi(["function usedNonces(bytes32) view returns (uint256)", "function receiveMessage(bytes message, bytes attestation) returns (bool)"]);
+  const v1Key = (src: number, nonce: bigint) => keccak256(encodePacked(["uint32", "uint64"], [src, nonce]));
+  /** A CCTP v2 message as Circle's API returns it. */
+  const v2Message = (src: number, dst: number, nonce: Hex, recipient: Hex, amount: bigint, sender: Hex) =>
+    encodePacked(
+      ["uint32", "uint32", "uint32", "bytes32", "bytes32", "bytes32", "bytes32", "uint32", "uint32", "uint32", "bytes32", "bytes32", "uint256", "bytes32", "uint256", "uint256", "uint256"],
+      [1, src, dst, nonce, pad(V2_MESSENGER), pad(V2_MESSENGER), ZERO, 2000, 2000, 1, pad(USDC_BASE), recipient, amount, sender, 0n, 0n, 0n],
+    );
+  const ZERO: Hex = `0x${"00".repeat(32)}`;
+  const nonceA: Hex = `0x${"aa".repeat(32)}`;
+  const nonceB: Hex = `0x${"bb".repeat(32)}`;
+  const nonceC: Hex = `0x${"cc".repeat(32)}`;
+  const usedV1Base = new Set<Hex>();
+  const usedV2Arb = new Set<Hex>();
+  let receiveReverts = "";
+
+  const v1Burn = (hash: Hex, nonce: bigint, amount: bigint) =>
+    world.addTx({
+      chainId: 42161,
+      hash,
+      from: V1_USER,
+      to: ARB_V1.messenger,
+      blockNumber: 300_000_000n + nonce,
+      timestamp: OLD,
+      logs: [
+        { address: USDC_ARB, event: transfer, args: { from: V1_USER, to: ARB_V1.minter, value: amount } },
+        {
+          address: ARB_V1.messenger,
+          event: v1Event,
+          args: { nonce, burnToken: USDC_ARB, amount, depositor: V1_USER, mintRecipient: pad(V1_USER), destinationDomain: 6, destinationTokenMessenger: pad("0x1682Ae6375C4E4A97e4B583BC394c861A46D8962"), destinationCaller: ZERO },
+        },
+      ],
+    });
+  const v2Burn = (hash: Hex, amount: bigint, nonce: Hex) => {
+    world.addTx({
+      chainId: 8453,
+      hash,
+      from: V2_USER,
+      to: V2_MESSENGER,
+      blockNumber: 40_000_000n,
+      timestamp: OLD,
+      logs: [
+        { address: USDC_BASE, event: transfer, args: { from: V2_USER, to: V2_MINTER, value: amount } },
+        {
+          address: V2_MESSENGER,
+          event: v2Event,
+          args: { burnToken: USDC_BASE, amount, depositor: V2_USER, mintRecipient: pad(V2_USER), destinationDomain: 3, destinationTokenMessenger: pad(V2_MESSENGER), destinationCaller: ZERO, maxFee: 0n, minFinalityThreshold: 2000, hookData: "0x" },
+        },
+      ],
+    });
+    world.iris[`6:${hash}`] = {
+      messages: [{ cctpVersion: 2, eventNonce: nonce, status: "complete", attestation: ATTESTATION, message: v2Message(6, 3, nonce, pad(V2_USER), amount, pad(V2_USER)) }],
+    };
+  };
+
+  before(() => {
+    // Arbitrum → Base, v1: nonce 11 was minted, nonce 12 wasn't.
+    v1Burn(`0x${"b1".repeat(32)}`, 11n, 50_000_000n);
+    v1Burn(`0x${"b2".repeat(32)}`, 12n, 107_939_037n);
+    usedV1Base.add(v1Key(3, 11n));
+    world.iris[`3:0x${"b2".repeat(32)}`] = { messages: [{ cctpVersion: 1, eventNonce: "12", status: "complete", attestation: ATTESTATION, message: null }] };
+    world.addContract(8453, BASE_V1_TRANSMITTER, transmitterAbi, {
+      usedNonces: ([k]) => (usedV1Base.has(k as Hex) ? 1n : 0n),
+      receiveMessage: () => true,
+    });
+    // Base → Arbitrum, v2: nonce A minted, B not, C not and its attestation expired.
+    v2Burn(`0x${"c1".repeat(32)}`, 5_000_000n, nonceA);
+    v2Burn(`0x${"c2".repeat(32)}`, 1_011_491n, nonceB);
+    usedV2Arb.add(nonceA);
+    world.addContract(42161, V2_TRANSMITTER, transmitterAbi, {
+      usedNonces: ([k]) => (usedV2Arb.has(k as Hex) ? 1n : 0n),
+      receiveMessage: ([m]) => {
+        if (receiveReverts && (m as string).includes(nonceC.slice(2))) throw new Error(receiveReverts);
+        return true;
+      },
+    });
+  });
+
+  test("v1: finds the burn from Arbitrum never minted on Base, not the minted one", async () => {
+    const r = await checkCctp(V1_USER);
+    assert.equal(r.error, undefined);
+    assert.equal(r.completed, 1);
+    assert.equal(r.findings.length, 1);
+    const f = r.findings[0];
+    assert.equal(f.networkName, "Circle CCTP · Arbitrum → Base");
+    assert.equal(f.status, "ready");
+    assert.equal(f.asset.amount, 107_939_037n);
+    assert.equal(f.txUrl, `https://arbiscan.io/tx/0x${"b2".repeat(32)}`);
+    assert.match(f.note ?? "", /Anyone can complete it/);
+    assert.match(f.note ?? "", /Dec 1, 2026/);
+  });
+
+  test("v2: nonces come from Circle's API; minted transfers aren't reported", async () => {
+    const r = await checkCctp(V2_USER);
+    assert.equal(r.error, undefined);
+    assert.equal(r.completed, 1);
+    assert.deepEqual(
+      r.findings.map((f) => [f.networkName, f.status, f.asset.amount]),
+      [["Circle CCTP · Base → Arbitrum", "ready", 1_011_491n]],
+    );
+  });
+
+  test("v2: an expired attestation is reported for a manual re-attest, a mint that went through since is not", async () => {
+    const user: Address = "0x4444444444444444444444444444444444444444";
+    world.addTx({
+      chainId: 8453,
+      hash: `0x${"c3".repeat(32)}`,
+      from: user,
+      to: V2_MESSENGER,
+      blockNumber: 40_000_001n,
+      timestamp: OLD,
+      logs: [
+        { address: USDC_BASE, event: transfer, args: { from: user, to: V2_MINTER, value: 3_690_000n } },
+        {
+          address: V2_MESSENGER,
+          event: v2Event,
+          args: { burnToken: USDC_BASE, amount: 3_690_000n, depositor: user, mintRecipient: pad(user), destinationDomain: 3, destinationTokenMessenger: pad(V2_MESSENGER), destinationCaller: ZERO, maxFee: 0n, minFinalityThreshold: 1000, hookData: "0x" },
+        },
+      ],
+    });
+    world.iris[`6:0x${"c3".repeat(32)}`] = {
+      messages: [{ cctpVersion: 2, eventNonce: nonceC, status: "complete", attestation: ATTESTATION, message: v2Message(6, 3, nonceC, pad(user), 3_690_000n, pad(user)) }],
+    };
+    try {
+      receiveReverts = "Message expired and must be re-signed";
+      let r = await checkCctp(user);
+      assert.equal(r.findings.length, 1);
+      assert.equal(r.findings[0].status, "manual");
+      assert.match(r.findings[0].note ?? "", /re-attest/);
+      receiveReverts = "Nonce already used";
+      r = await checkCctp(user);
+      assert.deepEqual([r.findings.length, r.completed], [0, 1]);
+    } finally {
+      receiveReverts = "";
+    }
+  });
+
+  test("a burn Circle has no record of, on a source chain, surfaces as an error (never as clean)", async () => {
+    const user: Address = "0x5555555555555555555555555555555555555555";
+    world.addTx({
+      chainId: 8453,
+      hash: `0x${"c4".repeat(32)}`,
+      from: user,
+      to: V2_MESSENGER,
+      blockNumber: 40_000_002n,
+      timestamp: OLD,
+      logs: [
+        { address: USDC_BASE, event: transfer, args: { from: user, to: V2_MINTER, value: 1_000_000n } },
+        {
+          address: V2_MESSENGER,
+          event: v2Event,
+          args: { burnToken: USDC_BASE, amount: 1_000_000n, depositor: user, mintRecipient: pad(user), destinationDomain: 3, destinationTokenMessenger: pad(V2_MESSENGER), destinationCaller: ZERO, maxFee: 0n, minFinalityThreshold: 2000, hookData: "0x" },
+        },
+      ],
+    });
+    const r = await checkCctp(user);
+    assert.equal(r.findings.length, 0);
+    assert.match(r.error ?? "", /no record/);
+  });
+
+  test("Solana → Base, v1: an unreclaimed message account that was never minted", async () => {
+    const owner = base58.decode(SOL_OWNER);
+    const message = (nonce: bigint, amount: bigint) =>
+      hexBytes(
+        encodePacked(
+          ["uint32", "uint32", "uint32", "uint64", "bytes32", "bytes32", "bytes32", "uint32", "bytes32", "bytes32", "uint256", "bytes32"],
+          [0, 5, 6, nonce, `0x${Buffer.from(base58.decode("CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3")).toString("hex")}`, pad("0x1682Ae6375C4E4A97e4B583BC394c861A46D8962"), ZERO, 0, ZERO, pad(V1_USER), amount, `0x${Buffer.from(owner).toString("hex")}`],
+        ),
+      );
+    // v1 account: discriminator(8) rent_payer(32) u32 length, message
+    const account = (nonce: bigint, amount: bigint) => {
+      const m = message(nonce, amount);
+      const d = new Uint8Array(44 + m.length);
+      d.set(owner, 8);
+      new DataView(d.buffer).setUint32(40, m.length, true);
+      d.set(m, 44);
+      return d;
+    };
+    world.solanaPrograms["CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd"] = [
+      { pubkey: "9WnFSQkHcrwRjuyRHsQEFyU2TSV3gPedtMRB8m6jzmGQ", data: account(741054n, 5_000_000n) },
+      { pubkey: "11111111111111111111111111111112", data: account(741000n, 9_000_000n) },
+    ];
+    usedV1Base.add(v1Key(5, 741000n));
+    world.iris["5:nonce:741054"] = {
+      messages: [{ cctpVersion: 1, eventNonce: "741054", status: "complete", attestation: ATTESTATION, message: null }],
+      sourceTxHash: "21vj4ZLrYgBzdRSi3FfZSMZ4bHgF59kmtfqiYVRpJzovZaaj5hN83RP6QcaUV4BxEQc53zJqqhc1zaRPNH63KDkH",
+    };
+    const r = await checkCctpFromSolana(SOL_OWNER);
+    assert.equal(r.error, undefined);
+    assert.equal(r.completed, 1);
+    assert.equal(r.findings.length, 1);
+    const f = r.findings[0];
+    assert.equal(f.networkName, "Circle CCTP · Solana → Base");
+    assert.equal(f.status, "ready");
+    assert.equal(f.asset.amount, 5_000_000n);
+    assert.match(f.txUrl, /solscan\.io\/tx\/21vj4ZLr/);
   });
 });
 

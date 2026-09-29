@@ -66,7 +66,7 @@ function FindingRow({ f, index }: { f: Finding; index: number }) {
           <span className="font-medium text-text">{f.networkName}</span>
           <span aria-hidden>·</span>
           <span>
-            {f.networkId === "airdrops" ? "Airdropped" : "Sent"} {formatDate(f.timestamp)}
+            {f.networkId === "airdrops" ? "Airdropped" : "Sent"}{f.timestamp > 0 ? ` ${formatDate(f.timestamp)}` : ""}
           </span>
         </div>
         <span className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ${s.tone}`}>{s.label}</span>

@@ -363,6 +363,89 @@ export function getTxsTo(net: ExplorerTarget, user: Address, targets: Address[])
   return firstSuccess(attempts);
 }
 
+/* ───────────── Token transfers sent by an address ───────────── */
+
+export interface TokenTransfer {
+  hash: Hex;
+  to: Address;
+  timestamp: number;
+}
+
+interface RawTokenTx {
+  hash: string;
+  from: string;
+  to: string;
+  contractAddress: string;
+  timeStamp: string;
+}
+
+/** Blockscout's v2 API returns 50 transfers per page. */
+const MAX_TRANSFER_PAGES = 20;
+
+/**
+ * ERC-20 transfers of `token` sent by `user`, from the explorer's per-address index.
+ * Unlike the transaction list, this also covers smart wallets and EIP-7702 accounts,
+ * whose token moves happen inside transactions sent by someone else.
+ */
+export function getTokenTransfersFrom(net: ExplorerTarget, user: Address, token: Address): Promise<TokenTransfer[]> {
+  const me = user.toLowerCase();
+  const tok = token.toLowerCase();
+  const attempts: Attempt<TokenTransfer[]>[] = apiSources(net).map((src) => ({
+    name: src.name,
+    run: async () => {
+      const out: TokenTransfer[] = [];
+      for (let page = 1; ; page++) {
+        if (page > MAX_TX_PAGES) throw new TooManyTxs();
+        const p = new URLSearchParams({
+          module: "account",
+          action: "tokentx",
+          address: getAddress(user),
+          contractaddress: getAddress(token),
+          startblock: "0",
+          endblock: "99999999999",
+          page: String(page),
+          offset: String(PAGE),
+          sort: "asc",
+        });
+        // This list also has incoming transfers: keep the user's own.
+        const raw = await fetchResult<RawTokenTx>(src.url(p));
+        for (const t of raw)
+          if (t.from?.toLowerCase() === me && t.contractAddress?.toLowerCase() === tok)
+            out.push({ hash: t.hash as Hex, to: t.to.toLowerCase() as Address, timestamp: Number(BigInt(t.timeStamp)) });
+        if (raw.length < PAGE) return out;
+      }
+    },
+  }));
+  // First choice: Blockscout's v2 REST API, which filters by direction and token itself.
+  if (net.blockscout)
+    attempts.unshift({
+      name: `${new URL(net.blockscout).host} v2`,
+      run: async () => {
+        const out: TokenTransfer[] = [];
+        let next: Record<string, string | number> | null = {};
+        for (let page = 0; next; page++) {
+          if (page >= MAX_TRANSFER_PAGES) throw new TooManyTxs();
+          const q = new URLSearchParams({ type: "ERC-20", filter: "from", token: getAddress(token) });
+          for (const [k, v] of Object.entries(next)) q.set(k, String(v));
+          const url = `${net.blockscout}/api/v2/addresses/${getAddress(user)}/token-transfers?${q}`;
+          const json = (await polite(url, () => fetchJson(url))) as {
+            items: { transaction_hash: string; from?: { hash: string }; to?: { hash: string }; token?: { address_hash?: string; address?: string }; timestamp: string }[];
+            next_page_params: Record<string, string | number> | null;
+          };
+          if (!Array.isArray(json?.items)) throw new Error("bad response");
+          for (const t of json.items) {
+            const tokenAddress = (t.token?.address_hash ?? t.token?.address)?.toLowerCase();
+            if (t.from?.hash.toLowerCase() !== me || tokenAddress !== tok || !t.to?.hash) continue;
+            out.push({ hash: t.transaction_hash as Hex, to: t.to.hash.toLowerCase() as Address, timestamp: Math.floor(Date.parse(t.timestamp) / 1000) });
+          }
+          next = json.next_page_params;
+        }
+        return out;
+      },
+    });
+  return firstSuccess(attempts);
+}
+
 /**
  * Finds the user's bridge withdrawal transactions on a network.
  * Fast path: the user's own transaction list, filtered to the bridge contracts.

@@ -5,6 +5,14 @@ import { base58 } from "@scure/base";
 /** Public Solana RPC nodes that answer browser requests, tried in order. */
 export const SOLANA_RPCS = ["https://solana-rpc.publicnode.com", "https://api.mainnet-beta.solana.com"];
 
+/**
+ * Nodes for index and history queries (getProgramAccounts, getSignaturesForAddress), which
+ * publicnode refuses or answers with an empty history. api.mainnet-beta refuses requests
+ * sent from a web page (HTTP 403 whenever an Origin header is present), so it only helps
+ * outside the browser.
+ */
+export const SOLANA_INDEX_RPCS = ["https://public.rpc.solanavibestation.com", "https://api.mainnet-beta.solana.com"];
+
 const PDA_MARKER = new TextEncoder().encode("ProgramDerivedAddress");
 
 function isOnCurve(bytes: Uint8Array): boolean {
@@ -59,11 +67,11 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-export const rpc = <T>(method: string, params: unknown[]) => withRetry(() => rpcOnce<T>(method, params));
+export const rpc = <T>(method: string, params: unknown[], urls = SOLANA_RPCS) => withRetry(() => rpcOnce<T>(method, params, urls));
 
-async function rpcOnce<T>(method: string, params: unknown[]): Promise<T> {
+async function rpcOnce<T>(method: string, params: unknown[], urls: string[]): Promise<T> {
   let last: unknown;
-  for (const url of SOLANA_RPCS) {
+  for (const url of urls) {
     try {
       const res = await fetch(url, {
         method: "POST",
