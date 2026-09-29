@@ -278,7 +278,7 @@ describe("Wallet kinds", () => {
     );
   });
   test("an Ethereum address runs everything", () => {
-    assert.equal(sourcesFor("evm").length, 35);
+    assert.equal(sourcesFor("evm").length, 50);
   });
 });
 

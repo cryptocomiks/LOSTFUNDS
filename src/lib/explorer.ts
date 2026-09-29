@@ -147,7 +147,15 @@ const PAGE = 1000;
 const MAX_PAGES = 10;
 
 function logParams(address: Address | undefined, topics: Topics, fromBlock: bigint) {
-  const p = new URLSearchParams({ module: "logs", action: "getLogs", fromBlock: fromBlock.toString(), toBlock: "latest" });
+  // Routescan returns 100 logs unless asked for a page size (Blockscout ignores it and returns up to 1000).
+  const p = new URLSearchParams({
+    module: "logs",
+    action: "getLogs",
+    fromBlock: fromBlock.toString(),
+    toBlock: "latest",
+    page: "1",
+    offset: String(PAGE),
+  });
   if (address) p.set("address", address);
   const set = topics.map((t, i) => [t, i] as const).filter(([t]) => t);
   for (const [t, i] of set) p.set(`topic${i}`, t!);
@@ -202,11 +210,12 @@ async function logsFromRpc(rpc: string, address: Address | undefined, topics: To
   const logs = (await call("eth_getLogs", [
     { fromBlock: "0x0", toBlock: "latest", address, topics: topics.map((t) => t ?? null) },
   ])) as { transactionHash: Hex; blockNumber: Hex; address: Address; topics: Hex[]; data: Hex }[];
-  // RPC logs carry no timestamp: read the blocks' timestamps, 50 per batched request.
+  // RPC logs carry no timestamp: read the blocks' timestamps, in small batches (public nodes such as
+  // Conduit's or Tenderly's rate-limit large ones), then one by one for any a busy node left out.
   const times = new Map<string, number>();
   const blocks = [...new Set(logs.map((l) => l.blockNumber))];
-  for (let i = 0; i < blocks.length; i += 50) {
-    const chunk = blocks.slice(i, i + 50);
+  for (let i = 0; i < blocks.length; i += 10) {
+    const chunk = blocks.slice(i, i + 10);
     const replies = (await polite(rpc, () =>
       fetchJson(rpc, {
         method: "POST",
@@ -214,8 +223,11 @@ async function logsFromRpc(rpc: string, address: Address | undefined, topics: To
         body: JSON.stringify(chunk.map((bn, id) => ({ jsonrpc: "2.0", id, method: "eth_getBlockByNumber", params: [bn, false] }))),
       }),
     )) as { id: number; result?: { timestamp: Hex } }[];
-    if (!Array.isArray(replies)) throw new Error("RPC batch not supported");
-    for (const r of replies) if (r.result) times.set(chunk[r.id], Number(BigInt(r.result.timestamp)));
+    for (const r of Array.isArray(replies) ? replies : []) if (r?.result) times.set(chunk[r.id], Number(BigInt(r.result.timestamp)));
+    for (const bn of chunk.filter((b) => !times.has(b))) {
+      const block = (await call("eth_getBlockByNumber", [bn, false])) as { timestamp: Hex } | null;
+      if (block) times.set(bn, Number(BigInt(block.timestamp)));
+    }
   }
   if (times.size < blocks.length) throw new Error("missing block timestamps");
   return logs.map((l) => ({

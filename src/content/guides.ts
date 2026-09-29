@@ -31,12 +31,12 @@ export const GUIDES: Guide[] = [
   {
     id: "opstack",
     title: "OP Stack chains",
-    subtitle: "Base, OP Mainnet, World Chain, Blast, Unichain, Ink, Lisk, Zora, Mode…",
+    subtitle: "Base, OP Mainnet, Mantle, World Chain, Blast, Celo, Unichain, Ink, Manta Pacific, Boba…",
     live: true,
     steps: [
       "Open the chain's official bridge (most OP Stack chains use Superbridge) and connect the wallet that made the withdrawal.",
       "Go to the activity or history tab and find the withdrawal.",
-      "If it says Prove, click it and confirm on Ethereum. Then wait about 7 days.",
+      "If it says Prove, click it and confirm on Ethereum. Then wait about 7 days (less on a few chains, e.g. 12 hours on Mantle).",
       "When it says Finalize or Claim, click it and confirm on Ethereum. The funds are sent to your address.",
     ],
     note: "Already proven? Only the finalize step is left. Both steps are ordinary Ethereum transactions from your own wallet. OP Mainnet withdrawals from before June 6, 2023 (the Bedrock upgrade) usually don't show up in bridge apps: use the manual steps below.",
