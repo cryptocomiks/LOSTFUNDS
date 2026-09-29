@@ -1,5 +1,6 @@
 import { defineChain, type Address, type Chain } from "viem";
 import {
+  abstract,
   arbitrum,
   arbitrumNova,
   base,
@@ -8,6 +9,7 @@ import {
   bob,
   celo,
   codex,
+  cronoszkEVM,
   cyber,
   dbkchain,
   fraxtal,
@@ -16,6 +18,7 @@ import {
   hashkey,
   hemi,
   ink,
+  lens,
   linea,
   lisk,
   lyra,
@@ -33,14 +36,16 @@ import {
   scroll,
   shape,
   soneium,
+  sophon,
   superseed,
   unichain,
   worldchain,
+  zksync,
   zora,
 } from "viem/chains";
 import { chainConfig } from "viem/op-stack";
 
-export type Family = "opstack" | "arbitrum" | "scroll" | "linea";
+export type Family = "opstack" | "arbitrum" | "scroll" | "linea" | "zksync";
 
 export interface Network {
   id: string;
@@ -467,6 +472,92 @@ const OP_STACK: Network[] = [
   } as Network["contracts"],
 }));
 
+/**
+ * ZKsync Era and the ZK Stack chains that settle on Ethereum. They share the L1 bridge contracts
+ * (see checks/zksync.ts); per chain: its diamond on Ethereum (Bridgehub.getZKChain), its legacy
+ * L2 bridge (zks_getBridgeContracts) and, for custom gas tokens, the base token's L1 address
+ * (Bridgehub.baseToken). Only the chains' own RPC nodes serve zks_getL2ToL1LogProof (and full
+ * receipts); history comes from their full-history event search, plus Blockscout for Era. The
+ * chains' own explorer APIs ignore topic filters in event searches, so they aren't used.
+ */
+const ZK_STACK_CHAINS: Omit<Network, "family" | "guideId">[] = [
+  {
+    id: "zksync",
+    name: "ZKsync Era",
+    chain: zksync,
+    rpcs: ["https://mainnet.era.zksync.io"],
+    blockscout: "https://zksync.blockscout.com",
+    logsRpcs: ["https://mainnet.era.zksync.io"],
+    llama: "era",
+    explorer: "https://explorer.zksync.io",
+    bridgeUrl: "portal.zksync.io",
+    contracts: {
+      diamond: "0x32400084C286CF3E17e7B677ea9583e60a000324",
+      l2LegacyBridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
+    },
+  },
+  {
+    id: "abstract",
+    name: "Abstract",
+    chain: abstract,
+    rpcs: ["https://api.mainnet.abs.xyz"],
+    logsRpcs: ["https://api.mainnet.abs.xyz"],
+    llama: "abstract",
+    explorer: "https://abscan.org",
+    bridgeUrl: "the official Abstract bridge",
+    contracts: {
+      diamond: "0x2EDc71E9991A962c7FE172212d1aA9E50480fBb9",
+      l2LegacyBridge: "0x954ba8223a6bfec1cc3867139243a02ba0bc66e4",
+    },
+  },
+  {
+    id: "sophon",
+    name: "Sophon",
+    chain: sophon,
+    rpcs: ["https://rpc.sophon.xyz"],
+    logsRpcs: ["https://rpc.sophon.xyz"],
+    llama: "sophon",
+    explorer: "https://explorer.sophon.xyz",
+    bridgeUrl: "portal.sophon.xyz",
+    contracts: {
+      diamond: "0x05eDE6aD1f39B7A16C949d5C33a0658c9C7241e3",
+      l2LegacyBridge: "0x954ba8223a6bfec1cc3867139243a02ba0bc66e4",
+      baseToken: "0x6B7774CB12ed7573a7586E7D0e62a2A563dDd3f0", // SOPH
+    },
+  },
+  {
+    id: "lens",
+    name: "Lens",
+    chain: lens,
+    rpcs: ["https://rpc.lens.xyz", "https://api.lens.matterhosted.dev"],
+    logsRpcs: ["https://rpc.lens.xyz", "https://api.lens.matterhosted.dev"],
+    llama: "lens",
+    explorer: "https://explorer.lens.xyz",
+    bridgeUrl: "lens.xyz/bridge",
+    contracts: {
+      diamond: "0xc29d04A93F893700015138E3E334eB828dAC3cef",
+      l2LegacyBridge: "0x8116a750e2091b2ba0d94223e7b20a6a65a279f4",
+      baseToken: "0x1ff1dC3cB9eeDbC6Eb2d99C03b30A05cA625fB5a", // LGHO (Lens wrapped GHO)
+    },
+  },
+  {
+    id: "cronos-zkevm",
+    name: "Cronos zkEVM",
+    chain: cronoszkEVM,
+    rpcs: ["https://mainnet.zkevm.cronos.org"],
+    logsRpcs: ["https://mainnet.zkevm.cronos.org"],
+    llama: "cronos_zkevm",
+    explorer: "https://explorer.zkevm.cronos.org",
+    bridgeUrl: "zkevm.cronos.org/bridge",
+    contracts: {
+      diamond: "0x7b2DA4e77BAE0e0d23c53C3BE6650497d0576CFc",
+      l2LegacyBridge: "0x309429de3621992cb0ab8982a448c9cc5c38405b",
+      baseToken: "0x28Ff2E4dD1B58efEB0fC138602A28D5aE81e44e2", // zkCRO
+    },
+  },
+];
+const ZK_STACK: Network[] = ZK_STACK_CHAINS.map((n) => ({ ...n, family: "zksync", guideId: "zksync" }));
+
 export const NETWORKS: Network[] = [
   ...OP_STACK,
   {
@@ -615,6 +706,7 @@ export const NETWORKS: Network[] = [
       l1Rollup: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
     },
   },
+  ...ZK_STACK,
 ];
 
 export const networkById = (id: string) => NETWORKS.find((n) => n.id === id);

@@ -13,6 +13,7 @@ Free, read-only, no wallet connection. Everything runs in the browser.
 | Polygon PoS | ERC20 burns (`Transfer` to 0x0) of tokens mapped by the PoS bridge (`RootChainManager.childToRootToken`) → one exit proof per burn from Polygon's proof generator → `RootChainManager.exit` simulated on Ethereum (`EXIT_ALREADY_PROCESSED` = claimed; WETH exits as ETH). Native POL / MATIC (Plasma) withdrawals aren't covered. |
 | Scroll | Gateway / messenger events → `L1ScrollMessenger.isL2MessageExecuted(hash)`. |
 | Linea | `MessageSent` / token-bridge events → `LineaRollup.isMessageClaimed(nonce)` + L1 `MessageClaimed` events. |
+| ZKsync Era, Abstract, Sophon, Lens, Cronos zkEVM | Withdrawal events (base token, legacy bridge, asset router) → the receipt's L2→L1 message + `zks_getL2ToL1LogProof` → `L1Nullifier.isWithdrawalFinalized` on Ethereum (plus the Era diamond's and old `L1ERC20Bridge`'s own records for Era withdrawals before June 2024), the chain's executed batches, then a dry run of `L1Nullifier.finalizeDeposit`. |
 | deBridge (any route: 30+ EVM chains, Solana, Tron) | Stuck orders from deBridge's public API → `DlnSource.giveOrders` / `DlnDestination.takeOrders` on each EVM side (`src/lib/evm.ts`). |
 | Gnosis Bridge (OmniBridge + xDAI bridge, Gnosis → Ethereum) | OmniBridge `TokensBridgingInitiated` (by sender) and xDAI bridge `UserRequestForSignature` (by recipient) from full-history event search on Gnosis RPC nodes → `relayedMessages` on Ethereum. Unclaimed ones: `executeSignatures` is simulated with the validators' signatures stored on Gnosis; if it's rejected, the signers are recovered to tell transfers stranded by a validator change ("check manually") from the rest. |
 | Celer cBridge (refunds) | Transfer history from cBridge's public API → refunds waiting for the user (`REFUND_TO_BE_CONFIRMED`, liquidity pools) → `Pool.withdraws(wdId)` on the source chain + an eth_call of `withdraw(...)` with Celer's signatures. |
@@ -24,7 +25,9 @@ Solana addresses are accepted too: they run the Wormhole, deBridge and Circle CC
 
 OP Stack chains left out because they are offline or have no full-history source: Ancient8, Form, PGN, Redstone, RSS3 VSL, SnaxChain, Swan Chain, Swellchain, Zircuit. Not covered either: Mantle withdrawals from before its v2 upgrade (March 2024) and Boba's from before Anchorage (April 2024), which have no `MessagePassed` event.
 
-Another 20+ bridges (ZKsync, Starknet, LayerZero, Gnosis…) have step-by-step claim guides.
+Another 20+ bridges (Starknet, LayerZero, Synapse…) have step-by-step claim guides.
+
+ZK Stack chains left out because their RPC nodes are offline (no receipts or proofs): Treasure, ZKcandy, ZERO Network.
 
 ## Develop
 

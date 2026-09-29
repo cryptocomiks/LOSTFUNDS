@@ -47,6 +47,24 @@ interface StoredTx {
   timestamp: number;
   blockNumber: bigint;
   logs: StoredLog[];
+  zk?: ZkReceiptFields;
+}
+
+/** ZK Stack receipt fields, and the node's zks_getL2ToL1LogProof answers. */
+export interface ZkReceiptFields {
+  /** null: the batch isn't sealed yet. */
+  l1BatchNumber: bigint | null;
+  l1BatchTxIndex: number;
+  l2ToL1Logs: { sender: Address; key: Hex; value: Hex }[];
+  /** Proof for each L2→L1 log, by index (missing or null: no proof yet). */
+  proofs?: ({ id: number; proof: Hex[] } | null)[];
+}
+
+/** Thrown by a mock contract function to revert with this data (e.g. a custom error selector). */
+export class MockRevertData extends Error {
+  constructor(public data: Hex) {
+    super(`revert ${data}`);
+  }
 }
 
 const STATIC_HOSTS = new Set([
@@ -90,6 +108,7 @@ export class MockChain {
     blockNumber: bigint;
     timestamp: number;
     logs: { address: Address; event: AbiEvent; args: Record<string, unknown> }[];
+    zk?: ZkReceiptFields;
   }) {
     const logs = p.logs.map((l) => {
       const topics = encodeEventTopics({ abi: [l.event], eventName: l.event.name, args: l.args as never }) as Hex[];
@@ -117,6 +136,7 @@ export class MockChain {
       timestamp: p.timestamp,
       blockNumber: p.blockNumber,
       logs,
+      zk: p.zk,
     });
   }
 
@@ -135,6 +155,7 @@ export class MockChain {
       if (result === undefined) return { ok: true, data: "0x" }; // function with no return value
       return { ok: true, data: encodeFunctionResult({ abi: c.abi, functionName, result } as never) };
     } catch (e) {
+      if (e instanceof MockRevertData) return { ok: false, data: e.data };
       // `revert("reason")` in a contract fn: a real Error(string) revert.
       if (e instanceof MockRevert)
         return { ok: false, reason: e.message, data: encodeErrorResult({ abi: [ERROR_STRING], errorName: "Error", args: [e.message] }) };
@@ -183,7 +204,23 @@ export class MockChain {
             transactionIndex: "0x0",
             removed: false,
           })),
+          ...(tx.zk && {
+            l1BatchNumber: tx.zk.l1BatchNumber === null ? null : numberToHex(tx.zk.l1BatchNumber),
+            l1BatchTxIndex: tx.zk.l1BatchNumber === null ? null : numberToHex(tx.zk.l1BatchTxIndex),
+            l2ToL1Logs: tx.zk.l2ToL1Logs.map((l, i) => ({
+              ...l,
+              logIndex: numberToHex(i),
+              transactionIndex: "0x0", // index in the block, not in the batch
+              transactionHash: tx.hash,
+              isService: true,
+              shardId: "0x0",
+            })),
+          }),
         });
+      }
+      case "zks_getL2ToL1LogProof": {
+        const [hash, index] = req.params as [Hex, number];
+        return reply(this.txs.get(`${chainId}:${hash}`)?.zk?.proofs?.[index] ?? null);
       }
       case "eth_call": {
         const { to, data } = req.params[0] as { to: string; data: Hex };

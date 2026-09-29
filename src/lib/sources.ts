@@ -11,6 +11,7 @@ import { checkOpStack } from "./checks/opstack";
 import { checkPolygon, POLYGON } from "./checks/polygon";
 import { checkScroll } from "./checks/scroll";
 import { checkWormhole } from "./checks/wormhole";
+import { checkZkSync } from "./checks/zksync";
 import { NETWORKS, type Family, type Network } from "./networks";
 
 export type Group = "l2" | "solana" | "airdrops";
@@ -39,6 +40,7 @@ const FAMILY: Record<Family, (net: Network, user: Address) => Promise<CheckOutpu
   arbitrum: checkArbitrum,
   scroll: checkScroll,
   linea: checkLinea,
+  zksync: checkZkSync,
 };
 
 export const SOURCES: CheckSource[] = [
