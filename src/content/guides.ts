@@ -82,14 +82,18 @@ export const GUIDES: Guide[] = [
   {
     id: "zksync",
     title: "ZKsync Era and ZK Stack chains",
-    subtitle: "ZKsync Era, Sophon, Abstract, Lens, Cronos zkEVM",
+    subtitle: "ZKsync Era, Abstract, Sophon, Lens, Cronos zkEVM",
+    live: true,
     steps: [
-      "Most withdrawals are finalized automatically a few hours after the batch is proven.",
-      "If yours wasn't, open the chain's official bridge portal and connect your wallet.",
-      "Find the withdrawal in the history. If it shows Claim, click it and confirm on Ethereum.",
+      "A withdrawal can be claimed on Ethereum once its batch has been executed there: about 4 hours on ZKsync Era and Abstract, up to a day or two on Sophon, Lens and Cronos zkEVM. There is no 7-day wait.",
+      "Nobody claims it for you. Open the chain's official bridge (portal.zksync.io for ZKsync Era) and connect the wallet that made the withdrawal.",
+      "Find the withdrawal in the history. If it shows Claim or Finalize, click it and confirm on Ethereum.",
     ],
+    note: "The claim is an ordinary Ethereum transaction, and it can be sent from any wallet: the funds always go to the receiver set when the withdrawal was made. Gas-token withdrawals (SOPH, LGHO, zkCRO) arrive as that token on Ethereum. Abstract Global Wallet users: check your smart-account address, not the signer's.",
     manual: [
-      "Get the message proof with zks_getL2ToL1LogProof on the L2, then call finalizeWithdrawal (or finalizeDeposit on newer contracts) on the L1 shared bridge.",
+      "Get the proof with zks_getL2ToL1LogProof(your L2 transaction hash, index of its L2→L1 log, usually 0) on the chain's RPC. The transaction receipt gives the batch number (l1BatchNumber) and the index in the batch (l1BatchTxIndex); the message is the data of its L1MessageSent log.",
+      "On Ethereum, call finalizeDeposit on the L1Nullifier (0xD7f9f54194C633F36CCD5F3da84ad4a1c38cB2cB) with the chain id, the batch number, the proof's id, the L2 contract that sent the message (0x…800A for ETH or the gas token), the index in the batch, the message and the proof.",
+      "An AI assistant with Ethereum tooling can prepare this transaction as unsigned data for you to review and sign in your own wallet. Never give anyone your private key.",
     ],
   },
   {
