@@ -7,6 +7,7 @@ import { checkDebridge } from "../src/lib/checks/debridge.ts";
 import { checkPolygon } from "../src/lib/checks/polygon.ts";
 import { checkWormhole, decodeTransferVaa } from "../src/lib/checks/wormhole.ts";
 import { associatedTokenAddress, findProgramAddress, hexBytes, u16be, u64be } from "../src/lib/solana.ts";
+import { base58 } from "@scure/base";
 import { sourcesFor } from "../src/lib/checker.ts";
 import { MockChain } from "./mockchain.ts";
 import {
@@ -270,10 +271,10 @@ describe("Polygon PoS", () => {
 });
 
 describe("Wallet kinds", () => {
-  test("a Solana address runs only the Solana ↔ Ethereum checks", () => {
+  test("a Solana address runs only the checks that apply to Solana", () => {
     assert.deepEqual(
       sourcesFor("solana").map((s) => s.id),
-      ["wormhole", "debridge", "cctp"],
+      ["wormhole", "debridge", "cctp", "airdrop-kamino-s3"],
     );
   });
   test("an Ethereum address runs everything", () => {
@@ -325,6 +326,33 @@ describe("Airdrops", () => {
   test("counts a claimed airdrop as completed", async () => {
     const r = await checkAirdrops(CLAIMED);
     assert.deepEqual([r.findings.length, r.completed], [0, 2]);
+  });
+  test("Kamino (Solana): unclaimed, claimed, clawed back and not eligible", async () => {
+    const PROGRAM = "KdisqEcXbXKaTrBFqeDLhMmBvymLTwj9GmhDcdJyGat";
+    const TREE = "D3GQ7qRYHeDN7Ci7afLuwaRBqb4EAgxXFKtYGLy9L3Hw";
+    const CLAWED = "WLNqXyuW2aWR6B6USyYSoMBDBkMtrKKVMy2ZbH28dM3";
+    const [unclaimed, claimed, clawed] = [
+      "WHap92SebrYjz8bqv9rGhQcSdc8APCZFfxvb6sLVzch",
+      "2pEgewFKcLdHNeFDiWM4EQhSPJvgTxmcCHDUK56jj91U",
+      "XG1TdMjXdU699exrdGevCFC5QT5h215J7uZjzTJcedZ",
+    ];
+    const api = "https://api.kamino.finance/distributor/user";
+    world.static[`${api}/${unclaimed}`] = { merkle_tree: TREE, amount: 555214547, proof: [] };
+    world.static[`${api}/${claimed}`] = { merkle_tree: TREE, amount: 15076657, proof: [] };
+    world.static[`${api}/${clawed}`] = { merkle_tree: CLAWED, amount: 1, proof: [] };
+    world.solana[TREE] = new Uint8Array(376);
+    world.solana[CLAWED] = new Uint8Array(376).fill(1, 265, 266);
+    const status = (who: string) =>
+      findProgramAddress([new TextEncoder().encode("ClaimStatus"), base58.decode(who), base58.decode(TREE)], PROGRAM);
+    world.solana[status(claimed)] = new Uint8Array(104);
+
+    const a = await checkAirdrops(unclaimed);
+    assert.equal(a.findings.length, 1);
+    assert.equal(a.findings[0].asset.amount, 555214547n);
+    assert.equal(a.findings[0].asset.symbol, "KMNO");
+    assert.deepEqual(await checkAirdrops(claimed), { findings: [], completed: 1 });
+    assert.deepEqual(await checkAirdrops(clawed), { findings: [], completed: 0 }, "clawed back: no longer claimable");
+    assert.deepEqual(await checkAirdrops("5WN3T8AXQ3JnyUE5Zu5LDh8wS5Mdpx43E2KnDeRvZjC3"), { findings: [], completed: 0 });
   });
   test("ignores addresses that weren't eligible", async () => {
     const r = await checkAirdrops("0x32b5555555555555555555555555555555555555");

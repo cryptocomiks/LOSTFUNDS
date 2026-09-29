@@ -39,6 +39,14 @@ interface StoredTx {
   logs: StoredLog[];
 }
 
+const STATIC_HOSTS = new Set([
+  "raw.githubusercontent.com",
+  "api.kamino.finance",
+  "governance.1inch.io",
+  "safe-claiming-app-data.safe.global",
+  "lostfunds.vercel.app",
+]);
+
 type ContractFn = (args: readonly unknown[]) => unknown;
 
 export class MockChain {
@@ -249,10 +257,10 @@ export class MockChain {
       return json({ coins });
     }
 
-    if (url.host === "raw.githubusercontent.com") {
-      const hit = this.static[url.href];
-      return hit ? json(hit) : new Response("404: Not Found", { status: 404 });
-    }
+    // Static files and simple JSON APIs, served by URL.
+    const hit = this.static[url.href];
+    if (hit !== undefined) return typeof hit === "string" ? new Response(hit) : json(hit);
+    if (STATIC_HOSTS.has(url.host)) return new Response('{"error":"not found"}', { status: 404 });
     if (url.host === "api.wormholescan.io") {
       const tx = url.pathname.match(/^\/api\/v1\/transactions$/);
       if (tx) return json({ transactions: this.wormhole.transactions[(url.searchParams.get("address") ?? "").toLowerCase()] ?? [] });

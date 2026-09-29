@@ -1,6 +1,8 @@
 import { formatUnits, getAddress, parseAbi, type Address, type Hex } from "viem";
 import { l1Client } from "../clients";
 import { evmClient } from "../evm";
+import { accountsData, findProgramAddress } from "../solana";
+import { base58 } from "@scure/base";
 import type { Asset } from "../types";
 import type { CheckOutput, FindingSource } from "./common";
 import { makeFinding, now } from "./common";
@@ -28,6 +30,8 @@ type Lookup =
 
 export interface Airdrop {
   id: string;
+  /** Wallet kinds that can be eligible. */
+  accepts: ("evm" | "solana")[];
   /** Name in the checker grid. */
   name: string;
   label: string;
@@ -41,7 +45,8 @@ export interface Airdrop {
   /** Link shown as "View transaction": the claim contract. */
   txUrl: string;
   asset: (amount: bigint) => Asset;
-  lookup: (user: Address) => Promise<Lookup>;
+  /** `user` is a checksummed EVM address or a base58 Solana address, per `accepts`. */
+  lookup: (user: string) => Promise<Lookup>;
 }
 
 /**
@@ -99,9 +104,33 @@ const sonicAbi = parseAbi([
   "function getSeasonBalances(uint8 season, address user) view returns (uint128 balance, uint128 vested, uint128 penalty)",
 ]);
 
+/**
+ * Kamino's Season 3 KMNO airdrop (Solana). Kamino's API gives each wallet's allocation;
+ * a ClaimStatus account exists once it's claimed. Past its clawback date, but the tokens
+ * stay claimable until Kamino actually claws them back (the distributor's flag).
+ */
+const KAMINO_PROGRAM = "KdisqEcXbXKaTrBFqeDLhMmBvymLTwj9GmhDcdJyGat";
+const CLAWED_BACK_OFFSET = 265;
+
+async function kaminoLookup(user: string): Promise<Lookup> {
+  const res = await fetch(`https://api.kamino.finance/distributor/user/${user}`, { signal: AbortSignal.timeout(20_000) });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Kamino API: HTTP ${res.status}`);
+  const { merkle_tree: tree, amount } = (await res.json()) as { merkle_tree: string; amount: number | string };
+  const claimStatus = findProgramAddress(
+    [new TextEncoder().encode("ClaimStatus"), base58.decode(user), base58.decode(tree)],
+    KAMINO_PROGRAM,
+  );
+  const [distributor, status] = await accountsData([tree, claimStatus]);
+  if (status) return { claimed: true };
+  if (!distributor || distributor[CLAWED_BACK_OFFSET] !== 0) return null; // clawed back: no longer claimable
+  return { claimed: false, amount: BigInt(amount) };
+}
+
 export const AIRDROP_LIST: Airdrop[] = [
   {
     id: "uni-2020",
+    accepts: ["evm"],
     name: "Uniswap (UNI)",
     label: "Uniswap airdrop",
     symbol: "UNI",
@@ -112,7 +141,7 @@ export const AIRDROP_LIST: Airdrop[] = [
     txUrl: `https://etherscan.io/address/${UNI_DISTRIBUTOR}#writeContract`,
     asset: (amount) => ({ symbol: "UNI", decimals: 18, amount, token: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", tokenChain: "ethereum" }),
     lookup: async (user) => {
-      const entry = await uniList(user);
+      const entry = await uniList(user as Address);
       if (!entry) return null;
       const claimed = await l1Client().readContract({
         address: UNI_DISTRIBUTOR,
@@ -125,6 +154,7 @@ export const AIRDROP_LIST: Airdrop[] = [
   },
   {
     id: "zora-2025",
+    accepts: ["evm"],
     name: "Zora (ZORA)",
     label: "Zora airdrop",
     symbol: "ZORA",
@@ -139,7 +169,7 @@ export const AIRDROP_LIST: Airdrop[] = [
         address: ZORA_CLAIM,
         abi: zoraAbi,
         functionName: "accountClaim",
-        args: [user],
+        args: [user as Address],
       });
       if (!allocation) return null;
       return claimed ? { claimed: true } : { claimed: false, amount: allocation };
@@ -147,6 +177,7 @@ export const AIRDROP_LIST: Airdrop[] = [
   },
   {
     id: "sonic-2025",
+    accepts: ["evm"],
     name: "Sonic (S)",
     label: "Sonic airdrop",
     symbol: "S",
@@ -163,7 +194,7 @@ export const AIRDROP_LIST: Airdrop[] = [
       for (const season of [1, 2]) {
         const [data, [balance]] = await Promise.all([
           c.readContract({ address: SONIC_AIRDROP, abi: sonicAbi, functionName: "getSeasonData", args: [season] }),
-          c.readContract({ address: SONIC_AIRDROP, abi: sonicAbi, functionName: "getSeasonBalances", args: [season, user] }),
+          c.readContract({ address: SONIC_AIRDROP, abi: sonicAbi, functionName: "getSeasonBalances", args: [season, user as Address] }),
         ]);
         const burnAt = Number(data[3]);
         if (balance > 0n && now() < burnAt) {
@@ -180,14 +211,29 @@ export const AIRDROP_LIST: Airdrop[] = [
       };
     },
   },
+  {
+    id: "kamino-s3",
+    accepts: ["solana"],
+    name: "Kamino (KMNO)",
+    label: "Kamino Season 3 airdrop",
+    symbol: "KMNO",
+    decimals: 6,
+    claimAt: "app.kamino.finance",
+    date: 1779890200, // distribution opened May 27, 2026
+    note: "Kamino's Season 3 KMNO was never claimed by this wallet. Its official claim period is over, but the tokens are still on-chain and claimable until Kamino takes them back: claim soon.",
+    txUrl: `https://solscan.io/account/${KAMINO_PROGRAM}`,
+    asset: (amount) => ({ symbol: "KMNO", decimals: 6, amount, priceKey: "solana:KMNo3nJsBXfcpJTVhZcXLW7RmTwTt4GVFE7suUBo9sS" }),
+    lookup: kaminoLookup,
+  },
 ];
 
 /** Checks one airdrop, or all of them. */
-export async function checkAirdrops(user: Address, list: Airdrop[] = AIRDROP_LIST): Promise<CheckOutput> {
+export async function checkAirdrops(user: string, list: Airdrop[] = AIRDROP_LIST): Promise<CheckOutput> {
   const out: CheckOutput = { findings: [], completed: 0 };
+  const kind = user.startsWith("0x") ? "evm" : "solana";
   await Promise.all(
-    list.map(async (a) => {
-      const r = await a.lookup(getAddress(user));
+    list.filter((a) => a.accepts.includes(kind)).map(async (a) => {
+      const r = await a.lookup(kind === "evm" ? getAddress(user) : user);
       if (!r) return; // not eligible
       if (r.claimed) {
         out.completed++;

@@ -29,4 +29,5 @@ export const NETWORK_COLORS: Record<string, string> = {
   "airdrop-uni-2020": "#FF007A",
   "airdrop-zora-2025": "radial-gradient(circle at 30% 30%,#FCB8D4,#2B5DF0 60%,#1a1a1a)",
   "airdrop-sonic-2025": "linear-gradient(135deg,#FE9A4D,#0F2C5C)",
+  "airdrop-kamino-s3": "linear-gradient(135deg,#4AA7FF,#1D2B53)",
 };

@@ -64,8 +64,8 @@ export const SOURCES: CheckSource[] = [
     name: a.name,
     group: "airdrops" as const,
     bridgeUrl: a.claimAt,
-    accepts: ["evm" as const],
-    run: (user: string) => checkAirdrops(user as Address, [a]),
+    accepts: a.accepts,
+    run: (user: string) => checkAirdrops(user, [a]),
   })),
 ];
 
