@@ -37,6 +37,8 @@ export interface Finding {
   /** Unix seconds when the withdrawal becomes claimable (status "waiting"). */
   readyAt?: number;
   note?: string;
+  /** Where to claim, when it isn't the source's own bridge app (e.g. one airdrop among several). */
+  claimAt?: string;
 }
 
 export type NetworkCheckState = "queued" | "running" | "done" | "error";

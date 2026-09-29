@@ -28,6 +28,8 @@ export function makeFinding(
     txUrl?: string;
     /** Overrides the source's display name (e.g. "Wormhole · Solana → Ethereum"). */
     label?: string;
+    /** Where to claim, when it isn't the source's own bridge app. */
+    claimAt?: string;
   },
 ): Finding {
   return {
@@ -42,6 +44,7 @@ export function makeFinding(
     timestamp: p.timestamp,
     readyAt: p.readyAt,
     note: p.note,
+    claimAt: p.claimAt,
   };
 }
 

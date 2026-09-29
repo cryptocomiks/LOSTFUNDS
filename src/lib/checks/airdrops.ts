@@ -439,6 +439,7 @@ export async function checkAirdrops(user: string, list: Airdrop[] = AIRDROP_LIST
           txUrl: a.txUrl,
           timestamp: a.date,
           note: r.note ?? a.note,
+          claimAt: a.claimAt,
         }),
       );
     }),

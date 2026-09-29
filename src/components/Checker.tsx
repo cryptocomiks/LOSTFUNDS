@@ -57,7 +57,8 @@ function openGuide(id: string) {
 
 function FindingRow({ f, index }: { f: Finding; index: number }) {
   const s = STATUS[f.status];
-  const net = sourceById(f.networkId)!;
+  // Some findings (airdrops) come from a source listed under another id: never assume it exists.
+  const claimAt = f.claimAt ?? sourceById(f.networkId)?.bridgeUrl;
   return (
     <li className="animate-fade-up px-5 py-5 sm:px-6" style={{ animationDelay: `${index * 50}ms` }}>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -101,11 +102,13 @@ function FindingRow({ f, index }: { f: Finding; index: number }) {
         </a>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px] text-text-3">
-        Where to claim:
-        <code className="rounded-md bg-fill px-1.5 py-0.5 font-mono text-[12px] text-text-2">{net.bridgeUrl}</code>
-        <span className="hidden sm:inline">(type it yourself)</span>
-      </div>
+      {claimAt && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px] text-text-3">
+          Where to claim:
+          <code className="rounded-md bg-fill px-1.5 py-0.5 font-mono text-[12px] text-text-2">{claimAt}</code>
+          <span className="hidden sm:inline">(type it yourself)</span>
+        </div>
+      )}
     </li>
   );
 }

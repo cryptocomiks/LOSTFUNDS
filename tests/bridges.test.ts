@@ -996,6 +996,7 @@ describe("Airdrops", () => {
     assert.equal(by.CVX.asset.amount, 3n * 10n ** 18n);
     assert.equal(by["1INCH"].asset.amount, 50n * 10n ** 18n);
     assert.equal(by.UNI.asset.amount, 400n * 10n ** 18n);
+    assert.ok(r.findings.every((f) => f.claimAt), "every airdrop finding says where to claim (the UI has no source for id \"airdrops\")");
     assert.equal(by.ZORA.asset.amount, 20_000n * 10n ** 18n);
     assert.equal(by.S.asset.amount, 1000n * 10n ** 18n, "the season past its burn date is left out");
     assert.match(by.S.note ?? "", /burned/);
