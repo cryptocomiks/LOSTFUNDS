@@ -14,7 +14,8 @@ function Steps({ items, start = 1 }: { items: string[]; start?: number }) {
           <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-fill-strong text-[12px] font-semibold text-text-2 tabular-nums">
             {start + i}
           </span>
-          <span className="break-words [overflow-wrap:anywhere]">{s}</span>
+          {/* min-w-0: lets long addresses wrap instead of pushing the text out of the box on phones. */}
+          <span className="min-w-0 break-words [overflow-wrap:anywhere]">{s}</span>
         </li>
       ))}
     </ol>

@@ -1,4 +1,4 @@
-import { createPublicClient, fallback, http, type Chain, type PublicClient } from "viem";
+import { createPublicClient, defineChain, fallback, http, type Chain, type PublicClient } from "viem";
 import {
   abstract,
   arbitrum,
@@ -37,6 +37,24 @@ import {
   zilliqa,
 } from "viem/chains";
 import { acala, aurora, blast, celo, creditCoin3Mainnet, ink, kaia, karura, mezo, moonbeam, scroll, unichain, worldchain, xLayer, xrplevm, zeroGMainnet } from "viem/chains";
+import {
+  citrea,
+  etherlink,
+  fluent,
+  gensyn,
+  hemi,
+  immutableZkEvm,
+  katana,
+  polygonZkEvm,
+  redbellyMainnet,
+  ronin,
+  rootstock,
+  saga,
+  stable,
+  swellchain,
+  tac,
+  zksync,
+} from "viem/chains";
 
 /**
  * EVM chains that cross-chain bridges (deBridge, CCTP, Wormhole…) can start or end on.
@@ -125,6 +143,60 @@ EVM_CHAINS.push(
   def(acala, "Acala", "acala", "coingecko:acala", ["https://eth-rpc-acala.aca-api.network"]),
   def(mezo, "Mezo", "mezo", "coingecko:bitcoin", [drpc("mezo"), "https://rpc-http.mezo.boar.network"]),
   def(creditCoin3Mainnet, "Creditcoin", "creditcoin", "coingecko:creditcoin-2", ["https://mainnet3.creditcoin.network", drpc("creditcoin")]),
+);
+
+/**
+ * Chains where Merkl pays rewards, so they can be verified on-chain: each RPC answered a CORS
+ * preflight and showed Merkl's distributor on Oct 1, 2026. Chains with less than ~$5k of
+ * unclaimed Merkl rewards in total were left out. Kept apart so other additions merge cleanly.
+ */
+const MULTICALL3 = { multicall3: { address: "0xcA11bde05977b3631167028862bE2a173976CA11" as const } };
+const ethereal = defineChain({
+  id: 5064014,
+  name: "Ethereal",
+  nativeCurrency: { name: "USDe", symbol: "USDe", decimals: 18 },
+  rpcUrls: { default: { http: ["https://rpc.ethereal.trade"] } },
+  blockExplorers: { default: { name: "Ethereal Explorer", url: "https://explorer.ethereal.trade" } },
+  contracts: MULTICALL3,
+});
+const pharos = defineChain({
+  id: 1672,
+  name: "Pharos",
+  nativeCurrency: { name: "Pharos", symbol: "PROS", decimals: 18 },
+  rpcUrls: { default: { http: ["https://rpc.pharos.xyz"] } },
+  blockExplorers: { default: { name: "PharosScan", url: "https://pharosscan.xyz" } },
+  contracts: MULTICALL3,
+});
+/** Plain definition: viem's own brings Tempo's transaction formatters (and their code) along. */
+const tempo = defineChain({
+  id: 4217,
+  name: "Tempo",
+  nativeCurrency: { name: "USD", symbol: "USD", decimals: 6 },
+  rpcUrls: { default: { http: ["https://rpc.tempo.xyz"] } },
+  blockExplorers: { default: { name: "Tempo Explorer", url: "https://explore.tempo.xyz" } },
+  contracts: MULTICALL3,
+});
+EVM_CHAINS.push(
+  def(stable, "Stable", "stable", "coingecko:tether", ["https://rpc.stable.xyz", drpc("stable")]),
+  def(tempo, "Tempo", "tempo", "coingecko:usd-coin", ["https://rpc.tempo.xyz", drpc("tempo")]),
+  def(katana, "Katana", "katana", "coingecko:ethereum", ["https://rpc.katana.network", "https://rpc.katanarpc.com", drpc("katana")]),
+  def(ethereal, "Ethereal", "ethereal", "coingecko:ethena-usde", ["https://rpc.ethereal.trade"]),
+  def(gensyn, "Gensyn", "gensyn", "coingecko:ethereum", ["https://gensyn-mainnet.g.alchemy.com/public"]),
+  // viem's default Swellchain RPC is offline.
+  { ...def(swellchain, "Swellchain", "swellchain", "coingecko:ethereum", []), rpcs: [drpc("swell")] },
+  def(zksync, "ZKsync Era", "era", "coingecko:ethereum", ["https://mainnet.era.zksync.io", drpc("zksync")]),
+  def(polygonZkEvm, "Polygon zkEVM", "polygon_zkevm", "coingecko:ethereum", ["https://zkevm-rpc.com", drpc("polygon-zkevm")]),
+  def(pharos, "Pharos", "pharos", "coingecko:pharos-network", ["https://rpc.pharos.xyz"]),
+  def(rootstock, "Rootstock", "rsk", "coingecko:rootstock", ["https://public-node.rsk.co", "https://mycrypto.rsk.co", drpc("rootstock")]),
+  def(fluent, "Fluent", "fluent", "coingecko:ethereum", ["https://rpc.fluent.xyz"]),
+  def(hemi, "Hemi", "hemi", "coingecko:ethereum", ["https://rpc.hemi.network/rpc", drpc("hemi")]),
+  def(saga, "Saga", "saga", "coingecko:saga-2", ["https://sagaevm.jsonrpc.sagarpc.io"]),
+  def(etherlink, "Etherlink", "etlk", "coingecko:tezos", ["https://node.mainnet.etherlink.com", drpc("etherlink")]),
+  def(ronin, "Ronin", "ronin", "coingecko:ronin", ["https://api.roninchain.com/rpc"]),
+  def(redbellyMainnet, "Redbelly", "redbelly", "coingecko:redbelly-network-token", ["https://governors.mainnet.redbelly.network"]),
+  def(tac, "TAC", "tac", "coingecko:tac", ["https://rpc.ankr.com/tac", "https://rpc.tac.build", drpc("tac")]),
+  def(citrea, "Citrea", "citrea", "coingecko:bitcoin", ["https://rpc.mainnet.citrea.xyz"]),
+  def(immutableZkEvm, "Immutable zkEVM", "imx", "coingecko:immutable-x", ["https://rpc.immutable.com", drpc("immutable-zkevm")]),
 );
 
 export const evmChain = (id: number) => EVM_CHAINS.find((c) => c.id === id);

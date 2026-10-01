@@ -81,7 +81,12 @@ const STATIC_HOSTS = new Set([
   "governance.1inch.io",
   "safe-claiming-app-data.safe.global",
   "lostfunds.vercel.app",
+  "api.merkl.xyz",
 ]);
+
+/** Multicall3 lives elsewhere on a few chains (ZK Stack): the chain's own address, from viem. */
+const isMulticall = (chainId: number, to: string) =>
+  to.toLowerCase() === MULTICALL3 || to.toLowerCase() === EVM_CHAINS.find((c) => c.id === chainId)?.chain.contracts?.multicall3?.address.toLowerCase();
 
 /** RPC nodes used only for event searches (not in the chain registries): URL → chain id. */
 const EXTRA_RPCS: Record<string, number> = { "https://rpc.gnosis.gateway.fm": 100 };
@@ -250,7 +255,7 @@ export class MockChain {
       }
       case "eth_call": {
         const { to, data, from } = req.params[0] as { to: string; data: Hex; from?: Address };
-        if (to.toLowerCase() === MULTICALL3) {
+        if (isMulticall(chainId, to)) {
           const { args } = decodeFunctionData({ abi: multicall3Abi, data });
           const calls = args[0] as readonly { target: Address; callData: Hex }[];
           const results = calls.map((c) => {

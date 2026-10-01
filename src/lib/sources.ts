@@ -1,4 +1,5 @@
 import type { Address } from "viem";
+import { checkAaveV2, checkAaveV3 } from "./checks/aave-incentives";
 import { AIRDROP_LIST, checkAirdrops } from "./checks/airdrops";
 import { checkArbitrum } from "./checks/arbitrum";
 import { checkCctp, checkCctpFromSolana } from "./checks/cctp";
@@ -7,6 +8,7 @@ import type { CheckOutput } from "./checks/common";
 import { checkDebridge } from "./checks/debridge";
 import { checkGnosisBridge } from "./checks/gnosis";
 import { checkLinea } from "./checks/linea";
+import { checkMerkl } from "./checks/merkl";
 import { checkOpStack } from "./checks/opstack";
 import { checkPolygon, POLYGON } from "./checks/polygon";
 import { checkScroll } from "./checks/scroll";
@@ -84,6 +86,10 @@ export const SOURCES: CheckSource[] = [
     accepts: a.accepts,
     run: (user: string) => checkAirdrops(user, [a]),
   })),
+  // Protocol rewards earned and never claimed, on many EVM chains.
+  { id: "aave-v2", name: "Aave v2", group: "rewards", bridgeUrl: "app.aave.com", accepts: ["evm"], run: (user) => checkAaveV2(user as Address) },
+  { id: "aave-v3", name: "Aave v3", group: "rewards", bridgeUrl: "app.aave.com", accepts: ["evm"], run: (user) => checkAaveV3(user as Address) },
+  { id: "merkl", name: "Merkl", group: "rewards", bridgeUrl: "app.merkl.xyz", accepts: ["evm"], run: (user) => checkMerkl(user as Address) },
 ];
 
 export const sourceById = (id: string) => SOURCES.find((s) => s.id === id);

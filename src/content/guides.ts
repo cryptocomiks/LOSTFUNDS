@@ -29,6 +29,24 @@ export const GUIDES: Guide[] = [
     note: "Airdropped tokens can only go to the eligible wallet. Never sign anything on a site that asks you to \"approve\" tokens to receive an airdrop.",
   },
   {
+    id: "aave-merkl",
+    title: "Aave and Merkl rewards",
+    subtitle: "Aave v2 and v3 incentives, Merkl rewards on 50+ chains",
+    live: true,
+    steps: [
+      "Aave: open app.aave.com and connect the wallet that earned the rewards. In the market menu at the top, pick the market named in the result: the chain's V3 market (on Ethereum, Core or Prime), or its V2 market for Aave v2 rewards (Ethereum, Polygon or Avalanche).",
+      "On the Dashboard, click Claim next to Available rewards. If several tokens are listed, claim them one by one or all at once, then confirm in your wallet. You need a little gas on that chain.",
+      "Aave v2 rewards on Ethereum come as stkAAVE (staked AAVE). Keep it staked, or start its cooldown on the app's Staking page and unstake your AAVE once the cooldown is over.",
+      "Merkl: open app.merkl.xyz/users/ followed by your address, and connect the same wallet. Your rewards are listed chain by chain.",
+      "Switch your wallet to the chain shown in the result, click Claim and confirm. The tokens are sent straight to your address.",
+    ],
+    note: "Claiming only costs gas: there's no fee to pay and nothing to approve or sign besides the claim transaction itself. Rewards earned through a smart wallet or a vault belong to that contract's address.",
+    manual: [
+      "Aave v3: on the chain's block explorer, open the RewardsController linked from the result, then Write Contract → claimRewards(assets, amount, to, reward): the aToken and debt-token addresses you held, 115792089237316195423570985008687907853269984665640564039457584007913129639935 (everything), your address, and the reward token. Aave v2 works the same way on its IncentivesController, with claimRewards(assets, amount, to).",
+      "Merkl: on Merkl's Distributor (0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae on most chains), Write Contract → claim(users, tokens, amounts, proofs) with your address, the token, and the amount and proof Merkl's API gives for you (api.merkl.xyz/v4/users/<your address>/rewards?chainId=<chain id>).",
+    ],
+  },
+  {
     id: "opstack",
     title: "OP Stack chains",
     subtitle: "Base, OP Mainnet, Mantle, World Chain, Blast, Celo, Unichain, Ink, Manta Pacific, Boba…",
