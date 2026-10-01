@@ -5,7 +5,7 @@ const cache = new Map<string, PublicClient>();
 
 const transport = (rpcs: string[]) =>
   fallback(
-    rpcs.map((url) => http(url, { timeout: 15_000, retryCount: 1, batch: { wait: 16 } })),
+    rpcs.map((url) => http(url, { timeout: 15_000, retryCount: 2, retryDelay: 400, batch: { wait: 16 } })),
     { rank: false },
   );
 

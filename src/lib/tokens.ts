@@ -57,23 +57,75 @@ export async function tokenAsset(
   };
 }
 
-/** Best-effort USD prices from DefiLlama (keyless, CORS-enabled). Never throws. */
-export async function addPrices(assets: Asset[]): Promise<void> {
-  const keyOf = (a: Asset) =>
-    a.priceKey ?? (a.token ? `${a.tokenChain ?? "ethereum"}:${a.token.toLowerCase()}` : "coingecko:ethereum");
-  const keys = [...new Set(assets.map(keyOf))];
-  if (!keys.length) return;
-  try {
-    const res = await fetch(`https://coins.llama.fi/prices/current/${keys.join(",")}`);
-    if (!res.ok) return;
-    const { coins } = (await res.json()) as { coins: Record<string, { price: number }> };
-    for (const a of assets) {
-      const price = coins[keyOf(a)]?.price;
-      if (price) a.usd = (Number(a.amount) / 10 ** a.decimals) * price;
+/* ───────────── Prices (DefiLlama, keyless, CORS-enabled) ───────────── */
+
+const priceKeyOf = (a: Asset) =>
+  a.priceKey ?? (a.token ? `${a.tokenChain ?? "ethereum"}:${a.token.toLowerCase()}` : "coingecko:ethereum");
+
+/**
+ * One price lookup per key per page session, and lookups made within a few milliseconds of each
+ * other (every check finishing at once) go out as one request: a visitor checking a wallet sends
+ * a handful of price requests instead of one per check.
+ */
+const prices = new Map<string, Promise<number | undefined>>();
+let queued = new Map<string, ((p: number | undefined) => void)[]>();
+let flushTimer: ReturnType<typeof setTimeout> | undefined;
+const PRICE_BATCH = 80; // keys per request (keeps the URL short)
+
+async function fetchPrices(keys: string[]): Promise<Record<string, { price: number }>> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(`https://coins.llama.fi/prices/current/${keys.join(",")}`, { signal: AbortSignal.timeout(10_000) });
+      if (res.ok) return ((await res.json()) as { coins: Record<string, { price: number }> }).coins ?? {};
+      if (res.status !== 429 && res.status < 500) throw new Error(`HTTP ${res.status}`);
+    } catch (e) {
+      if (attempt >= 2 || (e as Error).message.startsWith("HTTP")) throw e;
     }
-  } catch {
-    /* prices are optional */
+    if (attempt >= 2) throw new Error("prices unavailable");
+    await new Promise((r) => setTimeout(r, 800 * 2 ** attempt + Math.random() * 400));
   }
+}
+
+function flushPrices() {
+  flushTimer = undefined;
+  const batch = queued;
+  queued = new Map();
+  const keys = [...batch.keys()];
+  for (let i = 0; i < keys.length; i += PRICE_BATCH) {
+    const chunk = keys.slice(i, i + PRICE_BATCH);
+    fetchPrices(chunk).then(
+      (coins) => chunk.forEach((k) => batch.get(k)!.forEach((resolve) => resolve(coins[k]?.price))),
+      () =>
+        chunk.forEach((k) => {
+          prices.delete(k); // a failed lookup is retried by the next check
+          batch.get(k)!.forEach((resolve) => resolve(undefined));
+        }),
+    );
+  }
+}
+
+function priceOf(key: string): Promise<number | undefined> {
+  let p = prices.get(key);
+  if (!p) {
+    p = new Promise((resolve) => {
+      const waiting = queued.get(key);
+      if (waiting) waiting.push(resolve);
+      else queued.set(key, [resolve]);
+      flushTimer ??= setTimeout(flushPrices, 30);
+    });
+    prices.set(key, p);
+  }
+  return p;
+}
+
+/** Best-effort USD values (sets `usd` on each asset it can price). Never throws. */
+export async function addPrices(assets: Asset[]): Promise<void> {
+  await Promise.all(
+    assets.map(async (a) => {
+      const price = await priceOf(priceKeyOf(a));
+      if (price) a.usd = (Number(a.amount) / 10 ** a.decimals) * price;
+    }),
+  );
 }
 
 /** Run `fn` over `items` with at most `limit` in flight. */

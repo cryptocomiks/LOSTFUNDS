@@ -44,10 +44,23 @@ function describeError(e: unknown): string {
   return msg.split("\n")[0].slice(0, 160);
 }
 
+/** A check that hasn't answered after this long is reported as failed (with a Retry), never left spinning. */
+const CHECK_TIMEOUT_MS = 120_000;
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  return Promise.race([
+    p.finally(() => clearTimeout(timer)),
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error("took too long to answer — try again in a moment")), ms);
+    }),
+  ]);
+}
+
 /** Runs one check. Never throws: failures come back as an "error" result. */
 export async function checkSource(src: CheckSource, user: string): Promise<NetworkResult> {
   try {
-    const { error, ...out } = await src.run(user);
+    const { error, ...out } = await withTimeout(src.run(user), CHECK_TIMEOUT_MS);
     await addPrices(out.findings.map((f) => f.asset));
     // Dust: drop findings worth less than their threshold (only once the price is known).
     out.findings = out.findings.filter((f) => f.minUsd === undefined || f.asset.usd === undefined || f.asset.usd >= f.minUsd);
@@ -66,14 +79,29 @@ export const checkNetwork = (net: Network, user: Address) => checkSource(sourceB
 /** The checks that apply to this kind of wallet. */
 export const sourcesFor = (kind: WalletKind) => SOURCES.filter((s) => s.accepts.includes(kind));
 
-/** Runs every applicable check in parallel, reporting each result as soon as it lands. */
-export async function runChecks(target: Target, onUpdate: (r: NetworkResult) => void, signal?: AbortSignal) {
+/**
+ * How many checks run at once. Each check fans out to its own sources, so this caps a visitor's
+ * burst of requests (kind to shared public endpoints when many people check at the same time)
+ * while keeping a full check fast.
+ */
+const MAX_PARALLEL_CHECKS = 14;
+
+/** Runs every applicable check (or just `only`), reporting each result as soon as it lands. */
+export async function runChecks(
+  target: Target,
+  onUpdate: (r: NetworkResult) => void,
+  signal?: AbortSignal,
+  only?: string[],
+) {
   const user = target.address;
-  await Promise.all(
-    sourcesFor(target.kind).map(async (src) => {
+  const queue = sourcesFor(target.kind).filter((s) => !only || only.includes(s.id));
+  for (const src of queue) onUpdate({ networkId: src.id, state: "queued", findings: [], completed: 0 });
+  const worker = async () => {
+    for (let src = queue.shift(); src && !signal?.aborted; src = queue.shift()) {
       onUpdate({ networkId: src.id, state: "running", findings: [], completed: 0 });
       const result = await checkSource(src, user);
       if (!signal?.aborted) onUpdate(result);
-    }),
-  );
+    }
+  };
+  await Promise.all(Array.from({ length: MAX_PARALLEL_CHECKS }, worker));
 }

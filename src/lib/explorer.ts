@@ -71,7 +71,12 @@ async function withHostSlot<T>(host: string, fn: () => Promise<T>): Promise<T> {
   }
 }
 
-class RetryableError extends Error {}
+class RetryableError extends Error {
+  /** Server-requested wait before retrying (Retry-After), in ms. */
+  constructor(message: string, public waitMs?: number) {
+    super(message);
+  }
+}
 
 const TIMEOUT_MS = 20_000;
 
@@ -86,7 +91,10 @@ async function fetchJson(url: string, init?: RequestInit): Promise<unknown> {
     // Rate-limit replies often lack CORS headers and surface as a network error.
     throw new RetryableError(`network error (${err.message || err.name})`);
   }
-  if (res.status === 429 || res.status >= 500) throw new RetryableError(`HTTP ${res.status}`);
+  if (res.status === 429 || res.status >= 500) {
+    const after = Number(res.headers.get("retry-after"));
+    throw new RetryableError(`HTTP ${res.status}`, after > 0 && after <= 20 ? after * 1000 : undefined);
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json().catch(() => {
     throw new Error("not JSON");
@@ -111,7 +119,8 @@ async function polite<T>(url: string, run: () => Promise<T>): Promise<T> {
       return await withHostSlot(host, run);
     } catch (e) {
       if (!(e instanceof RetryableError) || attempt >= RETRIES) throw e;
-      await sleep(1200 * 2 ** attempt + Math.random() * 500);
+      // Jitter spreads retries out when many visitors share one network (and one rate limit).
+      await sleep(e.waitMs ?? 1200 * 2 ** attempt + Math.random() * 800);
     }
   }
 }

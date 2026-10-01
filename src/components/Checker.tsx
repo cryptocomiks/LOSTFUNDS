@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Address } from "viem";
 import { checkSource, InputError, resolveInput, runChecks, sourcesFor, type Target, type WalletKind } from "@/lib/checker";
+import { readCache, writeCache } from "@/lib/resultCache";
 import { NETWORK_COLORS } from "@/lib/brand";
 import { formatAmount, formatDate, formatUsd, shortAddress } from "@/lib/format";
 import { GROUPS, sourceById, type Group } from "@/lib/sources";
@@ -180,15 +181,21 @@ export function Checker() {
   const [error, setError] = useState<string | null>(null);
   const [target, setTarget] = useState<Target | null>(null);
   const [results, setResults] = useState<Record<string, NetworkResult>>({});
+  /** When the shown results come (partly) from this browser's recent cache. */
+  const [cachedAt, setCachedAt] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  /** Start of the current run: the cache entry's age (so it expires 10 min after the check, not later). */
+  const startedAtRef = useRef(0);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  const run = useCallback(async (raw: string) => {
+  const run = useCallback(async (raw: string, fresh = false) => {
     abortRef.current?.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     setError(null);
     setResults({});
+    setCachedAt(null);
+    startedAtRef.current = Date.now();
     setPhase("resolving");
     try {
       const resolved = await resolveInput(raw);
@@ -200,26 +207,28 @@ export function Checker() {
       url.hash = "";
       history.replaceState(null, "", url);
       requestAnimationFrame(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+
+      // Checks this browser completed a few minutes ago are shown as they were; only the rest run.
+      const cached = fresh ? null : readCache(resolved.kind, resolved.address);
+      const known = new Set(sourcesFor(resolved.kind).map((s) => s.id));
+      const reused = (cached?.results ?? []).filter((r) => known.has(r.networkId));
+      if (reused.length) {
+        setCachedAt(cached!.at);
+        setResults(Object.fromEntries(reused.map((r) => [r.networkId, r])));
+      }
+      const todo = [...known].filter((id) => !reused.some((r) => r.networkId === id));
+
       const failed: string[] = [];
-      await runChecks(
-        resolved,
-        (r) => {
-          if (r.state === "error") failed.push(r.networkId);
-          setResults((prev) => ({ ...prev, [r.networkId]: r }));
-        },
-        ctrl.signal,
-      );
-      // One automatic second attempt for networks whose data sources were busy.
+      const update = (r: NetworkResult) => {
+        if (r.state === "error") failed.push(r.networkId);
+        setResults((prev) => ({ ...prev, [r.networkId]: r }));
+      };
+      if (todo.length) await runChecks(resolved, update, ctrl.signal, todo);
+      // One automatic second attempt for checks whose data sources were busy. The wait is longer
+      // and randomized so that many visitors on one network don't all retry at the same instant.
       if (failed.length && !ctrl.signal.aborted) {
-        await new Promise((r) => setTimeout(r, 1500));
-        await Promise.all(
-          failed.map(async (id) => {
-            if (ctrl.signal.aborted) return;
-            setResults((prev) => ({ ...prev, [id]: { networkId: id, state: "running", findings: [], completed: 0 } }));
-            const r = await checkSource(sourceById(id)!, resolved.address);
-            if (!ctrl.signal.aborted) setResults((prev) => ({ ...prev, [id]: r }));
-          }),
-        );
+        await new Promise((r) => setTimeout(r, 4000 + Math.random() * 3000));
+        if (!ctrl.signal.aborted) await runChecks(resolved, (r) => setResults((prev) => ({ ...prev, [r.networkId]: r })), ctrl.signal, failed);
       }
       if (!ctrl.signal.aborted) setPhase("done");
     } catch (e) {
@@ -228,6 +237,13 @@ export function Checker() {
       setError(e instanceof InputError ? e.message : "Couldn't resolve that name. Check your connection and try again.");
     }
   }, []);
+
+  // Keep this browser's short-lived cache up to date as checks complete (including manual retries),
+  // so a reload or a reopened link mid-way doesn't start over.
+  useEffect(() => {
+    if (target && phase !== "idle" && phase !== "resolving")
+      writeCache(target.kind, target.address, Object.values(results), cachedAt ?? startedAtRef.current);
+  }, [phase, results, target, cachedAt]);
 
   const retry = useCallback(
     async (id: string) => {
@@ -426,11 +442,24 @@ export function Checker() {
             <div className="mt-10">
               <div className="mb-3 flex items-center justify-between px-1">
                 <h3 className="text-[13px] font-semibold tracking-wide text-text-3 uppercase">What we checked</h3>
-                {phase === "done" && (
-                  <span className="flex items-center gap-1.5 text-[13px] text-text-3">
-                    <Clock width={14} height={14} /> Live data, just now
-                  </span>
-                )}
+                {phase === "done" &&
+                  (cachedAt ? (
+                    <span className="flex items-center gap-1.5 text-[13px] text-text-3">
+                      <Clock width={14} height={14} />
+                      Checked {Math.max(1, Math.round((Date.now() - cachedAt) / 60_000))} min ago ·
+                      <button
+                        type="button"
+                        onClick={() => run(target.ens ?? target.address, true)}
+                        className="font-medium text-link hover:underline"
+                      >
+                        Check again
+                      </button>
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-[13px] text-text-3">
+                      <Clock width={14} height={14} /> Live data, just now
+                    </span>
+                  ))}
               </div>
               <NetworkGrid results={results} onRetry={retry} kind={target.kind} />
               {Object.values(results).some((r) => r.state === "error") && (

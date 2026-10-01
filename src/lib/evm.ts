@@ -140,7 +140,7 @@ export function evmClient(id: number): PublicClient | undefined {
     client = createPublicClient({
       chain: c.chain,
       transport: fallback(
-        c.rpcs.map((url) => http(url, { timeout: 15_000, retryCount: 1, batch: { wait: 16 } })),
+        c.rpcs.map((url) => http(url, { timeout: 15_000, retryCount: 2, retryDelay: 400, batch: { wait: 16 } })),
         { rank: false },
       ),
       batch: c.chain.contracts?.multicall3 ? { multicall: { wait: 16 } } : undefined,
