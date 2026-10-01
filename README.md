@@ -40,7 +40,7 @@ Rewards worth less than $5 on Ethereum, or $1 elsewhere, are not shown (DefiLlam
 Data sources, all keyless: Blockscout's v2 API (transactions the wallet sent), then its Etherscan-compatible API, then Routescan's Etherscan-compatible API (Blast, Mantle, Boba, Hemi) or the chain's own (DBK Chain), full-history event search on RPC nodes that allow it (Zora, Mode, Fraxtal, BOB, MegaETH, Metal L2, Superseed, Codex, Mantle, Celo, Boba, Derive, Orderly, Nillion, Phala, Arbitrum One, Plume, Gravity, Scroll, Gnosis; Robinhood Chain in 10M-block chunks; Polygon on Tenderly's public node, with the last hours searched separately); several public RPC nodes per network; the public APIs of deBridge, Celer cBridge and Merkl; DefiLlama for USD prices. `npx tsx tests/live.ts 0x…` runs every check against the real chains (set NODE_USE_ENV_PROXY=1 behind a proxy).
 Optionally set `NEXT_PUBLIC_ETHERSCAN_API_KEY` to use Etherscan V2 as a fallback for history search.
 
-Solana addresses are accepted too: they run the Wormhole, deBridge, Circle CCTP (Solana → Ethereum) and Kamino checks, and the reclaimable SOL checks (empty token accounts, inactive stake, Marinade tickets). Solana index queries go to public.rpc.solanavibestation.com, the only keyless node found that answers them from a web page: solana-rpc.publicnode.com refuses them and api.mainnet-beta.solana.com refuses any request with an Origin header. It rate-limits each connection (a burst of about 3 requests, then about 1 per second), so rate-limited calls are retried with a backoff.
+Solana addresses are accepted too: they run the Wormhole, deBridge, Circle CCTP (Solana → Ethereum) and Kamino checks, and the reclaimable SOL checks (empty token accounts, inactive stake, Marinade tickets). Solana index queries go to public.rpc.solanavibestation.com, the only keyless node found that answers them from a web page: solana-rpc.publicnode.com refuses them and api.mainnet-beta.solana.com refuses any request with an Origin header. It rate-limits each connection (a burst of about 3 requests, then about 1 per second), so rate-limited calls are retried with a backoff. Optionally set `NEXT_PUBLIC_SOLANA_RPC_URL` (e.g. a Helius URL whose key only allows your domain) as a fallback when that node fails.
 
 OP Stack chains left out because they are offline or have no full-history source: Ancient8, Form, PGN, Redstone, RSS3 VSL, SnaxChain, Swan Chain, Swellchain, Zircuit. Not covered either: Mantle withdrawals from before its v2 upgrade (March 2024) and Boba's from before Anchorage (April 2024), which have no `MessagePassed` event.
 
@@ -57,6 +57,18 @@ npm test           # checks run against an in-memory mock chain
 npm run build      # static export in out/ (IPFS / ENS / any static host)
 npx tsx tests/screenshots.ts shots   # screenshots of out/ with mocked chain data
 ```
+
+## Many visitors at once
+
+There is no server: the page is static files on a CDN, and each visitor's browser queries the public nodes and APIs itself, so rate limits apply per visitor (per IP), not to the site as a whole. To keep each check light:
+
+- networks an address never used (nonce 0, no code) are skipped with one batched RPC call instead of a history search;
+- at most 14 checks run at once per visitor, each with a 2-minute timeout; requests to each block explorer are queued (3 in flight, spaced out), and 429 / 5xx answers are retried with jittered backoff that honors `Retry-After`;
+- USD prices are fetched in batches and cached for the session; failed checks are retried once automatically;
+- results are kept in the visitor's browser for 10 minutes, so a reload or a second look costs a few requests instead of ~150;
+- static files (airdrop proofs, videos) are served with long CDN cache headers (`vercel.json`).
+
+A full check of an active address sends roughly 130–200 requests spread over ~25 hosts. The weakest link is Solana index queries, which have a single keyless source (see above).
 
 ## Configure
 

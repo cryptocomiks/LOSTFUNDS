@@ -2,8 +2,16 @@ import { ed25519 } from "@noble/curves/ed25519.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { base58 } from "@scure/base";
 
+/**
+ * Optional node of your own (e.g. a Helius or Triton URL with a key restricted to your domain),
+ * tried right after the first public node whenever that one fails or rate-limits: the public
+ * nodes still serve most requests, each visitor under their own per-IP limit.
+ */
+const OWN_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? "";
+const withOwn = ([first, ...rest]: string[]) => (OWN_RPC ? [first, OWN_RPC, ...rest] : [first, ...rest]);
+
 /** Public Solana RPC nodes that answer browser requests, tried in order. */
-export const SOLANA_RPCS = ["https://solana-rpc.publicnode.com", "https://api.mainnet-beta.solana.com"];
+export const SOLANA_RPCS = withOwn(["https://solana-rpc.publicnode.com", "https://api.mainnet-beta.solana.com"]);
 
 /**
  * Nodes for index and history queries (getProgramAccounts, getTokenAccountsByOwner,
@@ -13,7 +21,7 @@ export const SOLANA_RPCS = ["https://solana-rpc.publicnode.com", "https://api.ma
  * browser. solanavibestation rate-limits each connection (a browser tab uses one): a burst
  * of about 3 requests, then about 1 per second; a JSON-RPC batch counts as one per call.
  */
-export const SOLANA_INDEX_RPCS = ["https://public.rpc.solanavibestation.com", "https://api.mainnet-beta.solana.com"];
+export const SOLANA_INDEX_RPCS = withOwn(["https://public.rpc.solanavibestation.com", "https://api.mainnet-beta.solana.com"]);
 
 const PDA_MARKER = new TextEncoder().encode("ProgramDerivedAddress");
 
