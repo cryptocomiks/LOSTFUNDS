@@ -71,7 +71,7 @@ function FindingRow({ f, index }: { f: Finding; index: number }) {
             <>
               <span aria-hidden>·</span>
               <span>
-                {f.networkId === "airdrops" ? "Airdropped" : "Sent"} {formatDate(f.timestamp)}
+                {f.dateLabel ?? (f.networkId === "airdrops" ? "Airdropped" : "Sent")} {formatDate(f.timestamp)}
               </span>
             </>
           )}
@@ -104,7 +104,7 @@ function FindingRow({ f, index }: { f: Finding; index: number }) {
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-[14px] text-link hover:underline"
         >
-          View transaction <ArrowUpRight width={14} height={14} />
+          {f.txUrl.includes("/tx/") ? "View transaction" : "View on explorer"} <ArrowUpRight width={14} height={14} />
         </a>
       </div>
 

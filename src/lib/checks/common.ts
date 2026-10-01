@@ -32,6 +32,8 @@ export function makeFinding(
     claimAt?: string;
     /** Hide the finding when it's worth less than this many dollars (dust). */
     minUsd?: number;
+    /** What `timestamp` is (default "Sent"), e.g. "Requested" or "Lock ended". */
+    dateLabel?: string;
   },
 ): Finding {
   return {
@@ -44,6 +46,7 @@ export function makeFinding(
     txHash: p.txHash,
     txUrl: p.txUrl ?? `${net.explorer}/tx/${p.txHash}`,
     timestamp: p.timestamp,
+    dateLabel: p.dateLabel,
     readyAt: p.readyAt,
     note: p.note,
     claimAt: p.claimAt,

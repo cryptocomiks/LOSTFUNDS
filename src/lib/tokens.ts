@@ -124,6 +124,11 @@ function priceOf(key: string): Promise<number | undefined> {
   return p;
 }
 
+/** Forgets every remembered price (tests that change prices between lookups). */
+export function resetPriceCache() {
+  prices.clear();
+}
+
 /** Best-effort USD values (sets `usd` on each asset it can price). Never throws. */
 export async function addPrices(assets: Asset[]): Promise<void> {
   await Promise.all(

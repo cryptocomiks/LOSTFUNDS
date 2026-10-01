@@ -32,8 +32,10 @@ export interface Finding {
   asset: Asset;
   txHash: string;
   txUrl: string;
-  /** Unix seconds of the withdrawal tx on the source chain. */
+  /** Unix seconds of the withdrawal tx on the source chain (0: unknown, no date shown). */
   timestamp: number;
+  /** What the date is, shown before it (default "Sent", or "Airdropped"): e.g. "Requested", "Lock ended". */
+  dateLabel?: string;
   /** Unix seconds when the withdrawal becomes claimable (status "waiting"). */
   readyAt?: number;
   note?: string;

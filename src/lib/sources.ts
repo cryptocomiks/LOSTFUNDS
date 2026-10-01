@@ -12,6 +12,7 @@ import { checkLinea } from "./checks/linea";
 import { checkMerkl } from "./checks/merkl";
 import { checkOpStack } from "./checks/opstack";
 import { checkPolygon, POLYGON } from "./checks/polygon";
+import { ETH_REWARD_SOURCES } from "./checks/rewards-eth";
 import { checkScroll } from "./checks/scroll";
 import { checkWormhole } from "./checks/wormhole";
 import { checkZkSync } from "./checks/zksync";
@@ -97,6 +98,7 @@ export const SOURCES: CheckSource[] = [
   { id: "aave-v2", name: "Aave v2", group: "rewards", bridgeUrl: "app.aave.com", accepts: ["evm"], run: (user) => checkAaveV2(user as Address) },
   { id: "aave-v3", name: "Aave v3", group: "rewards", bridgeUrl: "app.aave.com", accepts: ["evm"], run: (user) => checkAaveV3(user as Address) },
   { id: "merkl", name: "Merkl", group: "rewards", bridgeUrl: "app.merkl.xyz", accepts: ["evm"], run: (user) => checkMerkl(user as Address) },
+  ...ETH_REWARD_SOURCES,
 ];
 
 export const sourceById = (id: string) => SOURCES.find((s) => s.id === id);
