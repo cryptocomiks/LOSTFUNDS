@@ -305,7 +305,7 @@ export const CCTP_DOMAINS: CctpDomain[] = [
     chain: injective,
     rpcs: ["https://sentry.evm-rpc.injective.network"],
     usdc: "0xa00C59fF5a080D2b954d0c75e46E22a0c371235a",
-    history: { name: "Injective", chain: injective, blockscout: "https://blockscout-api.injective.network", via: "transfers" },
+    history: { name: "Injective", chain: injective, blockscout: "https://blockscout.injective.network", via: "transfers" },
     explorer: "https://blockscout.injective.network",
   },
   {
