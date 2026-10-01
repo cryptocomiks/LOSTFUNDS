@@ -202,6 +202,13 @@ export class MockChain {
         return reply(numberToHex(chainId));
       case "eth_blockNumber":
         return reply(numberToHex(MOCK_HEAD));
+      case "eth_getTransactionCount": {
+        // Transactions this address sent on this chain (enough for "has it ever been active?").
+        const who = String(req.params[0]).toLowerCase();
+        return reply(numberToHex([...this.txs.values()].filter((t) => t.chainId === chainId && t.from.toLowerCase() === who).length));
+      }
+      case "eth_getCode":
+        return reply(this.contracts.has(`${chainId}:${String(req.params[0]).toLowerCase()}`) ? "0x6080" : "0x");
       case "eth_getTransactionReceipt": {
         const tx = this.txs.get(`${chainId}:${req.params[0]}`);
         if (!tx) return reply(null);

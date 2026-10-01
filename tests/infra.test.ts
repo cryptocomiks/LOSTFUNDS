@@ -144,3 +144,45 @@ describe("Result cache", () => {
     assert.equal(readCache("solana", "abcsolanaaddr"), null);
   });
 });
+
+describe("Networks the address never used", () => {
+  test("one batched RPC call instead of an explorer search; contracts and RPC errors still get the full check", async () => {
+    const { buildWorld, USER } = await import("./fixtures.ts");
+    const { checkNetwork } = await import("../src/lib/checker.ts");
+    const { networkById } = await import("../src/lib/networks.ts");
+    const { parseAbi } = await import("viem");
+    const world = buildWorld();
+    globalThis.fetch = world.fetch as typeof fetch;
+    const base = networkById("base")!;
+
+    // Never active on Base: no explorer request at all.
+    const STRANGER = "0x3333333333333333333333333333333333333333";
+    world.requests.length = 0;
+    const idle = await checkNetwork(base, STRANGER);
+    assert.equal(idle.state, "done");
+    assert.ok(world.requests.length > 0 && world.requests.every((u) => !u.includes("blockscout")), world.requests.join("\n"));
+
+    // A smart-contract wallet (code, nonce 0) always gets the full search.
+    world.addContract(base.chain.id, STRANGER, parseAbi(["function x() view returns (uint256)"]), { x: () => 1n });
+    world.requests.length = 0;
+    await checkNetwork(base, STRANGER);
+    assert.ok(world.requests.some((u) => u.includes("base.blockscout.com")), "contract wallets are searched");
+
+    // The RPC can't answer: never skip on doubt.
+    const real = world.fetch;
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      const body = String(init?.body ?? "");
+      if (body.includes("eth_getTransactionCount")) return new Response("busy", { status: 503 });
+      return real(input, init);
+    }) as typeof fetch;
+    world.requests.length = 0;
+    const r = await checkNetwork(base, "0x4444444444444444444444444444444444444444");
+    assert.equal(r.state, "done");
+    assert.ok(world.requests.some((u) => u.includes("base.blockscout.com")), "full check when activity is unknown");
+
+    // An active user is checked as before.
+    globalThis.fetch = real as typeof fetch;
+    const arb = await checkNetwork(networkById("arbitrum")!, USER);
+    assert.ok(arb.findings.length > 0, "existing withdrawals still found");
+  });
+});

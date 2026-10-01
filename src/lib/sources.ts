@@ -1,4 +1,5 @@
 import type { Address } from "viem";
+import { neverActive } from "./checks/activity";
 import { AIRDROP_LIST, checkAirdrops } from "./checks/airdrops";
 import { checkArbitrum } from "./checks/arbitrum";
 import { checkCctp, checkCctpFromSolana } from "./checks/cctp";
@@ -39,6 +40,9 @@ export interface CheckSource {
   run: (user: string) => Promise<CheckOutput>;
 }
 
+/** Families whose checks start from transactions the user sent (zkSync also searches withdrawals *to* the user). */
+const SENDER_ONLY = new Set<Family>(["opstack", "arbitrum", "scroll", "linea"]);
+
 const FAMILY: Record<Family, (net: Network, user: Address) => Promise<CheckOutput>> = {
   opstack: checkOpStack,
   arbitrum: checkArbitrum,
@@ -54,7 +58,10 @@ export const SOURCES: CheckSource[] = [
     group: "l2" as const,
     bridgeUrl: n.bridgeUrl,
     accepts: ["evm" as const],
-    run: (user: string) => FAMILY[n.family](n, user as Address),
+    run: async (user: string) =>
+      SENDER_ONLY.has(n.family) && (await neverActive(n, user as Address))
+        ? { findings: [], completed: 0 }
+        : FAMILY[n.family](n, user as Address),
   })),
   { id: POLYGON.id, name: POLYGON.name, group: "l2", bridgeUrl: "portal.polygon.technology", accepts: ["evm"], run: (user) => checkPolygon(user as Address) },
   { id: "wormhole", name: "Wormhole", group: "solana", bridgeUrl: "portalbridge.com", accepts: ["evm", "solana"], run: checkWormhole },
