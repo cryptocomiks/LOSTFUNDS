@@ -6,6 +6,7 @@ import { checkCeler } from "./checks/celer";
 import type { CheckOutput } from "./checks/common";
 import { checkDebridge } from "./checks/debridge";
 import { checkGnosisBridge } from "./checks/gnosis";
+import { checkLegacy, LEGACY_LIST } from "./checks/legacy";
 import { checkLinea } from "./checks/linea";
 import { checkOpStack } from "./checks/opstack";
 import { checkPolygon, POLYGON } from "./checks/polygon";
@@ -83,6 +84,15 @@ export const SOURCES: CheckSource[] = [
     bridgeUrl: a.claimAt,
     accepts: a.accepts,
     run: (user: string) => checkAirdrops(user, [a]),
+  })),
+  ...LEGACY_LIST.map((e) => ({
+    id: `legacy-${e.id}`,
+    name: e.name,
+    group: "legacy" as const,
+    bridgeUrl: e.redemptions[0].claimAt,
+    accepts: ["evm" as const],
+    // Every entry shares one multicall per address (see checks/legacy.ts).
+    run: (user: string) => checkLegacy(user, [e]),
   })),
 ];
 

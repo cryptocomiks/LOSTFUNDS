@@ -61,4 +61,11 @@ export const NETWORK_COLORS: Record<string, string> = {
   "airdrop-lido-early-2021": "#00A3FF",
   "airdrop-lido-1inch-2021": "linear-gradient(135deg,#00A3FF,#D82122)",
   "airdrop-convex-2021": "linear-gradient(135deg,#FF5A5A,#3A3A3A)",
+  "legacy-thedao": "linear-gradient(135deg,#E8E8E8,#3C3C3C)",
+  "legacy-sai": "#F4B731",
+  "legacy-mkr-2016": "#1AAB9B",
+  "legacy-dgd": "linear-gradient(135deg,#F2D16B,#B8862B)",
+  "legacy-gnt": "#181EA9",
+  "legacy-kncl": "#31CB9E",
+  "legacy-weth-old": "#627EEA",
 };

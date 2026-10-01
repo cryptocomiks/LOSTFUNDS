@@ -185,5 +185,48 @@ export function buildWorld(): MockChain {
   });
   m.prices["ethereum:0x1f9840a85d5af5bf1d1762f925bdaddc4201f984"] = 7.5;
 
+  // Old tokens (checks/legacy.ts): USER still holds 1,000 DAO tokens (10 ETH) and 50,000 GNT (50,000 GLM).
+  const held: Record<string, Partial<Record<Address, bigint>>> = {
+    "0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413": { [USER]: 1000n * 10n ** 16n }, // DAO, 16 decimals
+    "0xa74476443119A942dE498590Fe1f2454d7D4aC0d": { [USER]: parseEther("50000") }, // GNT
+  };
+  const oldTokens = [
+    "0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413", // DAO
+    "0x5c40eF6f527f4FbA68368774E6130cE6515123f2", // ExtraBalance
+    "0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359", // SAI
+    "0xf53AD2c6851052A81B42133467480961B2321C09", // PETH
+    "0xC66eA802717bFb9833400264Dd12c2bCeAa34a6d", // MKR (2016)
+    "0xE0B7927c4aF23765Cb51314A0E0521A9645F0E2A", // DGD
+    "0xdd974D5C2e2928deA5F71b9825b8b646686BD200", // KNCL
+    "0xECF8F87f810EcF450940c9f60066b4a7a501d6A7", // W-ETH (2016)
+    "0x2956356cD2a2bf3202F771F50D3D14A367b48070", // 0x WETH (2017)
+    "0xD76b5c2A23ef78368d8E34288B5b65D616B746aE", // Bancor ETH (2017)
+    "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", // WETH (SAI / PETH reserves)
+    "0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2", // MKR (Redeemer reserve)
+  ] as const;
+  const tokenAbi = parseAbi(["function balanceOf(address) view returns (uint256)", "function approve(address, uint256) returns (bool)", "function withdraw(uint256)"]);
+  for (const t of oldTokens) m.addContract(1, t, tokenAbi, { balanceOf: ([a]) => held[t]?.[a as Address] ?? 0n, approve: () => true, withdraw: () => undefined });
+  m.addContract(1, "0xa74476443119A942dE498590Fe1f2454d7D4aC0d", parseAbi(["function balanceOf(address) view returns (uint256)", "function migrationAgent() view returns (address)", "function migrate(uint256)"]), {
+    balanceOf: ([a]) => held["0xa74476443119A942dE498590Fe1f2454d7D4aC0d"][a as Address] ?? 0n,
+    migrationAgent: () => "0xBFAd98d76598961827bA832108c21445aa4FEE9A",
+    migrate: () => undefined,
+  });
+  m.addContract(1, "0xBFAd98d76598961827bA832108c21445aa4FEE9A", parseAbi(["function target() view returns (address)"]), { target: () => "0x7DD9c5Cba05E151C895FDe1CF355C9A1D5DA6429" });
+  m.addContract(1, "0xBf4eD7b27F1d666546E30D74d50d173d20bca754", parseAbi(["function withdraw()"]), { withdraw: () => undefined });
+  m.setEthBalance(1, "0xBf4eD7b27F1d666546E30D74d50d173d20bca754", parseEther("81399.81"));
+  m.addContract(1, "0xBda109309f9FafA6Dd6A9CB9f1Df4085B27Ee8eF", parseAbi(["function off() view returns (bool)", "function fix() view returns (uint256)"]), { off: () => true, fix: () => 5285551943761727318375221n });
+  m.addContract(1, "0x448a5065aeBB8E423F0896E6c5D525C040f59af3", parseAbi(["function out() view returns (bool)", "function per() view returns (uint256)", "function gap() view returns (uint256)"]), {
+    out: () => true,
+    per: () => 1051432093602071663044652213n,
+    gap: () => 10n ** 18n,
+  });
+  m.addContract(1, "0x642AE78FAfBB8032Da552D619aD43F1D81E4DD7C", parseAbi(["function stopped() view returns (bool)"]), { stopped: () => false });
+  m.addContract(1, "0x23Ea10CC1e6EBdB499D24E45369A35f43627062f", parseAbi(["function isInitialized() view returns (bool)", "function weiPerNanoDGD() view returns (uint256)"]), {
+    isInitialized: () => true,
+    weiPerNanoDGD: () => 193054178n,
+  });
+  m.addContract(1, "0xdeFA4e8a7bcBA345F687a2f1456F5Edd9CE97202", parseAbi(["function oldKNC() view returns (address)"]), { oldKNC: () => "0xdd974D5C2e2928deA5F71b9825b8b646686BD200" });
+  m.prices["ethereum:0x7dd9c5cba05e151c895fde1cf355c9a1d5da6429"] = 0.1247; // GLM
+
   return m;
 }

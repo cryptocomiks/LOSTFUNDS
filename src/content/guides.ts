@@ -29,6 +29,28 @@ export const GUIDES: Guide[] = [
     note: "Airdropped tokens can only go to the eligible wallet. Never sign anything on a site that asks you to \"approve\" tokens to receive an airdrop.",
   },
   {
+    id: "legacy",
+    title: "Old tokens & token migrations",
+    subtitle: "The DAO, Maker SAI & PETH, 2016 MKR, DigixDAO, Golem GNT, Kyber KNCL, old wrapped ETH",
+    live: true,
+    steps: [
+      "None of these old tokens has a real market any more, but each one's official contract still pays out, with no deadline. You send the transactions yourself, from the wallet that holds the tokens, on Etherscan (Write Contract, connected to that wallet). Amounts are in the token's smallest unit: copy your exact balance from Read Contract → balanceOf.",
+      "The DAO (2016): 100 DAO = 1 ETH. On the DAO token (0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413), approve the WithdrawDAO contract (0xBf4eD7b27F1d666546E30D74d50d173d20bca754) for your balance, then call withdraw() on WithdrawDAO: it takes all your DAO and sends the ETH in the same transaction. TheDAO Security Fund (thedao.fund) has no power over this contract.",
+      "TheDAO ExtraBalance tokens (0x5c40eF6f527f4FbA68368774E6130cE6515123f2): approve the ExtraBalance withdrawal contract (0x755cdba6AE4F479f7164792B318b2a06c759833B), then call withdraw() on it: 1 ETH per token. TheDAO Security Fund keeps it funded for claims.",
+      "Maker SAI (Single-Collateral Dai, shut down in May 2020): approve the SaiTap (0xBda109309f9FafA6Dd6A9CB9f1Df4085B27Ee8eF) on the SAI token, then call cash(your balance) on the SaiTap: about 0.0053 ETH per SAI, paid in WETH. PETH: approve the SaiTub (0x448a5065aeBB8E423F0896E6c5D525C040f59af3) on the PETH token, then call exit(your balance) on the SaiTub: about 1.05 ETH per PETH, in WETH. Unwrap the WETH with withdraw on the WETH contract (0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).",
+      "MKR from 2016 (0xC66eA802717bFb9833400264Dd12c2bCeAa34a6d, replaced in December 2017): approve the MKR Redeemer (0x642AE78FAfBB8032Da552D619aD43F1D81E4DD7C), then call redeem() on it: all your old MKR becomes today's MKR, 1:1.",
+      "DigixDAO (DGD): approve DigixDAO's Acid contract (0x23Ea10CC1e6EBdB499D24E45369A35f43627062f) on the DGD token, then call burn() on Acid: it takes your whole DGD balance and sends 0.193 ETH per DGD.",
+      "Golem (GNT → GLM, 1:1): use migrate.golem.network, or call migrate(your balance) on the GNT contract (0xa74476443119A942dE498590Fe1f2454d7D4aC0d). No approval needed.",
+      "Kyber (KNCL → KNC, 1:1): use Migrate on kyberswap.com/kyberdao/stake-knc, or approve the KNC contract (0xdeFA4e8a7bcBA345F687a2f1456F5Edd9CE97202) on KNCL, then call mintWithOldKnc(your balance) on it.",
+      "Old wrapped ETH from before today's WETH (W-ETH 0xECF8F87f810EcF450940c9f60066b4a7a501d6A7, 0x's 2017 WETH 0x2956356cD2a2bf3202F771F50D3D14A367b48070, Bancor's 2017 ETH token 0xD76b5c2A23ef78368d8E34288B5b65D616B746aE): call withdraw(your balance) on the token contract. The ETH comes back 1:1.",
+    ],
+    note: "Approve only the contract named here, for your exact balance, and never on a site you reached from a DM or an ad. Not listed because the official route has closed or the old token still trades at full value: LEND → AAVE (closed May 2026), REP v1 (Augur forked in 2026), Aragon ANT (redemption ended November 2024), AGIX → FET, MATIC → POL, MKR → SKY, OCEAN, RNDR.",
+    manual: [
+      "Some 2016 contracts (the DAO token, the ExtraBalance contracts, W-ETH) may not have a Write Contract tab. Send a 0 ETH transaction to the contract with the call data instead: withdraw() is 0x3ccfd60b; approve is 0x095ea7b3, followed by the spender's address and the amount, each padded to 32 bytes.",
+      "An AI assistant with Ethereum tooling can prepare these transactions as unsigned data for you to review and sign in your own wallet. Never give anyone your private key.",
+    ],
+  },
+  {
     id: "opstack",
     title: "OP Stack chains",
     subtitle: "Base, OP Mainnet, Mantle, World Chain, Blast, Celo, Unichain, Ink, Manta Pacific, Boba…",

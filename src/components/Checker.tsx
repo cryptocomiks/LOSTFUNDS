@@ -65,10 +65,15 @@ function FindingRow({ f, index }: { f: Finding; index: number }) {
         <div className="flex items-center gap-2 text-[13px] text-text-2">
           <NetDot id={f.networkId} />
           <span className="font-medium text-text">{f.networkName}</span>
-          <span aria-hidden>·</span>
-          <span>
-            {f.networkId === "airdrops" ? "Airdropped" : "Sent"}{f.timestamp > 0 ? ` ${formatDate(f.timestamp)}` : ""}
-          </span>
+          {/* No date (timestamp 0) for findings that aren't one transfer, e.g. old tokens to migrate. */}
+          {f.timestamp > 0 && (
+            <>
+              <span aria-hidden>·</span>
+              <span>
+                {f.networkId === "airdrops" ? "Airdropped" : "Sent"} {formatDate(f.timestamp)}
+              </span>
+            </>
+          )}
         </div>
         <span className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ${s.tone}`}>{s.label}</span>
       </div>
@@ -98,7 +103,7 @@ function FindingRow({ f, index }: { f: Finding; index: number }) {
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-[14px] text-link hover:underline"
         >
-          View transaction <ArrowUpRight width={14} height={14} />
+          {/\/(address|account)\//.test(f.txUrl) ? "View contract" : "View transaction"} <ArrowUpRight width={14} height={14} />
         </a>
       </div>
 
@@ -364,7 +369,7 @@ export function Checker() {
                   <div className="mt-6">
                     <p className="text-[28px] font-semibold tracking-tight sm:text-[34px]">Checking bridges…</p>
                     <p className="mt-2 text-[15px] text-text-2">
-                      Finding your withdrawals, cross-chain transfers and airdrops, then asking each chain whether it was completed.
+                      Finding your withdrawals, cross-chain transfers, airdrops and old tokens, then asking each chain whether they were completed.
                     </p>
                   </div>
                 ) : stuck.length > 0 ? (
