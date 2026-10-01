@@ -11,6 +11,27 @@ export const CLAIM_PDA_ETH_691205 = "9pbEdXMughNdYGkHmAmPjTQW7hkWGRTEZV4EinEjqFi
 /** Solana CCTP v1 used-nonces account for nonces 499201–505600 from Ethereum (domain 0). */
 export const CCTP_V1_USED_NONCES_499201 = "B4dZdmoVwQ5WZ5iaxkF4e9gtMgSBh3XG75XTZ3kgwt7u";
 
+/**
+ * A stake account unstaked at epoch 900 and never withdrawn (Oct 1, 2026, epoch 1047): 224.35 SOL,
+ * delegation 223.03 SOL activated at epoch 414, withdraw authority = staker = STAKE_WITHDRAWER.
+ */
+export const STAKE_ACCOUNT = "GnAD52UUAsYvsY619oGYcEhspog14nuNuEoqh3iv5b1C";
+export const STAKE_WITHDRAWER = "DdUfsYbRQzQFo62Pbcfe7YtYeDZLLjrQTBbR17ayuLQ3";
+export const STAKE_ACCOUNT_LAMPORTS = 224351130313;
+export const STAKE_ACCOUNT_DATA =
+  "AgAAAIDVIgAAAAAAu6RwZJqksLHUyTEVqNlBC4xdPlBmfYCJjGg8fsPNTaS7pHBkmqSwsdTJMRWo2UELjF0+UGZ9gImMaDx+w81NpAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUuusUc4KJ384fav1hPoiDGhuvDcr5wKQ9RfSs/OUucIVtr7TMAAACeAQAAAAAAAIQDAAAAAAAAAAAAAAAA0D/dryFaAAAAAAAAAAA=";
+/**
+ * A Marinade delayed-unstake ticket created at epoch 399 and never claimed (Oct 1, 2026): 15,476.243842733 SOL.
+ * A simulated Claim succeeded on mainnet that day: the beneficiary would receive the amount plus the ticket's rent.
+ */
+export const MARINADE_TICKET = "6ncoT9qtu5v67BKf1VT72U4kp39Ek5yjPNyX82EvTZp3";
+export const MARINADE_TICKET_BENEFICIARY = "GZk6GQp7bkC4wCG5FYwY6f5fwvfSRYDakki74DkZ3ism";
+export const MARINADE_TICKET_LAMPORTS = 1503360;
+export const MARINADE_TICKET_DATA = "hU0SYtMB5wN1EZsxdYB1huP0p+XND4kOlqdTsQ/Mx2gelHOgCDJw8edCnNmS+DdsnCXJ1ZGZC8wuaRFsf4I+7QtNrH50zmz0rUYEWBMOAACPAQAAAAAAAA==";
+
+/** The Clock sysvar at slot 452325698 (epoch 1047). */
+export const CLOCK_DATA = "QvH1GgAAAADqYr5qAAAAABcEAAAAAAAAGAQAAAAAAAC9eb5qAAAAAA==";
+
 /** USDC associated token account of a Solana wallet (checked with getAccountInfo: owner + mint match). */
 export const SOL_WALLET = "HRfHmwYMpaQM3MoWZVPQWjXppYv2upi4L2KBsqHhY6R6";
 export const SOL_WALLET_USDC_ATA = "Bvva79i9YwB4pkmZ24c1SnJm8jab4GqEpjpxAthiWsZp";

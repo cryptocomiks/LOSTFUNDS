@@ -60,14 +60,17 @@ function openGuide(id: string) {
 function FindingRow({ f, index }: { f: Finding; index: number }) {
   const s = STATUS[f.status];
   // Some findings (airdrops) come from a source listed under another id: never assume it exists.
-  const claimAt = f.claimAt ?? sourceById(f.networkId)?.bridgeUrl;
+  const source = sourceById(f.networkId);
+  const claimAt = f.claimAt ?? source?.bridgeUrl;
+  // Reclaimable SOL sits in accounts, not in a transfer: no date, and the link opens the account.
+  const inAccount = source?.group === "reclaim";
   return (
     <li className="animate-fade-up px-5 py-5 sm:px-6" style={{ animationDelay: `${index * 50}ms` }}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-[13px] text-text-2">
           <NetDot id={f.networkId} />
           <span className="font-medium text-text">{f.networkName}</span>
-          {f.timestamp > 0 && (
+          {f.timestamp > 0 && !inAccount && (
             <>
               <span aria-hidden>·</span>
               <span>
@@ -104,7 +107,7 @@ function FindingRow({ f, index }: { f: Finding; index: number }) {
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-[14px] text-link hover:underline"
         >
-          {f.txUrl.includes("/tx/") ? "View transaction" : "View on explorer"} <ArrowUpRight width={14} height={14} />
+          {inAccount ? "View on Solscan" : f.txUrl.includes("/tx/") ? "View transaction" : "View on explorer"} <ArrowUpRight width={14} height={14} />
         </a>
       </div>
 

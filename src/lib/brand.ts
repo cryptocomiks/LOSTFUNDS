@@ -80,4 +80,7 @@ export const NETWORK_COLORS: Record<string, string> = {
   "synthetix-escrow": "linear-gradient(135deg,#00D1FF,#ED1EFF)",
   "convex-staking": "linear-gradient(135deg,#FF5A5A,#3A3A3A)",
   "balancer-fees": "linear-gradient(135deg,#1E1E1E,#9CA3AF)",
+  "reclaim-rent": "linear-gradient(135deg,#9945FF,#14F195)",
+  "reclaim-stake": "linear-gradient(135deg,#14F195,#1A1A1A)",
+  "reclaim-marinade": "linear-gradient(135deg,#308D8A,#C7F284)",
 };

@@ -70,6 +70,26 @@ export const GUIDES: Guide[] = [
     note: "Every claim is an ordinary transaction from your own wallet, and the funds always go to your address. Nobody legitimate will ask for your seed phrase, or to \"approve\" tokens so you can receive them.",
   },
   {
+    id: "reclaim",
+    title: "Reclaimable SOL",
+    subtitle: "Empty token accounts, wrapped SOL, inactive stake, Marinade tickets",
+    live: true,
+    steps: [
+      "Empty token accounts: each token your wallet ever held has its own account, which keeps a rent deposit of about 0.002 SOL (a bit more for some Token-2022 tokens). Once its balance is 0, closing the account sends the deposit back to you. No tokens are touched, and the account is simply opened again if you receive that token later.",
+      "In Solflare, open the token showing a 0 balance, tap ⋯ → Close Account and approve: the SOL lands in your wallet right away. To close many at once, Sol Incinerator (type sol-incinerator.com yourself) closes every empty account in a few transactions and keeps about 2% of the rent as its fee.",
+      "Wrapped SOL (wSOL), often left behind by a swap: open Wrapped SOL in Phantom or Solflare, tap ⋯ → Unwrap. The account is closed and its whole balance, deposit included, comes back as SOL.",
+      "Inactive stake: SOL you unstaked stays in its stake account until you withdraw it. In Phantom, open the stake account marked Inactive and tap Withdraw Stake; in Solflare, open Staking and tap Withdraw on the account. The whole balance returns to your wallet and the stake account is closed.",
+      "Stake that is still Active or Deactivating isn't lost: unstake it first if you want it back, wait for the epoch to end (2 to 3 days), then withdraw.",
+      "Marinade unstake tickets: a delayed unstake of mSOL gave you a ticket, and the SOL waits in Marinade's reserve until it is claimed. Open app.marinade.finance with the same wallet and claim it; if the app doesn't list it, Marinade's command-line tool below can.",
+    ],
+    note: "Only close accounts from your own wallet or a tool you typed in yourself, and never sign a \"close account\", \"burn\" or \"claim SOL\" request from a site you reached through a DM, an ad or an airdropped token: a malicious transaction can empty your wallet. Closing returns rent and burns nothing only when the balance is 0: tools that \"burn and close\" destroy whatever tokens are still in the account. Closing a stake account removes its rewards history from the chain, so export it first if you need it for taxes.",
+    manual: [
+      "With the Solana command-line tools: spl-token close --address <EMPTY_TOKEN_ACCOUNT> closes one empty token account (Token or Token-2022), and spl-token unwrap <WSOL_ACCOUNT> unwraps wrapped SOL.",
+      "solana withdraw-stake <STAKE_ACCOUNT> <YOUR_WALLET> ALL withdraws an inactive stake account's whole balance to your wallet.",
+      "Marinade's own command-line tool (npm package @marinade.finance/marinade-ts-cli): marinade show-tickets lists your tickets, marinade claim <TICKET> claims one. The SOL always goes to the wallet that ordered the unstake.",
+    ],
+  },
+  {
     id: "opstack",
     title: "OP Stack chains",
     subtitle: "Base, OP Mainnet, Mantle, World Chain, Blast, Celo, Unichain, Ink, Manta Pacific, Boba…",
