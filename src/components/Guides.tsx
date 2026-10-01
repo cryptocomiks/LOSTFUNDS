@@ -24,7 +24,7 @@ function Steps({ items, start = 1 }: { items: string[]; start?: number }) {
 function Item({ g, open, onToggle }: { g: Guide; open: boolean; onToggle: () => void }) {
   return (
     <li id={`guide-${g.id}`} className="scroll-mt-20">
-      <h3>
+      <h4>
         <button
           type="button"
           onClick={onToggle}
@@ -49,7 +49,7 @@ function Item({ g, open, onToggle }: { g: Guide; open: boolean; onToggle: () => 
             className={`shrink-0 text-text-3 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
           />
         </button>
-      </h3>
+      </h4>
       <div
         id={`guide-body-${g.id}`}
         className={`grid transition-[grid-template-rows] duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] ${
@@ -75,6 +75,32 @@ function Item({ g, open, onToggle }: { g: Guide; open: boolean; onToggle: () => 
   );
 }
 
+/** Guide sections, in display order. Guides for things we can't check automatically come last. */
+const CATEGORIES = [
+  "Bridge withdrawals (L2 → Ethereum)",
+  "Cross-chain transfers",
+  "Airdrops",
+  "Rewards & withdrawals",
+  "Old contracts & migrations",
+  "Solana",
+  "Not checked automatically yet",
+] as const;
+type Category = (typeof CATEGORIES)[number];
+
+const L2 = new Set(["opstack", "arbitrum", "polygon-pos", "zksync", "linea", "scroll"]);
+const CROSS_CHAIN = new Set(["debridge", "celer", "cctp", "wormhole", "gnosis"]);
+
+function categoryOf(g: Guide): Category {
+  if (!g.live) return "Not checked automatically yet";
+  if (g.id === "airdrops") return "Airdrops";
+  if (L2.has(g.id)) return "Bridge withdrawals (L2 → Ethereum)";
+  if (CROSS_CHAIN.has(g.id)) return "Cross-chain transfers";
+  if (/^(rewards|lido|aave|merkl|eigen|curve|synthetix|locks)/.test(g.id)) return "Rewards & withdrawals";
+  if (/^(legacy|migrat|ens|etherdelta|dao)/.test(g.id)) return "Old contracts & migrations";
+  if (/^(reclaim|solana|rent|stake)/.test(g.id)) return "Solana";
+  return "Cross-chain transfers";
+}
+
 export function Guides() {
   const [open, setOpen] = useState<string | null>(null);
 
@@ -93,16 +119,25 @@ export function Guides() {
       id="guides"
       eyebrow="Guides"
       title="How to claim."
-      intro="You always claim with your own wallet, through the bridge's official app or contract. Type bridge URLs yourself: never follow links from DMs or ads."
+      intro="You always claim with your own wallet, through the project's official app or contract. Type those addresses yourself: never follow links from DMs or ads."
       alt
     >
-      <Reveal>
-        <ul className="divide-y divide-[var(--border)] overflow-hidden rounded-3xl border border-line bg-surface shadow-soft">
-          {GUIDES.map((g) => (
-            <Item key={g.id} g={g} open={open === g.id} onToggle={() => setOpen(open === g.id ? null : g.id)} />
-          ))}
-        </ul>
-      </Reveal>
+      <div className="space-y-8">
+        {CATEGORIES.map((c) => {
+          const list = GUIDES.filter((g) => categoryOf(g) === c);
+          if (!list.length) return null;
+          return (
+            <Reveal key={c}>
+              <h3 className="mb-3 px-1 text-[13px] font-semibold tracking-wide text-text-3 uppercase">{c}</h3>
+              <ul className="divide-y divide-[var(--border)] overflow-hidden rounded-3xl border border-line bg-surface shadow-soft">
+                {list.map((g) => (
+                  <Item key={g.id} g={g} open={open === g.id} onToggle={() => setOpen(open === g.id ? null : g.id)} />
+                ))}
+              </ul>
+            </Reveal>
+          );
+        })}
+      </div>
     </Section>
   );
 }
