@@ -6,11 +6,11 @@ const STATS = [
   {
     value: String(SOURCES.length),
     label: "checks run live",
-    detail: "L2 withdrawals, cross-chain transfers and open airdrops, verified on-chain.",
+    detail: "Bridges, airdrops, rewards and old contracts, verified on-chain.",
   },
-  { value: String(GUIDES.length), label: "bridges with a claim guide", detail: "Rollups, cross-chain bridges and shut-down apps." },
+  { value: String(GUIDES.length), label: "step-by-step claim guides", detail: "For everything we check, and the apps we can't check yet." },
   { value: "0", label: "addresses stored", detail: "Everything runs in your browser. No accounts, no tracking." },
-  { value: "100%", label: "of the funds go to you", detail: "Claims only pay out to your own address. No fees, no cut." },
+  { value: "100%", label: "of the funds go to you", detail: "Claims pay out to your own address. No fees, no cut, no sign-up." },
 ];
 
 export function Stats() {

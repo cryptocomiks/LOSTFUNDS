@@ -6,17 +6,17 @@ const STEPS = [
   {
     icon: Eye,
     title: "Paste an address",
-    text: "No wallet connection. We only read public data: each network's history and the bridge contracts on Ethereum.",
+    text: "Ethereum or Solana, or an ENS name. No wallet connection: we only read public blockchain data.",
   },
   {
     icon: Bolt,
-    title: "We check every bridge",
-    text: "For each withdrawal you started, we ask Ethereum directly whether it was ever finalized or claimed.",
+    title: "We check everywhere at once",
+    text: "Bridges, airdrops, staking and reward contracts, old exchanges: for each one we ask the chain directly whether something is still waiting for you.",
   },
   {
     icon: Wallet,
     title: "You claim it yourself",
-    text: "Through the bridge's official app, with your own wallet. The funds can only go to your address.",
+    text: "Through the project's official app, with your own wallet, following our step-by-step guide. The funds can only go to your address.",
   },
 ];
 
@@ -25,8 +25,8 @@ export function HowItWorks() {
     <Section
       id="how"
       eyebrow="How it works"
-      title="Forgotten withdrawals, found in seconds."
-      intro="Leaving a rollup takes two or three steps. It's easy to start a withdrawal, close the tab, and never come back for the last one."
+      title="Forgotten money, found in seconds."
+      intro="Crypto leaves money behind in a lot of places: a withdrawal you never finished, an airdrop you never claimed, a lock that expired. It's easy to close the tab and never come back for the last step."
     >
       <div className="grid gap-4 md:grid-cols-3">
         {STEPS.map((s, i) => (

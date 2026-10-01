@@ -13,20 +13,20 @@ const RULES = [
   {
     icon: Alert,
     tone: "bg-orange-soft text-orange",
-    title: "Ignore DMs",
-    text: `We don't DM links. Anyone claiming to be ${SITE.name} who does is a scammer.`,
+    title: "Ignore DMs and \"recovery\" services",
+    text: `We never DM anyone. Nobody needs your wallet to recover funds for you: people offering it, or claiming to be ${SITE.name}, are scammers.`,
   },
   {
     icon: Shield,
     tone: "bg-green-soft text-green",
-    title: "Only official bridges",
-    text: "Claims go through the official bridge contract and can only pay out to your own address.",
+    title: "Only official apps",
+    text: "Type the official app's address yourself, never from a link someone sent you. Real claims only ever pay out to your own address.",
   },
 ];
 
 export function Safety() {
   return (
-    <Section id="safety" eyebrow="Safety" title="Stay safe." intro="Stuck funds attract scammers. The rules are simple." alt>
+    <Section id="safety" eyebrow="Safety" title="Stay safe." intro="Forgotten funds attract scammers. The rules are simple." alt>
       <div className="grid gap-4 md:grid-cols-3">
         {RULES.map((r, i) => (
           <Reveal key={r.title} delay={i * 100}>

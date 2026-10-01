@@ -18,6 +18,12 @@ export function Header() {
             <Book width={16} height={16} />
             <span className="hidden sm:inline">Guides</span>
           </a>
+          <a href="#faq" className={link} aria-label="Questions">
+            <span className="text-[15px] leading-none font-semibold" aria-hidden>
+              ?
+            </span>
+            <span className="hidden sm:inline">FAQ</span>
+          </a>
           {hasTips && (
             <a href="#tip" className={link} aria-label="Tip">
               <Heart width={16} height={16} />

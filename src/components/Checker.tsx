@@ -6,7 +6,7 @@ import { checkSource, InputError, resolveInput, runChecks, sourcesFor, type Targ
 import { readCache, writeCache } from "@/lib/resultCache";
 import { NETWORK_COLORS } from "@/lib/brand";
 import { formatAmount, formatDate, formatUsd, shortAddress } from "@/lib/format";
-import { GROUPS, sourceById, type Group } from "@/lib/sources";
+import { GROUPS, sourceById, type CheckSource, type Group } from "@/lib/sources";
 import type { Finding, NetworkResult, WithdrawalStatus } from "@/lib/types";
 import { CopyButton } from "./CopyButton";
 import {
@@ -14,6 +14,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   CheckCircle,
+  Chevron,
   Clock,
   Lock,
   Refresh,
@@ -27,18 +28,18 @@ type Phase = "idle" | "resolving" | "checking" | "done";
 const STATUS: Record<WithdrawalStatus, { label: string; tone: string; group: string; order: number }> = {
   ready: { label: "Ready to claim", tone: "bg-green-soft text-green", group: "Ready to claim", order: 0 },
   prove: { label: "Needs prove", tone: "bg-orange-soft text-orange", group: "Needs a prove step", order: 1 },
-  manual: { label: "Check manually", tone: "bg-orange-soft text-orange", group: "Legacy withdrawals", order: 2 },
+  manual: { label: "Check manually", tone: "bg-orange-soft text-orange", group: "Needs a manual step", order: 2 },
   waiting: { label: "Waiting", tone: "bg-purple-soft text-purple", group: "In the waiting period", order: 3 },
   recent: { label: "In progress", tone: "bg-fill-strong text-text-2", group: "Started recently", order: 4 },
 };
 
 const STATUS_HELP: Record<WithdrawalStatus, (f: Finding) => string> = {
-  ready: () => "The last step can be done now, from your own wallet, through the official bridge.",
+  ready: () => "You can claim it now, from your own wallet, through the official app.",
   prove: () => "Prove it on Ethereum, wait about 7 days, then finalize.",
-  manual: (f) => f.note ?? "This withdrawal uses an older format. Check it in the bridge's official app.",
+  manual: (f) => f.note ?? "This one needs a manual step. Follow the guide.",
   waiting: (f) =>
     f.readyAt ? `Claimable from ${formatDate(f.readyAt)}.` : "Still inside the bridge's waiting period.",
-  recent: () => "Started less than a week ago. It's probably still in progress, not stuck.",
+  recent: () => "Started recently. It's probably still in progress, not forgotten.",
 };
 
 const NetDot = ({ id, size = 10 }: { id: string; size?: number }) => (
@@ -127,48 +128,109 @@ function NetworkGrid({
 }) {
   const sources = sourcesFor(kind);
   return (
-    <div className="space-y-5">
-      {(Object.keys(GROUPS) as Group[]).filter((g) => sources.some((s) => s.group === g)).map((g) => (
-        <div key={g}>
-          <p className="mb-2 px-1 text-[13px] font-medium text-text-2">{GROUPS[g]}</p>
-          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-            {sources.filter((n) => n.group === g).map((n) => {
-              const r = results[n.id];
-              const state = r?.state ?? "queued";
-              const found = r?.findings.filter((f) => f.status !== "recent").length ?? 0;
-              return (
-                <li
-                  key={n.id}
-                  className="flex items-center justify-between gap-2 rounded-2xl border border-line bg-surface px-3.5 py-3 text-[14px]"
-                >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <NetDot id={n.id} />
-                    <span className="truncate">{n.name}</span>
+    <div className="space-y-3">
+      {(Object.keys(GROUPS) as Group[])
+        .filter((g) => sources.some((s) => s.group === g))
+        .map((g) => (
+          <GroupBlock key={g} group={g} sources={sources.filter((n) => n.group === g)} results={results} onRetry={onRetry} />
+        ))}
+    </div>
+  );
+}
+
+/** One group of checks: a summary line, opened automatically when something needs attention. */
+function GroupBlock({
+  group,
+  sources,
+  results,
+  onRetry,
+}: {
+  group: Group;
+  sources: CheckSource[];
+  results: Record<string, NetworkResult>;
+  onRetry: (id: string) => void;
+}) {
+  const states = sources.map((n) => results[n.id]);
+  const done = states.filter((r) => r?.state === "done" || r?.state === "error").length;
+  const failed = states.filter((r) => r?.state === "error").length;
+  const found = states.reduce((n, r) => n + (r?.findings.filter((f) => f.status !== "recent").length ?? 0), 0);
+  const attention = failed > 0 || found > 0;
+  const [open, setOpen] = useState(attention);
+  useEffect(() => {
+    if (attention) setOpen(true);
+  }, [attention]);
+
+  return (
+    <div className="overflow-hidden rounded-3xl border border-line bg-surface">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-fill sm:px-5"
+      >
+        <span className="flex min-w-0 items-center gap-2.5">
+          <span className="truncate text-[15px] font-medium">{GROUPS[group]}</span>
+          <span className="shrink-0 text-[13px] text-text-3 tabular-nums">
+            {done < sources.length ? `${done}/${sources.length}` : `${sources.length} checked`}
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center gap-2">
+          {found > 0 && (
+            <span className="rounded-full bg-orange-soft px-2 py-0.5 text-[12px] font-semibold text-orange tabular-nums">
+              {found} found
+            </span>
+          )}
+          {failed > 0 && (
+            <span className="rounded-full bg-red-soft px-2 py-0.5 text-[12px] font-semibold text-red tabular-nums">
+              {failed} failed
+            </span>
+          )}
+          {done < sources.length ? (
+            <Spinner className="text-text-3" />
+          ) : !attention ? (
+            <CheckCircle width={18} height={18} className="text-green" />
+          ) : null}
+          <Chevron width={16} height={16} className={`text-text-3 transition-transform ${open ? "rotate-180" : ""}`} />
+        </span>
+      </button>
+      {open && (
+        <ul className="grid grid-cols-2 gap-2 border-t border-line p-3 sm:grid-cols-3 md:grid-cols-4">
+          {sources.map((n) => {
+            const r = results[n.id];
+            const state = r?.state ?? "queued";
+            const count = r?.findings.filter((f) => f.status !== "recent").length ?? 0;
+            return (
+              <li
+                key={n.id}
+                className="flex items-center justify-between gap-2 rounded-2xl border border-line bg-surface px-3.5 py-3 text-[14px]"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <NetDot id={n.id} />
+                  <span className="truncate">{n.name}</span>
+                </span>
+                {state === "running" || state === "queued" ? (
+                  <Spinner className="text-text-3" />
+                ) : state === "error" ? (
+                  <button
+                    type="button"
+                    onClick={() => onRetry(n.id)}
+                    className="flex items-center gap-1 rounded-full bg-red-soft px-2 py-0.5 text-[12px] font-medium text-red"
+                    title={r?.error}
+                  >
+                    <Refresh width={13} height={13} /> Retry
+                  </button>
+                ) : count > 0 ? (
+                  <span className="rounded-full bg-orange-soft px-2 py-0.5 text-[12px] font-semibold text-orange tabular-nums">
+                    {count}
                   </span>
-                  {state === "running" || state === "queued" ? (
-                    <Spinner className="text-text-3" />
-                  ) : state === "error" ? (
-                    <button
-                      type="button"
-                      onClick={() => onRetry(n.id)}
-                      className="flex items-center gap-1 rounded-full bg-red-soft px-2 py-0.5 text-[12px] font-medium text-red"
-                      title={r?.error}
-                    >
-                      <Refresh width={13} height={13} /> Retry
-                    </button>
-                  ) : found > 0 ? (
-                    <span className="rounded-full bg-orange-soft px-2 py-0.5 text-[12px] font-semibold text-orange tabular-nums">
-                      {found}
-                    </span>
-                  ) : (
-                    <CheckCircle width={18} height={18} className="text-green" />
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
+                ) : (
+                  <CheckCircle width={18} height={18} className="text-green" />
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
@@ -292,21 +354,21 @@ export function Checker() {
       <section id="top" className="hero-glow relative overflow-hidden">
         <div className="mx-auto max-w-[980px] px-4 pt-20 pb-16 text-center sm:px-6 sm:pt-28 sm:pb-24">
           <p className="animate-fade-up text-[13px] font-semibold tracking-[0.14em] text-accent uppercase">
-            Unclaimed bridge withdrawals
+            Unclaimed crypto finder
           </p>
           <h1
             className="animate-fade-up mx-auto mt-4 max-w-[820px] text-[44px] leading-[1.04] font-semibold tracking-[-0.035em] sm:text-[72px] md:text-[84px]"
             style={{ animationDelay: "60ms" }}
           >
-            Is your crypto <br className="hidden sm:block" />
-            <span className="text-gradient">stuck in a bridge?</span>
+            Is money still <br className="hidden sm:block" />
+            <span className="text-gradient">waiting for you?</span>
           </h1>
           <p
             className="animate-fade-up mx-auto mt-6 max-w-[620px] text-[19px] leading-relaxed text-text-2 sm:text-[21px]"
             style={{ animationDelay: "120ms" }}
           >
-            Many withdrawals need one last step on the destination chain. If it never happened, the funds are still
-            waiting for you.
+            Bridge withdrawals you never finished, airdrops you never claimed, rewards and deposits you forgot.
+            Paste an address: we check them all, live on-chain.
           </p>
 
           <div className="animate-fade-up mx-auto mt-10 max-w-[680px]" style={{ animationDelay: "180ms" }}>
@@ -378,22 +440,24 @@ export function Checker() {
 
                 {busy && stuck.length === 0 ? (
                   <div className="mt-6">
-                    <p className="text-[28px] font-semibold tracking-tight sm:text-[34px]">Checking bridges…</p>
+                    <p className="text-[28px] font-semibold tracking-tight sm:text-[34px]">Checking…</p>
                     <p className="mt-2 text-[15px] text-text-2">
-                      Finding your withdrawals, cross-chain transfers and airdrops, then asking each chain whether it was completed.
+                      Looking for unfinished withdrawals, stuck transfers, unclaimed airdrops and rewards, then asking each
+                      chain whether they&apos;re still waiting for you.
                     </p>
                   </div>
                 ) : stuck.length > 0 ? (
                   <div className="mt-6">
                     <p className="text-[15px] font-medium text-orange">
-                      {stuck.length} unclaimed transfer{stuck.length > 1 ? "s" : ""} found
+                      {stuck.length} thing{stuck.length > 1 ? "s" : ""} to claim
                     </p>
                     <p className="mt-1 text-[44px] leading-none font-semibold tracking-[-0.03em] tabular-nums sm:text-[56px]">
                       {totalUsd > 0 ? formatUsd(totalUsd) : `${stuck.length} to claim`}
                     </p>
                     <p className="mt-3 max-w-[560px] text-[15px] text-text-2">
-                      Claiming always sends 100% of the funds to your own address, through the official bridge. Nobody
-                      else can do it for you, and nobody needs your seed phrase.
+                      Claiming always sends 100% of the funds to your own address, through the official app. Nobody
+                      else can do it for you, and nobody needs your seed phrase. Open &quot;How to claim&quot; on each
+                      line for the steps.
                     </p>
                   </div>
                 ) : errors > 0 ? (
@@ -411,11 +475,11 @@ export function Checker() {
                   <div className="mt-6 flex items-start gap-4">
                     <CheckCircle width={40} height={40} className="mt-1 shrink-0 text-green" />
                     <div>
-                      <p className="text-[28px] font-semibold tracking-tight sm:text-[34px]">No stuck funds found</p>
+                      <p className="text-[28px] font-semibold tracking-tight sm:text-[34px]">Nothing left behind</p>
                       <p className="mt-2 text-[15px] text-text-2">
                         {completed > 0
                           ? `All ${completed} withdrawal${completed > 1 ? "s" : ""} we found were completed.`
-                          : "We didn't find any unfinished withdrawals on the networks we check."}{" "}
+                          : `Nothing is waiting for this address in the ${finished} places we checked.`}{" "}
                       </p>
                     </div>
                   </div>
@@ -477,8 +541,8 @@ export function Checker() {
                 </details>
               )}
               <p className="mt-4 px-1 text-[13px] leading-relaxed text-text-3">
-                Other bridges (ZKsync, Starknet, LayerZero, Synapse…) aren&apos;t checked automatically
-                yet. If you used one, follow its guide below.
+                Some apps (Starknet, LayerZero, Synapse…) can&apos;t be checked automatically yet. If you used
+                one, follow its guide below.
               </p>
             </div>
           </div>

@@ -1,7 +1,9 @@
 # lostfunds
 
-Find crypto stuck in a bridge: withdrawals that were started but never finished.
-Free, read-only, no wallet connection. Everything runs in the browser.
+Find the crypto you forgot to claim: unfinished bridge withdrawals, stuck cross-chain transfers,
+unclaimed airdrops, rewards and old deposits. Free, read-only, no wallet connection.
+Everything runs in the visitor's browser: there is no server to overload, and each visitor's
+requests go straight to public blockchain nodes and the projects' own public APIs.
 
 ## What it checks (live, on-chain)
 

@@ -1,4 +1,6 @@
+import { Categories } from "@/components/Categories";
 import { Checker } from "@/components/Checker";
+import { Faq } from "@/components/Faq";
 import { Footer } from "@/components/Footer";
 import { Guides } from "@/components/Guides";
 import { Header } from "@/components/Header";
@@ -15,9 +17,11 @@ export default function Home() {
       <main>
         <Checker />
         <Stats />
-        <ShowReel />
+        <Categories />
         <HowItWorks />
+        <ShowReel />
         <Guides />
+        <Faq />
         <Tip />
         <Safety />
       </main>
