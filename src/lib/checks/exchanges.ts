@@ -14,10 +14,12 @@ import { wouldSucceed } from "./simulate";
  *     withdrawToken(token, amount) for tokens, at any time.
  *   - IDEX v1: withdraw(token, amount), once the account has been inactive for
  *     `inactivityReleasePeriod` blocks (240 blocks, under an hour).
+ *   - Switcheo (BrokerV2): announceWithdraw(asset, amount), then slowWithdraw(user, asset, amount)
+ *     once `slowWithdrawDelay` has passed (0 since the exchange closed, at most 7 days).
  *
- * The contracts can't list a user's tokens, and their Deposit and Trade events aren't indexed by user,
- * so the check reads the balance of ETH and of every token worth checking (DEPOSIT_TOKENS) in a single
- * multicall, then simulates withdrawing each balance from the user's own address.
+ * The contracts can't list a user's tokens, and most don't index their events by user, so the check
+ * reads the balance of ETH and of every token worth checking (DEPOSIT_TOKENS) in a single multicall,
+ * then simulates withdrawing (for Switcheo, announcing) each balance from the user's own address.
  */
 
 export const LEGACY_GUIDE = "legacy-deposits";
@@ -26,7 +28,7 @@ const MIN_USD = 5;
 export interface DepositExchange {
   id: string;
   name: string;
-  kind: "etherdelta" | "idex";
+  kind: "etherdelta" | "idex" | "switcheo";
   /**
    * The exchange's contracts (several versions for EtherDelta), with their letter in DEPOSIT_TOKENS
    * and the official withdrawal app that still serves that contract, if any.
@@ -66,6 +68,12 @@ export const DEPOSIT_EXCHANGES: DepositExchange[] = [
     kind: "etherdelta",
     contracts: [{ address: "0x9a2d163aB40F88C625Fd475e807Bbc3556566f80", tokens: "s" }],
   },
+  {
+    id: "switcheo",
+    name: "Switcheo",
+    kind: "switcheo",
+    contracts: [{ address: "0x7ee7Ca6E75dE79e618e88bDf80d0B1DB136b22D0", tokens: "w" }],
+  },
 ];
 
 const abi = parseAbi([
@@ -75,13 +83,28 @@ const abi = parseAbi([
   "function withdrawToken(address token, uint256 amount)",
 ]);
 const idexAbi = parseAbi(["function withdraw(address token, uint256 amount) returns (bool)"]);
+const switcheoAbi = parseAbi([
+  "function balances(address user, address assetId) view returns (uint256)",
+  "function slowWithdrawDelay() view returns (uint256)",
+  "function announceWithdraw(address _assetId, uint256 _amount)",
+]);
 
 /** Where to withdraw, shown as text: the official app if one is left, and Etherscan's Write Contract tab. */
 export const exchangeClaimAt = (contract: Address, fn: string, app?: string) =>
   `${app ? `${app}, or ` : ""}Etherscan → Write Contract → ${fn}, on ${contract}`;
 
+/** Switcheo's wait between announcing and withdrawing, in words. */
+const wait = (seconds: bigint) => (seconds === 0n ? "right after" : `${Math.ceil(Number(seconds) / 3600)} hours after`);
+
 /** The call that withdraws a whole balance, as Etherscan's Write Contract tab asks for it. */
-function withdrawal(kind: DepositExchange["kind"], token: Address, amount: bigint): { data: Hex; fn: string; how: string } {
+function withdrawal(kind: DepositExchange["kind"], token: Address, amount: bigint, user: Address, delay: bigint): { data: Hex; fn: string; how: string } {
+  if (kind === "switcheo")
+    // Only the announcement can be simulated now: the withdrawal needs it on-chain first.
+    return {
+      data: encodeFunctionData({ abi: switcheoAbi, functionName: "announceWithdraw", args: [token, amount] }),
+      fn: "announceWithdraw, then slowWithdraw",
+      how: `announceWithdraw with assetId ${token}${token === zeroAddress ? " (ETH)" : ""} and amount ${amount}, then, ${wait(delay)}, slowWithdraw with withdrawer ${user}, the same assetId and amount`,
+    };
   if (kind === "idex")
     return {
       data: encodeFunctionData({ abi: idexAbi, functionName: "withdraw", args: [token, amount] }),
@@ -110,8 +133,17 @@ export async function checkExchange(ex: DepositExchange, user: Address): Promise
       decimals,
     })),
   ]);
-  // One eth_call for every balance.
-  const balances = await bulkRead(reads.map((r) => ({ address: r.contract, abi, functionName: "balanceOf", args: [r.token, user] })));
+  // One eth_call for every balance (and Switcheo's announce-to-withdraw delay).
+  const switcheo = ex.kind === "switcheo";
+  const balances = await bulkRead([
+    ...reads.map((r) =>
+      switcheo
+        ? { address: r.contract, abi: switcheoAbi, functionName: "balances", args: [user, r.token] }
+        : { address: r.contract, abi, functionName: "balanceOf", args: [r.token, user] },
+    ),
+    ...(switcheo ? [{ address: ex.contracts[0].address, abi: switcheoAbi, functionName: "slowWithdrawDelay" }] : []),
+  ]);
+  const delay = switcheo ? (balances[reads.length] as bigint) : 0n;
   const held = reads
     .map((r, i) => ({ ...r, amount: balances[i] as bigint }))
     .filter((r) => r.amount > 0n)
@@ -131,7 +163,7 @@ export async function checkExchange(ex: DepositExchange, user: Address): Promise
   const errors: string[] = [];
   await Promise.all(
     worth.map(async (h) => {
-      const w = withdrawal(ex.kind, h.token, h.amount);
+      const w = withdrawal(ex.kind, h.token, h.amount, user, delay);
       let ok: boolean;
       try {
         ok = await wouldSucceed(l1Client(), { from: user, to: h.contract, data: w.data });
@@ -143,7 +175,9 @@ export async function checkExchange(ex: DepositExchange, user: Address): Promise
       const intro =
         ex.kind === "idex"
           ? `IDEX v1 isn't operated anymore, but this ${h.symbol} is still in its contract, and the contract lets you withdraw it without IDEX.`
-          : `This ${h.symbol} was left on ${ex.name} and never withdrawn. The contract lets you withdraw it at any time, no app needed.`;
+          : ex.kind === "switcheo"
+            ? `This ${h.symbol} was left on Switcheo's Ethereum contract. Its escape hatch lets you withdraw it without Switcheo, in two transactions.`
+            : `This ${h.symbol} was left on ${ex.name} and never withdrawn. The contract lets you withdraw it at any time, no app needed.`;
       out.findings.push(
         makeFinding(source, {
           key: h.token,

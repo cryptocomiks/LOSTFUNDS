@@ -66,6 +66,7 @@ export const NETWORK_COLORS: Record<string, string> = {
   idex: "linear-gradient(135deg,#FF7A3D,#2B1B5A)",
   tokenstore: "#2FB673",
   singularx: "linear-gradient(135deg,#4C6FFF,#0B1033)",
+  switcheo: "linear-gradient(135deg,#7AF5C8,#1F3D5A)",
   "ens-deeds": "#5298FF",
   "polygon-staking": "#6C00F6",
   scd: "linear-gradient(135deg,#F4B731,#1AAB9B)",

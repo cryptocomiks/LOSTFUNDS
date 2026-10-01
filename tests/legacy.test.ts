@@ -70,9 +70,22 @@ describe("Old exchanges (EtherDelta, IDEX v1, Token.Store, SingularX)", () => {
       if (!from || (balances[key(contract, token, from)] ?? 0n) < (amount as bigint)) revert("insufficient balance");
       if (paused.has(String(token).toLowerCase())) revert("token transfers are paused");
     };
+    const switcheoAbi = parseAbi([
+      "function balances(address user, address assetId) view returns (uint256)",
+      "function slowWithdrawDelay() view returns (uint256)",
+      "function announceWithdraw(address _assetId, uint256 _amount)",
+    ]);
     for (const ex of DEPOSIT_EXCHANGES)
       for (const { address } of ex.contracts)
-        if (ex.kind === "idex")
+        if (ex.kind === "switcheo")
+          world.addContract(1, address, switcheoAbi, {
+            balances: ([u, t]) => balances[key(address, t, u)] ?? 0n,
+            slowWithdrawDelay: () => 0n,
+            announceWithdraw: ([t, a], { from }) => {
+              if (!from || (a as bigint) === 0n || (balances[key(address, t, from)] ?? 0n) < (a as bigint)) revert("16");
+            },
+          });
+        else if (ex.kind === "idex")
           world.addContract(1, address, idexAbi, {
             balanceOf: ([t, u]) => balances[key(address, t, u)] ?? 0n,
             withdraw: ([t, a], { from }) => {
@@ -121,6 +134,18 @@ describe("Old exchanges (EtherDelta, IDEX v1, Token.Store, SingularX)", () => {
     const eth = r.findings.find((f) => f.asset.symbol === "ETH")!;
     assert.match(eth.note ?? "", /withdraw with token 0x0000000000000000000000000000000000000000 \(ETH\) and amount 3000000000000000000/);
     assert.deepEqual(await checkExchange(idex, OTHER), { findings: [], completed: 0 }, "simulation reverts: hidden");
+  });
+
+  test("Switcheo: the escape hatch's announcement is simulated, and the note gives both steps", async () => {
+    const switcheo = DEPOSIT_EXCHANGES.find((x) => x.id === "switcheo")!;
+    const BROKER = switcheo.contracts[0].address;
+    set(BROKER, zeroAddress, USER, 4n * e18);
+    set(BROKER, LINK, USER, 20n * e18);
+    const r = await checkExchange(switcheo, USER);
+    assert.deepEqual(r.findings.map((f) => [f.asset.symbol, f.asset.amount]).sort(), [["ETH", 4n * e18], ["LINK", 20n * e18]]);
+    const eth = r.findings.find((f) => f.asset.symbol === "ETH")!;
+    assert.match(eth.note ?? "", new RegExp(`announceWithdraw with assetId ${zeroAddress} \\(ETH\\) and amount ${4n * e18}, then, right after, slowWithdraw with withdrawer ${USER}`));
+    assert.equal(eth.claimAt, `Etherscan → Write Contract → announceWithdraw, then slowWithdraw, on ${BROKER}`);
   });
 
   test("an address that withdrew everything sees nothing", async () => {
