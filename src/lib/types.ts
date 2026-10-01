@@ -43,6 +43,8 @@ export interface Finding {
   claimAt?: string;
   /** Hidden when its USD value is known and below this (dust). Unpriced findings are always shown. */
   minUsd?: number;
+  /** Text of the link to `txUrl` (default "View transaction"), e.g. when it opens a contract. */
+  linkLabel?: string;
 }
 
 export type NetworkCheckState = "queued" | "running" | "done" | "error";

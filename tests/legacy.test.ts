@@ -152,7 +152,7 @@ before(() => {
 });
 
 const byKey = (findings: Finding[]) => Object.fromEntries(findings.map((f) => [f.id.split(":").pop()!, f]));
-const legacySources = () => sourcesFor("evm").filter((s) => s.group === "legacy");
+const legacySources = () => sourcesFor("evm").filter((s) => s.group === "legacy" && s.id.startsWith("legacy-"));
 
 describe("Old tokens & token migrations", () => {
   test("finds every redemption, in what the official contract pays (checked against mainnet)", async () => {

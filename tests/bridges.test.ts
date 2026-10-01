@@ -919,7 +919,7 @@ describe("Wallet kinds", () => {
     );
   });
   test("an Ethereum address runs everything", () => {
-    assert.equal(sourcesFor("evm").length, 85);
+    assert.equal(sourcesFor("evm").length, 93);
   });
 });
 
