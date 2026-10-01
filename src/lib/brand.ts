@@ -83,4 +83,11 @@ export const NETWORK_COLORS: Record<string, string> = {
   "reclaim-rent": "linear-gradient(135deg,#9945FF,#14F195)",
   "reclaim-stake": "linear-gradient(135deg,#14F195,#1A1A1A)",
   "reclaim-marinade": "linear-gradient(135deg,#308D8A,#C7F284)",
+  "legacy-thedao": "linear-gradient(135deg,#E8E8E8,#3C3C3C)",
+  "legacy-sai": "#F4B731",
+  "legacy-mkr-2016": "#1AAB9B",
+  "legacy-dgd": "linear-gradient(135deg,#F2D16B,#B8862B)",
+  "legacy-gnt": "#181EA9",
+  "legacy-kncl": "#31CB9E",
+  "legacy-weth-old": "#627EEA",
 };

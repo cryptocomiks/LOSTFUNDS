@@ -8,6 +8,7 @@ import { checkCeler } from "./checks/celer";
 import type { CheckOutput } from "./checks/common";
 import { checkDebridge } from "./checks/debridge";
 import { checkGnosisBridge } from "./checks/gnosis";
+import { checkLegacy, LEGACY_LIST } from "./checks/legacy";
 import { checkLinea } from "./checks/linea";
 import { checkMerkl } from "./checks/merkl";
 import { checkOpStack } from "./checks/opstack";
@@ -103,6 +104,15 @@ export const SOURCES: CheckSource[] = [
   { id: RENT.id, name: RENT.name, group: "reclaim", bridgeUrl: "Solflare (Close Account), or sol-incinerator.com", accepts: ["solana"], run: checkTokenRent },
   { id: STAKE.id, name: STAKE.name, group: "reclaim", bridgeUrl: "your wallet's staking tab", accepts: ["solana"], run: checkInactiveStake },
   { id: MARINADE.id, name: MARINADE.name, group: "reclaim", bridgeUrl: "app.marinade.finance", accepts: ["solana"], run: checkMarinadeTickets },
+  ...LEGACY_LIST.map((e) => ({
+    id: `legacy-${e.id}`,
+    name: e.name,
+    group: "legacy" as const,
+    bridgeUrl: e.redemptions[0].claimAt,
+    accepts: ["evm" as const],
+    // Every entry shares one multicall per address (see checks/legacy.ts).
+    run: (user: string) => checkLegacy(user, [e]),
+  })),
 ];
 
 export const sourceById = (id: string) => SOURCES.find((s) => s.id === id);

@@ -163,8 +163,16 @@ export class MockChain {
   solanaCalls: string[] = [];
   /** Circle's API: `${sourceDomain}:${txHash}` or `${sourceDomain}:nonce:${nonce}` → response body. */
   iris: Record<string, object> = {};
-  /** Whether the RPC nodes answer eth_simulateV1 (not all real ones do). */
+  /** ETH balances, by `${chainId}:${lowercase address}` (eth_getBalance, Multicall3.getEthBalance). */
+  ethBalances: Record<string, bigint> = {};
+  /** Whether the nodes answer eth_simulateV1 (calls run in order, from the given sender). */
   simulateV1 = true;
+  /** Every JSON-RPC method called on an EVM chain, in order. */
+  rpcLog: { chainId: number; method: string }[] = [];
+
+  setEthBalance(chainId: number, address: Address, wei: bigint) {
+    this.ethBalances[`${chainId}:${address.toLowerCase()}`] = wei;
+  }
 
   addTx(p: {
     chainId: number;
@@ -211,6 +219,12 @@ export class MockChain {
   }
 
   private call(chainId: number, to: string, data: Hex, from?: Address, state: Record<string, unknown> = {}): { ok: boolean; data: Hex; reason?: string } {
+    if (to.toLowerCase() === MULTICALL3 && data.startsWith("0x4d2301cc")) {
+      // Multicall3.getEthBalance(address)
+      const { args } = decodeFunctionData({ abi: multicall3Abi, data });
+      const wei = this.ethBalances[`${chainId}:${String(args![0]).toLowerCase()}`] ?? 0n;
+      return { ok: true, data: encodeFunctionResult({ abi: multicall3Abi, functionName: "getEthBalance", result: wei }) };
+    }
     const c = this.contracts.get(`${chainId}:${to.toLowerCase()}`);
     if (!c) return { ok: false, data: "0x" };
     let decoded: { functionName: string; args?: readonly unknown[] };
@@ -238,6 +252,7 @@ export class MockChain {
   }
 
   private rpc(chainId: number, req: { id: number; method: string; params: unknown[] }) {
+    this.rpcLog.push({ chainId, method: req.method });
     const reply = (result: unknown) => ({ jsonrpc: "2.0", id: req.id, result });
     const fail = (r: { data: Hex; reason?: string }) => ({
       jsonrpc: "2.0",
@@ -302,9 +317,12 @@ export class MockChain {
         const [hash, index] = req.params as [Hex, number];
         return reply(this.txs.get(`${chainId}:${hash}`)?.zk?.proofs?.[index] ?? null);
       }
+      case "eth_getBalance":
+        return reply(numberToHex(this.ethBalances[`${chainId}:${String(req.params[0]).toLowerCase()}`] ?? 0n));
       case "eth_call": {
         const { to, data, from } = req.params[0] as { to: string; data: Hex; from?: Address };
-        if (isMulticall(chainId, to)) {
+        if (isMulticall(chainId, to) && data.startsWith("0x82ad56cb")) {
+          // aggregate3((address,bool,bytes)[])
           const { args } = decodeFunctionData({ abi: multicall3Abi, data });
           const calls = args[0] as readonly { target: Address; callData: Hex }[];
           const results = calls.map((c) => {
@@ -318,18 +336,22 @@ export class MockChain {
       }
       case "eth_simulateV1": {
         if (!this.simulateV1) return { jsonrpc: "2.0", id: req.id, error: { code: -32601, message: "the method eth_simulateV1 does not exist/is not available" } };
-        const [{ blockStateCalls }] = req.params as [{ blockStateCalls: { calls: { from?: Address; to: string; data: Hex }[] }[] }];
+        const [{ blockStateCalls }] = req.params as [{ blockStateCalls: { calls: { from?: Address; to: string; data?: Hex }[] }[] }];
         const state: Record<string, unknown> = {}; // the simulated blocks build on each other
         return reply(
           blockStateCalls.map((block, i) => ({
             number: numberToHex(MOCK_HEAD + 1n + BigInt(i)),
             hash: `0x${"cd".repeat(32)}`,
             timestamp: numberToHex(Math.floor(Date.now() / 1000) + 12 * (i + 1)),
+            parentHash: `0x${"ab".repeat(32)}`,
             gasLimit: numberToHex(45_000_000),
             gasUsed: "0x0",
+            baseFeePerGas: "0x0",
+            logsBloom: `0x${"00".repeat(256)}`,
             transactions: [],
+            uncles: [],
             calls: block.calls.map((call) => {
-              const r = this.call(chainId, call.to, call.data, call.from, state);
+              const r = this.call(chainId, call.to, call.data ?? "0x", call.from, state);
               return r.ok
                 ? { status: "0x1", returnData: r.data, gasUsed: "0x5208", logs: [] }
                 : {

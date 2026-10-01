@@ -107,7 +107,7 @@ function FindingRow({ f, index }: { f: Finding; index: number }) {
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-[14px] text-link hover:underline"
         >
-          {inAccount ? "View on Solscan" : f.txUrl.includes("/tx/") ? "View transaction" : "View on explorer"} <ArrowUpRight width={14} height={14} />
+          {inAccount ? "View on Solscan" : /\/(address|account)\//.test(f.txUrl) ? "View contract" : f.txUrl.includes("/tx/") ? "View transaction" : "View on explorer"} <ArrowUpRight width={14} height={14} />
         </a>
       </div>
 
@@ -449,7 +449,7 @@ export function Checker() {
                   <div className="mt-6">
                     <p className="text-[28px] font-semibold tracking-tight sm:text-[34px]">Checking…</p>
                     <p className="mt-2 text-[15px] text-text-2">
-                      Looking for unfinished withdrawals, stuck transfers, unclaimed airdrops and rewards, then asking each
+                      Looking for unfinished withdrawals, stuck transfers, airdrops, rewards and old tokens, then asking each
                       chain whether they&apos;re still waiting for you.
                     </p>
                   </div>
