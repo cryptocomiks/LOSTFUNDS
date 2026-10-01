@@ -374,8 +374,8 @@ export function Checker() {
             className="animate-fade-up mx-auto mt-6 max-w-[620px] text-[19px] leading-relaxed text-text-2 sm:text-[21px]"
             style={{ animationDelay: "120ms" }}
           >
-            Bridge withdrawals you never finished, airdrops you never claimed, rewards and deposits you forgot.
-            Paste an address: we check them all, live on-chain.
+            Bridge withdrawals you never finished, airdrops you never claimed, rewards, deposits and old tokens you
+            forgot. Paste an address: we check them all, live on-chain.
           </p>
 
           <div className="animate-fade-up mx-auto mt-10 max-w-[680px]" style={{ animationDelay: "180ms" }}>
@@ -420,7 +420,18 @@ export function Checker() {
             ) : (
               <p className="mt-4 flex items-center justify-center gap-2 text-[13px] text-text-3">
                 <Lock width={14} height={14} />
-                Read-only. No wallet connection, no signatures. Ethereum and Solana addresses, ENS names.
+                Read-only. No wallet connection, no signatures.
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setInput("vitalik.eth");
+                    run("vitalik.eth");
+                  }}
+                  className="font-medium text-link hover:underline disabled:opacity-60"
+                >
+                  Try vitalik.eth
+                </button>
               </p>
             )}
           </div>

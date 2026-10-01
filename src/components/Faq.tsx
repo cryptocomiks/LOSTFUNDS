@@ -13,7 +13,7 @@ const QUESTIONS: { q: string; a: string }[] = [
   },
   {
     q: "Why would money still be waiting for me?",
-    a: "Many actions in crypto take two steps and the second is easy to forget: finishing a bridge withdrawal, claiming an airdrop, withdrawing a lock that expired, claiming a finalized withdrawal or rewards. Until you do it, the funds stay in the contract — often for years.",
+    a: "Many actions in crypto take two steps and the second is easy to forget: finishing a bridge withdrawal, claiming an airdrop, withdrawing a lock that expired, claiming a finalized withdrawal or rewards, swapping an old token for its new version. Until you do it, the funds stay in the contract — often for years.",
   },
   {
     q: "Does it cost anything?",
