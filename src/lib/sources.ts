@@ -9,6 +9,7 @@ import { checkGnosisBridge } from "./checks/gnosis";
 import { checkLinea } from "./checks/linea";
 import { checkOpStack } from "./checks/opstack";
 import { checkPolygon, POLYGON } from "./checks/polygon";
+import { ETH_REWARD_SOURCES } from "./checks/rewards-eth";
 import { checkScroll } from "./checks/scroll";
 import { checkWormhole } from "./checks/wormhole";
 import { checkZkSync } from "./checks/zksync";
@@ -84,6 +85,7 @@ export const SOURCES: CheckSource[] = [
     accepts: a.accepts,
     run: (user: string) => checkAirdrops(user, [a]),
   })),
+  ...ETH_REWARD_SOURCES,
 ];
 
 export const sourceById = (id: string) => SOURCES.find((s) => s.id === id);

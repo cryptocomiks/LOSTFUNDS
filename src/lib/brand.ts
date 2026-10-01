@@ -61,4 +61,13 @@ export const NETWORK_COLORS: Record<string, string> = {
   "airdrop-lido-early-2021": "#00A3FF",
   "airdrop-lido-1inch-2021": "linear-gradient(135deg,#00A3FF,#D82122)",
   "airdrop-convex-2021": "linear-gradient(135deg,#FF5A5A,#3A3A3A)",
+  "lido-withdrawals": "linear-gradient(135deg,#00A3FF,#F69988)",
+  "expired-locks": "linear-gradient(135deg,#FFD84D,#3A3A3A)",
+  "curve-fees": "linear-gradient(135deg,#FF0000,#FFFF00 35%,#00FF00 55%,#0000FF)",
+  "eigenlayer-withdrawals": "#1A0C6D",
+  "eigenlayer-rewards": "linear-gradient(135deg,#1A0C6D,#7B61FF)",
+  "aave-safety-module": "linear-gradient(135deg,#B6509E,#2EBAC6)",
+  "synthetix-escrow": "linear-gradient(135deg,#00D1FF,#ED1EFF)",
+  "convex-staking": "linear-gradient(135deg,#FF5A5A,#3A3A3A)",
+  "balancer-fees": "linear-gradient(135deg,#1E1E1E,#9CA3AF)",
 };

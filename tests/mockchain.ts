@@ -81,13 +81,19 @@ const STATIC_HOSTS = new Set([
   "governance.1inch.io",
   "safe-claiming-app-data.safe.global",
   "lostfunds.vercel.app",
+  "sidecar-rpc.eigenlayer.xyz",
+  "wq-api.lido.fi",
 ]);
 
 /** RPC nodes used only for event searches (not in the chain registries): URL → chain id. */
 const EXTRA_RPCS: Record<string, number> = { "https://rpc.gnosis.gateway.fm": 100 };
 
-/** A contract function; throwing an Error makes the call revert with its message as reason. */
-type ContractFn = (args: readonly unknown[], ctx: { from?: Address }) => unknown;
+/**
+ * A contract function; throwing an Error makes the call revert with its message as reason.
+ * `state` is scratch space that lasts for one eth_call, or for all the calls of one
+ * eth_simulateV1 request (e.g. to count claims made in a row).
+ */
+type ContractFn = (args: readonly unknown[], ctx: { from?: Address; state: Record<string, unknown> }) => unknown;
 
 export class MockChain {
   logs: StoredLog[] = [];
@@ -118,6 +124,8 @@ export class MockChain {
   solanaSignatures: Record<string, { signature: string; err: null; blockTime: number }[]> = {};
   /** Circle's API: `${sourceDomain}:${txHash}` or `${sourceDomain}:nonce:${nonce}` → response body. */
   iris: Record<string, object> = {};
+  /** Whether the RPC nodes answer eth_simulateV1 (not all real ones do). */
+  simulateV1 = true;
 
   addTx(p: {
     chainId: number;
@@ -163,7 +171,7 @@ export class MockChain {
     this.contracts.set(`${chainId}:${address.toLowerCase()}`, { abi, fns });
   }
 
-  private call(chainId: number, to: string, data: Hex, from?: Address): { ok: boolean; data: Hex; reason?: string } {
+  private call(chainId: number, to: string, data: Hex, from?: Address, state: Record<string, unknown> = {}): { ok: boolean; data: Hex; reason?: string } {
     const c = this.contracts.get(`${chainId}:${to.toLowerCase()}`);
     if (!c) return { ok: false, data: "0x" };
     let decoded: { functionName: string; args?: readonly unknown[] };
@@ -176,7 +184,7 @@ export class MockChain {
     const fn = c.fns[functionName];
     if (!fn) return { ok: false, data: "0x" };
     try {
-      const result = fn(args ?? [], { from });
+      const result = fn(args ?? [], { from, state });
       if (result === undefined) return { ok: true, data: "0x" }; // function with no return value
       return { ok: true, data: encodeFunctionResult({ abi: c.abi, functionName, result } as never) };
     } catch (e) {
@@ -262,6 +270,33 @@ export class MockChain {
         const r = this.call(chainId, to, data, from);
         return r.ok ? reply(r.data) : fail(r);
       }
+      case "eth_simulateV1": {
+        if (!this.simulateV1) return { jsonrpc: "2.0", id: req.id, error: { code: -32601, message: "the method eth_simulateV1 does not exist/is not available" } };
+        const [{ blockStateCalls }] = req.params as [{ blockStateCalls: { calls: { from?: Address; to: string; data: Hex }[] }[] }];
+        const state: Record<string, unknown> = {}; // the simulated blocks build on each other
+        return reply(
+          blockStateCalls.map((block, i) => ({
+            number: numberToHex(MOCK_HEAD + 1n + BigInt(i)),
+            hash: `0x${"cd".repeat(32)}`,
+            timestamp: numberToHex(Math.floor(Date.now() / 1000) + 12 * (i + 1)),
+            gasLimit: numberToHex(45_000_000),
+            gasUsed: "0x0",
+            transactions: [],
+            calls: block.calls.map((call) => {
+              const r = this.call(chainId, call.to, call.data, call.from, state);
+              return r.ok
+                ? { status: "0x1", returnData: r.data, gasUsed: "0x5208", logs: [] }
+                : {
+                    status: "0x0",
+                    returnData: "0x",
+                    gasUsed: "0x5208",
+                    logs: [],
+                    error: { code: 3, message: r.reason ? `execution reverted: ${r.reason}` : "execution reverted", data: r.data },
+                  };
+            }),
+          })),
+        );
+      }
       case "eth_getLogs": {
         const f = req.params[0] as { address: string; topics: (string | null)[]; fromBlock?: string; toBlock?: string };
         const from = f.fromBlock && f.fromBlock !== "earliest" ? BigInt(f.fromBlock) : 0n;
@@ -290,7 +325,8 @@ export class MockChain {
       case "eth_getBlockByNumber": {
         const bn = BigInt(req.params[0] as string);
         const log = this.logs.find((l) => l.chainId === chainId && l.blockNumber === bn);
-        return reply({ number: numberToHex(bn), timestamp: numberToHex(log?.timestamp ?? 0) });
+        const tx = [...this.txs.values()].find((t) => t.chainId === chainId && t.blockNumber === bn);
+        return reply({ number: numberToHex(bn), timestamp: numberToHex(log?.timestamp ?? tx?.timestamp ?? 0) });
       }
       default:
         return { jsonrpc: "2.0", id: req.id, error: { code: -32601, message: `mock: ${req.method} not supported` } };
