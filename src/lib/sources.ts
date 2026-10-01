@@ -5,10 +5,13 @@ import { checkCctp, checkCctpFromSolana } from "./checks/cctp";
 import { checkCeler } from "./checks/celer";
 import type { CheckOutput } from "./checks/common";
 import { checkDebridge } from "./checks/debridge";
+import { checkEnsDeeds, ENS_DEEDS } from "./checks/ens-deeds";
+import { checkExchange, DEPOSIT_EXCHANGES } from "./checks/exchanges";
 import { checkGnosisBridge } from "./checks/gnosis";
 import { checkLinea } from "./checks/linea";
 import { checkOpStack } from "./checks/opstack";
 import { checkPolygon, POLYGON } from "./checks/polygon";
+import { checkPolygonStaking, POLYGON_STAKING } from "./checks/polygon-staking";
 import { checkScroll } from "./checks/scroll";
 import { checkWormhole } from "./checks/wormhole";
 import { checkZkSync } from "./checks/zksync";
@@ -85,5 +88,29 @@ export const SOURCES: CheckSource[] = [
     run: (user: string) => checkAirdrops(user, [a]),
   })),
 ];
+
+/**
+ * Old contracts still holding deposits their users can withdraw themselves.
+ * Kept apart from the list above so other additions to the group merge cleanly.
+ */
+SOURCES.push(
+  ...DEPOSIT_EXCHANGES.map((ex) => ({
+    id: ex.id,
+    name: ex.name,
+    group: "legacy" as const,
+    bridgeUrl: ex.contracts.find((c) => c.app)?.app ?? "Etherscan (Write Contract)",
+    accepts: ["evm" as const],
+    run: (user: string) => checkExchange(ex, user as Address),
+  })),
+  { id: ENS_DEEDS.id, name: ENS_DEEDS.name, group: "legacy", bridgeUrl: "Etherscan (old .eth registrar)", accepts: ["evm"], run: (user) => checkEnsDeeds(user as Address) },
+  {
+    id: POLYGON_STAKING.id,
+    name: POLYGON_STAKING.name,
+    group: "legacy",
+    bridgeUrl: "staking.polygon.technology",
+    accepts: ["evm"],
+    run: (user) => checkPolygonStaking(user as Address),
+  },
+);
 
 export const sourceById = (id: string) => SOURCES.find((s) => s.id === id);

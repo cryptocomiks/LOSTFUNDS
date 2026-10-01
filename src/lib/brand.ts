@@ -61,4 +61,11 @@ export const NETWORK_COLORS: Record<string, string> = {
   "airdrop-lido-early-2021": "#00A3FF",
   "airdrop-lido-1inch-2021": "linear-gradient(135deg,#00A3FF,#D82122)",
   "airdrop-convex-2021": "linear-gradient(135deg,#FF5A5A,#3A3A3A)",
+  // Old contracts still holding deposits
+  etherdelta: "linear-gradient(135deg,#3BA9F5,#1A3A5C)",
+  idex: "linear-gradient(135deg,#FF7A3D,#2B1B5A)",
+  tokenstore: "#2FB673",
+  singularx: "linear-gradient(135deg,#4C6FFF,#0B1033)",
+  "ens-deeds": "#5298FF",
+  "polygon-staking": "#6C00F6",
 };

@@ -59,16 +59,21 @@ function FindingRow({ f, index }: { f: Finding; index: number }) {
   const s = STATUS[f.status];
   // Some findings (airdrops) come from a source listed under another id: never assume it exists.
   const claimAt = f.claimAt ?? sourceById(f.networkId)?.bridgeUrl;
+  const dateLabel = f.dateLabel ?? (f.networkId === "airdrops" ? "Airdropped" : "Sent");
   return (
     <li className="animate-fade-up px-5 py-5 sm:px-6" style={{ animationDelay: `${index * 50}ms` }}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-[13px] text-text-2">
           <NetDot id={f.networkId} />
           <span className="font-medium text-text">{f.networkName}</span>
-          <span aria-hidden>·</span>
-          <span>
-            {f.networkId === "airdrops" ? "Airdropped" : "Sent"}{f.timestamp > 0 ? ` ${formatDate(f.timestamp)}` : ""}
-          </span>
+          {f.timestamp > 0 && (
+            <>
+              <span aria-hidden>·</span>
+              <span>
+                {dateLabel} {formatDate(f.timestamp)}
+              </span>
+            </>
+          )}
         </div>
         <span className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ${s.tone}`}>{s.label}</span>
       </div>
@@ -82,7 +87,7 @@ function FindingRow({ f, index }: { f: Finding; index: number }) {
         )}
       </div>
 
-      <p className="mt-1.5 text-[15px] leading-relaxed text-text-2">{f.note ?? STATUS_HELP[f.status](f)}</p>
+      <p className="mt-1.5 text-[15px] leading-relaxed break-words text-text-2">{f.note ?? STATUS_HELP[f.status](f)}</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <button
@@ -98,14 +103,14 @@ function FindingRow({ f, index }: { f: Finding; index: number }) {
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-[14px] text-link hover:underline"
         >
-          View transaction <ArrowUpRight width={14} height={14} />
+          {f.linkLabel ?? "View transaction"} <ArrowUpRight width={14} height={14} />
         </a>
       </div>
 
       {claimAt && (
         <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px] text-text-3">
           Where to claim:
-          <code className="rounded-md bg-fill px-1.5 py-0.5 font-mono text-[12px] text-text-2">{claimAt}</code>
+          <code className="rounded-md bg-fill px-1.5 py-0.5 font-mono text-[12px] break-all text-text-2">{claimAt}</code>
           <span className="hidden sm:inline">(type it yourself)</span>
         </div>
       )}

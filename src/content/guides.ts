@@ -29,6 +29,23 @@ export const GUIDES: Guide[] = [
     note: "Airdropped tokens can only go to the eligible wallet. Never sign anything on a site that asks you to \"approve\" tokens to receive an airdrop.",
   },
   {
+    id: "legacy-deposits",
+    title: "Old exchanges, ENS deposits and staking",
+    subtitle: "EtherDelta, IDEX v1, Token.Store, SingularX, ENS auction deeds, Polygon staking",
+    live: true,
+    steps: [
+      "EtherDelta and ForkDelta (2016–2022), Token.Store and SingularX: what you left on these exchanges is still in their contracts, and you can withdraw it at any time, alone. For EtherDelta's main contract, ForkDelta's withdrawal page (forkdelta.app/shutdown/withdraw) lists your balances. Or use Etherscan: open the contract shown in the result, Write Contract, connect your wallet and call withdraw(amount) for ETH or withdrawToken(token, amount) for a token, with the amount given in the result.",
+      "IDEX v1 (2017–2020): IDEX doesn't process withdrawals anymore, but its contract (0x2a0c0DBEcC7E4D658f48E01e3fA353F44050c208) lets you withdraw alone once your account has had no activity for 240 blocks (under an hour). On Etherscan, Write Contract → withdraw(token, amount), with token 0x0000000000000000000000000000000000000000 for ETH.",
+      "ENS auction deposits (2017–2019): the ETH paid for a .eth name is locked in the name's deed. On Etherscan, open ENS's old registrar (0x6090A6e47849629b7245Dfa1Ca21D94cd15878Ef), Write Contract → releaseDeed(hash), with the hash given in the result, from the wallet that owns the deed. All the ETH goes back to that wallet; who owns the name today doesn't change.",
+      "Polygon staking: rewards, and unstaked POL whose waiting period is over, are claimed at staking.polygon.technology with the wallet that staked. POL still delegated to a validator that stopped validating earns nothing: unstake it there, wait 80 checkpoints (about a day), then claim it.",
+    ],
+    note: "Each of these is an ordinary Ethereum transaction sent from your own wallet. Nobody can withdraw for you, and you never need to share a key or sign a message for it. Check the contract address on Etherscan before sending anything.",
+    manual: [
+      "Etherscan wants amounts in the token's smallest unit (for ETH, 1 ETH = 1000000000000000000). The result gives the exact number to paste; you can also read it with Read Contract → balanceOf(token, your address), token 0x0000000000000000000000000000000000000000 for ETH.",
+      "Polygon staking on Etherscan: on the validator's contract, Write as Proxy → withdrawRewardsPOL() for rewards, unstakeClaimTokens_newPOL(nonce) for an unstake whose waiting period is over, sellVoucher_newPOL(amount, maximum shares to burn) to unstake.",
+    ],
+  },
+  {
     id: "opstack",
     title: "OP Stack chains",
     subtitle: "Base, OP Mainnet, Mantle, World Chain, Blast, Celo, Unichain, Ink, Manta Pacific, Boba…",

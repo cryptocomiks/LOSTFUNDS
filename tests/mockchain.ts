@@ -244,6 +244,11 @@ export class MockChain {
           }),
         });
       }
+      case "eth_getCode": {
+        // Registered mock contracts have code; any other address is a plain wallet.
+        const [address] = req.params as [string];
+        return reply(this.contracts.has(`${chainId}:${address.toLowerCase()}`) ? "0x6080604052" : "0x");
+      }
       case "zks_getL2ToL1LogProof": {
         const [hash, index] = req.params as [Hex, number];
         return reply(this.txs.get(`${chainId}:${hash}`)?.zk?.proofs?.[index] ?? null);

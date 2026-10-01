@@ -32,6 +32,10 @@ export function makeFinding(
     claimAt?: string;
     /** Hide the finding when it's worth less than this many dollars (dust). */
     minUsd?: number;
+    /** Word before the date (default "Sent"). */
+    dateLabel?: string;
+    /** Text of the link (default "View transaction"). */
+    linkLabel?: string;
   },
 ): Finding {
   return {
@@ -48,6 +52,8 @@ export function makeFinding(
     note: p.note,
     claimAt: p.claimAt,
     minUsd: p.minUsd,
+    ...(p.dateLabel && { dateLabel: p.dateLabel }),
+    ...(p.linkLabel && { linkLabel: p.linkLabel }),
   };
 }
 
