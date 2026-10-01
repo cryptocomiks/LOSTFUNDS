@@ -39,6 +39,8 @@ export interface Finding {
   note?: string;
   /** Where to claim, when it isn't the source's own bridge app (e.g. one airdrop among several). */
   claimAt?: string;
+  /** Hidden when its USD value is known and below this (dust). Unpriced findings are always shown. */
+  minUsd?: number;
 }
 
 export type NetworkCheckState = "queued" | "running" | "done" | "error";

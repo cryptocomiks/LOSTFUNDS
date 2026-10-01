@@ -30,6 +30,8 @@ export function makeFinding(
     label?: string;
     /** Where to claim, when it isn't the source's own bridge app. */
     claimAt?: string;
+    /** Hide the finding when it's worth less than this many dollars (dust). */
+    minUsd?: number;
   },
 ): Finding {
   return {
@@ -45,6 +47,7 @@ export function makeFinding(
     readyAt: p.readyAt,
     note: p.note,
     claimAt: p.claimAt,
+    minUsd: p.minUsd,
   };
 }
 
