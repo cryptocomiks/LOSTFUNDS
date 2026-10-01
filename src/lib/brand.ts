@@ -64,4 +64,11 @@ export const NETWORK_COLORS: Record<string, string> = {
   "aave-v2": "linear-gradient(135deg,#B6509E,#2EBAC6)",
   "aave-v3": "linear-gradient(135deg,#B6509E,#2EBAC6)",
   merkl: "linear-gradient(135deg,#7758F0,#45378B)",
+  "airdrop-dydx-2021": "#6966FF",
+  "airdrop-cow-lgno-2022": "linear-gradient(135deg,#CAE9FF,#052B65)",
+  "airdrop-cow-lgno-gnosis-2022": "linear-gradient(135deg,#052B65,#3E6957)",
+  "airdrop-avantis-2026": "linear-gradient(135deg,#C8F560,#14161F)",
+  "airdrop-lombard-2026": "linear-gradient(135deg,#F2E8DA,#1A1A1A)",
+  "airdrop-re-2026": "linear-gradient(135deg,#55E6C1,#0E3B43)",
+  "airdrop-doppler-2026": "linear-gradient(135deg,#2D6BFF,#0B0F2E)",
 };

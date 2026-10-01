@@ -82,11 +82,19 @@ const STATIC_HOSTS = new Set([
   "safe-claiming-app-data.safe.global",
   "lostfunds.vercel.app",
   "api.merkl.xyz",
+  "mainnet.prod.lombard.finance",
+  "api.hedgey.finance",
 ]);
 
 /** Multicall3 lives elsewhere on a few chains (ZK Stack): the chain's own address, from viem. */
 const isMulticall = (chainId: number, to: string) =>
   to.toLowerCase() === MULTICALL3 || to.toLowerCase() === EVM_CHAINS.find((c) => c.id === chainId)?.chain.contracts?.multicall3?.address.toLowerCase();
+
+/** What these APIs answer for an address they don't know (anything not in `static`). */
+const NOT_LISTED: Record<string, () => Response> = {
+  "mainnet.prod.lombard.finance": () => new Response('{"code":5, "message":"account not found"}', { status: 404 }),
+  "api.hedgey.finance": () => new Response('{"canClaim":false}', { headers: { "content-type": "application/json" } }),
+};
 
 /** RPC nodes used only for event searches (not in the chain registries): URL → chain id. */
 const EXTRA_RPCS: Record<string, number> = { "https://rpc.gnosis.gateway.fm": 100 };
@@ -409,6 +417,7 @@ export class MockChain {
     // Static files and simple JSON APIs, served by URL.
     const hit = this.static[url.href];
     if (hit !== undefined) return typeof hit === "string" ? new Response(hit) : json(hit);
+    if (NOT_LISTED[url.host]) return NOT_LISTED[url.host]();
     if (STATIC_HOSTS.has(url.host)) return new Response('{"error":"not found"}', { status: 404 });
     if (url.host === "api.wormholescan.io") {
       const tx = url.pathname.match(/^\/api\/v1\/transactions$/);
