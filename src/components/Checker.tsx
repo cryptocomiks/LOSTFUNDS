@@ -67,10 +67,14 @@ function FindingRow({ f, index }: { f: Finding; index: number }) {
         <div className="flex items-center gap-2 text-[13px] text-text-2">
           <NetDot id={f.networkId} />
           <span className="font-medium text-text">{f.networkName}</span>
-          <span aria-hidden>·</span>
-          <span>
-            {f.networkId === "airdrops" ? "Airdropped" : "Sent"}{f.timestamp > 0 ? ` ${formatDate(f.timestamp)}` : ""}
-          </span>
+          {f.timestamp > 0 && (
+            <>
+              <span aria-hidden>·</span>
+              <span>
+                {f.networkId === "airdrops" ? "Airdropped" : "Sent"} {formatDate(f.timestamp)}
+              </span>
+            </>
+          )}
         </div>
         <span className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ${s.tone}`}>{s.label}</span>
       </div>

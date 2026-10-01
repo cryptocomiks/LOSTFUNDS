@@ -1,4 +1,5 @@
 import { encodeFunctionData, keccak256, parseAbi, parseAbiItem, parseEther, parseUnits, type Address, type Hex } from "viem";
+import { AAVE_V2_MARKETS, AAVE_V3_MARKETS } from "../src/lib/checks/aave-incentives.ts";
 import { MockChain } from "./mockchain.ts";
 
 export const USER: Address = "0x1111111111111111111111111111111111111111";
@@ -184,6 +185,50 @@ export function buildWorld(): MockChain {
     isClaimed: () => false,
   });
   m.prices["ethereum:0x1f9840a85d5af5bf1d1762f925bdaddc4201f984"] = 7.5;
+
+  // ───── Rewards: 336.3 ARB from Aave v3 on Arbitrum and 608.75 MORPHO from Merkl; nothing else, for anyone else ─────
+  for (const v2 of AAVE_V2_MARKETS)
+    m.addContract(v2.chainId, v2.controller, parseAbi(["function getRewardsBalance(address[] assets, address user) view returns (uint256)"]), {
+      getRewardsBalance: () => 0n,
+    });
+  const arbReward = parseEther("336.308320898856900000");
+  for (const v3 of AAVE_V3_MARKETS) {
+    const tokens = v3.rewards.map((r) => r.token);
+    const mine = (user: unknown) => tokens.map(() => (v3.chainId === 42161 && user === USER ? arbReward : 0n));
+    m.addContract(
+      v3.chainId,
+      v3.controller,
+      parseAbi([
+        "function getAllUserRewards(address[] assets, address user) view returns (address[] rewardsList, uint256[] unclaimedAmounts)",
+        "function claimRewards(address[] assets, uint256 amount, address to, address reward) returns (uint256)",
+      ]),
+      { getAllUserRewards: ([, user]) => [tokens, mine(user)], claimRewards: (_, { from }) => mine(from)[0] },
+    );
+  }
+  m.prices["arbitrum:0x912ce59144191c1204e64559fe8253a0e49e6548"] = 0.2;
+  const MORPHO: Address = "0x58D97B57BB95320F9a05dC918Aef65434969c2B2";
+  const merkl = (user: Address) => `https://api.merkl.xyz/v4/users/${user}/rewards/summary`;
+  m.static[merkl(USER)] = [
+    {
+      chain: { id: 1, name: "Ethereum" },
+      rewards: [{ token: { address: MORPHO, symbol: "MORPHO", decimals: 18, price: 2.5, type: "TOKEN" }, amount: String(parseEther("608.75")), claimed: "0", proofs: [h(1)] }],
+    },
+  ];
+  for (const who of [OTHER, "0x3333333333333333333333333333333333333333"] as const) m.static[merkl(who)] = [];
+  m.addContract(
+    1,
+    "0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae",
+    parseAbi([
+      "function claimed(address user, address token) view returns (uint208 amount, uint48 timestamp, bytes32 merkleRoot)",
+      "function claim(address[] users, address[] tokens, uint256[] amounts, bytes32[][] proofs)",
+    ]),
+    { claimed: () => [0n, 0, h(0)], claim: () => undefined },
+  );
+  m.addContract(1, MORPHO, parseAbi(["function decimals() view returns (uint8)", "function symbol() view returns (string)"]), {
+    decimals: () => 18,
+    symbol: () => "MORPHO",
+  });
+  m.prices[`ethereum:${MORPHO.toLowerCase()}`] = 2.5;
 
   return m;
 }

@@ -94,7 +94,12 @@ function flushPrices() {
   for (let i = 0; i < keys.length; i += PRICE_BATCH) {
     const chunk = keys.slice(i, i + PRICE_BATCH);
     fetchPrices(chunk).then(
-      (coins) => chunk.forEach((k) => batch.get(k)!.forEach((resolve) => resolve(coins[k]?.price))),
+      (coins) =>
+        chunk.forEach((k) => {
+          const price = coins[k]?.price;
+          if (!price) prices.delete(k); // only real prices are remembered: a missing one may appear later
+          batch.get(k)!.forEach((resolve) => resolve(price));
+        }),
       () =>
         chunk.forEach((k) => {
           prices.delete(k); // a failed lookup is retried by the next check
@@ -105,6 +110,7 @@ function flushPrices() {
 }
 
 function priceOf(key: string): Promise<number | undefined> {
+  if (key === "none:none") return Promise.resolve(undefined); // deliberately unpriced (e.g. look-alike scam tokens)
   let p = prices.get(key);
   if (!p) {
     p = new Promise((resolve) => {
