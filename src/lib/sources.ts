@@ -9,6 +9,7 @@ import { checkGnosisBridge } from "./checks/gnosis";
 import { checkLinea } from "./checks/linea";
 import { checkOpStack } from "./checks/opstack";
 import { checkPolygon, POLYGON } from "./checks/polygon";
+import { checkInactiveStake, checkMarinadeTickets, checkTokenRent, MARINADE, RENT, STAKE } from "./checks/reclaim";
 import { checkScroll } from "./checks/scroll";
 import { checkWormhole } from "./checks/wormhole";
 import { checkZkSync } from "./checks/zksync";
@@ -84,6 +85,9 @@ export const SOURCES: CheckSource[] = [
     accepts: a.accepts,
     run: (user: string) => checkAirdrops(user, [a]),
   })),
+  { id: RENT.id, name: RENT.name, group: "reclaim", bridgeUrl: "Solflare (Close Account), or sol-incinerator.com", accepts: ["solana"], run: checkTokenRent },
+  { id: STAKE.id, name: STAKE.name, group: "reclaim", bridgeUrl: "your wallet's staking tab", accepts: ["solana"], run: checkInactiveStake },
+  { id: MARINADE.id, name: MARINADE.name, group: "reclaim", bridgeUrl: "app.marinade.finance", accepts: ["solana"], run: checkMarinadeTickets },
 ];
 
 export const sourceById = (id: string) => SOURCES.find((s) => s.id === id);

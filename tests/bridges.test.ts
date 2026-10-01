@@ -915,7 +915,7 @@ describe("Wallet kinds", () => {
   test("a Solana address runs only the checks that apply to Solana", () => {
     assert.deepEqual(
       sourcesFor("solana").map((s) => s.id),
-      ["wormhole", "debridge", "cctp", "airdrop-kamino-s3"],
+      ["wormhole", "debridge", "cctp", "airdrop-kamino-s3", "reclaim-rent", "reclaim-stake", "reclaim-marinade"],
     );
   });
   test("an Ethereum address runs everything", () => {

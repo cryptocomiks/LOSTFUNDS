@@ -61,4 +61,7 @@ export const NETWORK_COLORS: Record<string, string> = {
   "airdrop-lido-early-2021": "#00A3FF",
   "airdrop-lido-1inch-2021": "linear-gradient(135deg,#00A3FF,#D82122)",
   "airdrop-convex-2021": "linear-gradient(135deg,#FF5A5A,#3A3A3A)",
+  "reclaim-rent": "linear-gradient(135deg,#9945FF,#14F195)",
+  "reclaim-stake": "linear-gradient(135deg,#14F195,#1A1A1A)",
+  "reclaim-marinade": "linear-gradient(135deg,#308D8A,#C7F284)",
 };

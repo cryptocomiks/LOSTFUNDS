@@ -6,10 +6,12 @@ import { base58 } from "@scure/base";
 export const SOLANA_RPCS = ["https://solana-rpc.publicnode.com", "https://api.mainnet-beta.solana.com"];
 
 /**
- * Nodes for index and history queries (getProgramAccounts, getSignaturesForAddress), which
- * publicnode refuses or answers with an empty history. api.mainnet-beta refuses requests
- * sent from a web page (HTTP 403 whenever an Origin header is present), so it only helps
- * outside the browser.
+ * Nodes for index and history queries (getProgramAccounts, getTokenAccountsByOwner,
+ * getSignaturesForAddress), which publicnode refuses ("Indexed requests require a personal
+ * token") or answers with an empty history. api.mainnet-beta refuses requests sent from a
+ * web page (HTTP 403 whenever an Origin header is present), so it only helps outside the
+ * browser. solanavibestation rate-limits each connection (a browser tab uses one): a burst
+ * of about 3 requests, then about 1 per second; a JSON-RPC batch counts as one per call.
  */
 export const SOLANA_INDEX_RPCS = ["https://public.rpc.solanavibestation.com", "https://api.mainnet-beta.solana.com"];
 
@@ -71,6 +73,7 @@ export const rpc = <T>(method: string, params: unknown[], urls = SOLANA_RPCS) =>
 
 async function rpcOnce<T>(method: string, params: unknown[], urls: string[]): Promise<T> {
   let last: unknown;
+  let limited: unknown;
   for (const url of urls) {
     try {
       const res = await fetch(url, {
@@ -79,14 +82,17 @@ async function rpcOnce<T>(method: string, params: unknown[], urls: string[]): Pr
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
         signal: AbortSignal.timeout(15_000),
       });
+      if (res.status === 429) throw new Error("HTTP 429 Too Many Requests");
       const json = (await res.json()) as { result?: T; error?: { message?: string } };
       if (json.error || json.result === undefined) throw new Error(json.error?.message ?? `HTTP ${res.status}`);
       return json.result;
     } catch (e) {
       last = e;
+      if (!limited && isRateLimit(e)) limited = e;
     }
   }
-  throw new Error(`Solana RPC: ${(last as Error)?.message ?? "unavailable"}`);
+  // A node that only rate-limited us is worth waiting for (withRetry), even if the next one refused outright.
+  throw new Error(`Solana RPC: ${((limited ?? last) as Error)?.message ?? "unavailable"}`);
 }
 
 /** Which of these accounts exist on Solana (batched, 100 per request). */
@@ -153,7 +159,8 @@ export function isSolanaAddress(s: string): boolean {
   }
 }
 
-const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+export const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+export const TOKEN_2022_PROGRAM = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 const ATA_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 
 /** The owner's associated token account for `mint`. */

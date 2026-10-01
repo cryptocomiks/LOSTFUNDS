@@ -111,11 +111,19 @@ export class MockChain {
   static: Record<string, unknown> = {};
   /** Solana accounts (base58 → raw data), missing = doesn't exist. */
   solana: Record<string, Uint8Array> = {};
+  /** Balances of Solana accounts (an account listed here exists, even without data). */
+  solanaLamports: Record<string, number> = {};
   /** Largest eth_getLogs block span each chain's RPC nodes accept (by chain id); unlimited if unset. */
   logsRangeLimit: Record<number, number> = {};
   /** Solana accounts owned by a program (getProgramAccounts), and signatures by address. */
-  solanaPrograms: Record<string, { pubkey: string; data: Uint8Array }[]> = {};
+  solanaPrograms: Record<string, { pubkey: string; data: Uint8Array; lamports?: number }[]> = {};
   solanaSignatures: Record<string, { signature: string; err: null; blockTime: number }[]> = {};
+  /** Token accounts by owner, as the node parses them (getTokenAccountsByOwner, encoding jsonParsed). */
+  solanaTokenAccounts: Record<string, { pubkey: string; programId: string; lamports: number; info: Record<string, unknown> }[]> = {};
+  /** Solana methods that answer with this JSON-RPC error message instead of a result. */
+  solanaErrors: Record<string, string> = {};
+  /** Solana methods called, in order. */
+  solanaCalls: string[] = [];
   /** Circle's API: `${sourceDomain}:${txHash}` or `${sourceDomain}:nonce:${nonce}` → response body. */
   iris: Record<string, object> = {};
 
@@ -356,20 +364,40 @@ export class MockChain {
   private solanaRpc(req: { id: number; method: string; params: unknown[] }) {
     const reply = (result: unknown) => ({ jsonrpc: "2.0", id: req.id, result });
     const b64 = (d: Uint8Array) => btoa(String.fromCharCode(...d));
+    this.solanaCalls.push(req.method);
+    if (this.solanaErrors[req.method]) return { jsonrpc: "2.0", id: req.id, error: { code: -32603, message: this.solanaErrors[req.method] } };
     switch (req.method) {
       case "getMultipleAccounts": {
         const keys = req.params[0] as string[];
-        return reply({ context: { slot: 1 }, value: keys.map((k) => (this.solana[k] ? { data: [b64(this.solana[k]), "base64"] } : null)) });
+        const account = (k: string) =>
+          this.solana[k] || this.solanaLamports[k] !== undefined
+            ? { lamports: this.solanaLamports[k] ?? 0, data: [b64(this.solana[k] ?? new Uint8Array()), "base64"] }
+            : null;
+        return reply({ context: { slot: 1 }, value: keys.map(account) });
       }
       case "getProgramAccounts": {
-        const [program, opts] = req.params as [string, { filters?: { memcmp: { offset: number; bytes: string } }[] }];
+        const [program, opts] = req.params as [string, { filters?: ({ memcmp: { offset: number; bytes: string } } | { dataSize: number })[] }];
         const accounts = (this.solanaPrograms[program] ?? []).filter((a) =>
           (opts.filters ?? []).every((f) => {
+            if ("dataSize" in f) return a.data.length === f.dataSize;
             const want = base58.decode(f.memcmp.bytes);
             return want.every((b, i) => a.data[f.memcmp.offset + i] === b);
           }),
         );
-        return reply(accounts.map((a) => ({ pubkey: a.pubkey, account: { data: [b64(a.data), "base64"] } })));
+        return reply(accounts.map((a) => ({ pubkey: a.pubkey, account: { lamports: a.lamports ?? 0, data: [b64(a.data), "base64"] } })));
+      }
+      case "getTokenAccountsByOwner": {
+        const [owner, { programId }] = req.params as [string, { programId: string }];
+        const program = programId === "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb" ? "spl-token-2022" : "spl-token";
+        return reply({
+          context: { slot: 1 },
+          value: (this.solanaTokenAccounts[owner] ?? [])
+            .filter((a) => a.programId === programId)
+            .map((a) => ({
+              pubkey: a.pubkey,
+              account: { lamports: a.lamports, owner: programId, executable: false, data: { program, parsed: { type: "account", info: a.info } } },
+            })),
+        });
       }
       case "getSignaturesForAddress":
         return reply(this.solanaSignatures[req.params[0] as string] ?? []);
