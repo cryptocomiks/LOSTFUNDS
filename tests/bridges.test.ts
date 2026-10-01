@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { before, describe, test } from "node:test";
+import { after, before, describe, test } from "node:test";
 import { concat, encodePacked, keccak256, numberToHex, pad, parseAbi, parseAbiItem, size, toEventSelector, toHex, toRlp, zeroAddress, type Address, type Hex } from "viem";
-import { checkAirdrops } from "../src/lib/checks/airdrops.ts";
+import { AIRDROP_LIST, checkAirdrops } from "../src/lib/checks/airdrops.ts";
 import { checkCctp, checkCctpFromSolana } from "../src/lib/checks/cctp.ts";
 import { checkDebridge } from "../src/lib/checks/debridge.ts";
 import { checkPolygon, decodeExitPayload } from "../src/lib/checks/polygon.ts";
@@ -919,14 +919,36 @@ describe("Wallet kinds", () => {
     );
   });
   test("an Ethereum address runs everything", () => {
-    assert.equal(sourcesFor("evm").length, 59);
+    assert.equal(sourcesFor("evm").length, 66);
   });
 });
 
 describe("Airdrops", () => {
   const ELIGIBLE: Address = "0x32b7C9B07ed7885d398ef5A65206E77f1b5B92F9";
   const CLAIMED: Address = "0x32b73C3C101f74e24A815a8291Eb60F25d96cdcc";
+  /** Claimed its COW for locked GNO once, the rest is still in the TokenDistro. */
+  const PARTIAL: Address = "0x3333333333333333333333333333333333333333";
+  /** In the COW for locked GNO list, but the claim would revert. */
+  const BLOCKED: Address = "0x3444444444444444444444444444444444444444";
+  const e18 = 10n ** 18n;
+  const lower = (a: string) => a.toLowerCase();
+  const same = (a: string | undefined, b: string) => a?.toLowerCase() === b.toLowerCase();
+  const only = (id: string) => AIRDROP_LIST.filter((a) => a.id === id);
+  // Some airdrops have deadlines: run at a fixed date (October 1, 2026).
+  const realNow = Date.now;
+  const at = (iso: string) => (Date.now = () => Date.parse(iso));
+  const DYDX_ROOT = "0xfff42f5cf67f68dcc76f19b2a5f7b115948bc27ca5d734ecd57f2a04e4285e08";
+  let dydxRoot = DYDX_ROOT;
+  let dydxTreasury = 6_000_000n * e18;
+  const BARD_DISTRIBUTOR: Address = "0x39D438caF425C31f1a4883e0b399cC4Cc1280135";
+  const BARD_ROOT = "0x57bcd6d4b5b9b80a0c66d7e4e3d131842a4777ff67da805bc778b444389fd2ad";
+  const LOMBARD = "https://mainnet.prod.lombard.finance/api/v1/bard/distributor";
+  const HEDGEY = "https://api.hedgey.finance/token-claims/proof/431f05ff-38d0-4f86-a306-65d8d511d3c0";
+  after(() => {
+    Date.now = realNow;
+  });
   before(() => {
+    at("2026-10-01T12:00:00Z");
     const base = "https://raw.githubusercontent.com/Uniswap/mrkl-drop-data-chunks/final/chunks";
     world.static[`${base}/mapping.json`] = {
       "0x0000000000000000000000000000000000000000": "0x0003092ffbaaaa22d8d9c9715b357e01db1915b7",
@@ -939,8 +961,6 @@ describe("Airdrops", () => {
     world.addContract(1, "0x090D4613473dEE047c3f2706764f49E0821D256e", parseAbi(["function isClaimed(uint256) view returns (bool)"]), {
       isClaimed: ([i]) => i === 8n,
     });
-    const e18 = 10n ** 18n;
-    const lower = (a: string) => a.toLowerCase();
     // Curve: ELIGIBLE still has 1,000 vested CRV, CLAIMED took everything.
     world.addContract(1, "0x575CCD8e2D300e2377B43478339E364000318E2c", parseAbi(["function balanceOf(address) view returns (uint256)", "function initial_locked(address) view returns (uint256)"]), {
       balanceOf: ([a]) => (a === ELIGIBLE ? 1000n * e18 : 0n),
@@ -984,26 +1004,186 @@ describe("Airdrops", () => {
       getSeasonData: ([season]) => [0n, 0n, 0n, season === 1 ? 1n : soon, 0n, `0x${"0".repeat(64)}`],
       getSeasonBalances: ([, user]) => (user === ELIGIBLE ? [1000n * 10n ** 18n, 0n, 0n] : [0n, 0n, 0n]),
     });
+    const balanceOf = parseAbi(["function balanceOf(address) view returns (uint256)"]);
+    // dYdX: cumulative rewards in the list published with the site (by first hex digit), claimed so far read on-chain.
+    // ELIGIBLE has 500 DYDX, already took 100; CLAIMED took all 80.
+    world.static["https://lostfunds.vercel.app/airdrops/dydx/3.json"] = { [lower(ELIGIBLE)]: String(500n * e18), [lower(CLAIMED)]: String(80n * e18) };
+    world.addContract(1, "0x01d3348601968aB85b4bb028979006eac235a588", parseAbi([
+      "function getActiveRoot() view returns (bytes32 merkleRoot, uint256 epoch, bytes ipfsCid)",
+      "function getClaimed(address) view returns (uint256)",
+    ]), {
+      getActiveRoot: () => [dydxRoot, 31n, "0x"],
+      getClaimed: ([a]) => (a === ELIGIBLE ? 100n * e18 : a === CLAIMED ? 80n * e18 : 0n),
+    });
+    world.addContract(1, "0x92D6C1e31e14520e676a687F0a93788B716BEff5", balanceOf, { balanceOf: () => dydxTreasury }); // DYDX held by the rewards treasury
+    // COW for locked GNO: Gnosis's chunks (all four addresses sort into mainnet chunk 3 and Gnosis chunk 6), then
+    // isClaimed(index) on the Merkle distro, or what is left in the TokenDistro after a first claim.
+    const lgno = "https://raw.githubusercontent.com/gnosis/locked-gno-cow-merkle-distro/main";
+    const entry = (index: number, amount: bigint) => ({ index, amount: `0x${amount.toString(16)}`, proof: [`0x${"11".repeat(32)}`] });
+    world.static[`${lgno}/mainnet/chunk_3.json`] = {
+      [lower(ELIGIBLE)]: entry(1, 1000n * e18),
+      [lower(CLAIMED)]: entry(2, 5n * e18),
+      [lower(PARTIAL)]: entry(3, 900n * e18),
+      [lower(BLOCKED)]: entry(6, 1n * e18),
+    };
+    world.static[`${lgno}/gnosisChain/chunk_6.json`] = { [lower(ELIGIBLE)]: entry(4, 300n * e18), [lower(CLAIMED)]: entry(5, 5n * e18) };
+    for (const [chain, merkleDistro, tokenDistro] of [
+      [1, "0x64646f112FfD6F1B7533359CFaAF7998F23C8c40", "0x68FFAaC7A431f276fe73604C127Bd78E49070c92"],
+      [100, "0x48D8566887F8c7d99757CE29c2cD39962bfd9547", "0x3d610e917130f9D036e85A030596807f57e11093"],
+    ] as const) {
+      world.addContract(chain, merkleDistro, parseAbi(["function isClaimed(uint256) view returns (bool)", "function claim(uint256 index, uint256 amount, bytes32[] merkleProof)"]), {
+        isClaimed: ([i]) => i === 2n || i === 3n || i === 5n,
+        claim: ([i], { from }) => ((i === 1n || i === 4n) && same(from, ELIGIBLE) ? undefined : revert("MerkleDistro::claim Drop already claimed.")),
+      });
+      world.addContract(chain, tokenDistro, parseAbi(["function claimableNow(address) view returns (uint256)", "function claim()"]), {
+        claimableNow: ([a]) => (a === PARTIAL ? 250n * e18 : 0n),
+        claim: (_, { from }) => (same(from, PARTIAL) ? undefined : revert("TokenDistro::claim: NOT_ENOUGH_TOKENS")),
+      });
+    }
+    // Avantis (Base): allocations stored in the contract; claimAirdrop() from the wallet.
+    world.addContract(8453, "0x7E221Ee3A68D5948c6C472A8FaC5ddeB894E2c1A", parseAbi([
+      "function getUserAllocation(address) view returns (uint256)",
+      "function getClaimableNow(address) view returns (uint256)",
+      "function claimAirdrop()",
+    ]), {
+      getUserAllocation: ([a]) => (a === ELIGIBLE ? 2643n * e18 : a === CLAIMED ? 78n * e18 : 0n),
+      getClaimableNow: ([a]) => (a === ELIGIBLE ? 2643n * e18 : 0n),
+      claimAirdrop: (_, { from }) => (same(from, ELIGIBLE) ? undefined : revert("ALREADY_CLAIMED")),
+    });
+    // Lombard: the API lists every wave (earlier ones have expired); only the wave-4 distributor still pays.
+    world.static[`${LOMBARD}/${ELIGIBLE}/hard-claims`] = {
+      claims: [
+        { org_slug: "WAVE_1", distributor_address: "0x6fF742845D45d29cb38fa075EFc889247A52Eb02", amount: String(4361n * e18), merkle_root: `0x${"ab".repeat(32)}` },
+        { org_slug: "WAVE_4", distributor_address: BARD_DISTRIBUTOR, amount: String(702n * e18), merkle_root: BARD_ROOT, status: "PENDING" },
+      ],
+    };
+    world.static[`${LOMBARD}/${CLAIMED}/hard-claims`] = { claims: [{ org_slug: "WAVE_4", distributor_address: BARD_DISTRIBUTOR, amount: String(28n * e18), merkle_root: BARD_ROOT }] };
+    world.addContract(1, BARD_DISTRIBUTOR, parseAbi([
+      "function CLAIM_END() view returns (uint256)",
+      "function MERKLE_ROOT() view returns (bytes32)",
+      "function hasClaimed(address) view returns (bool)",
+      "function paused() view returns (bool)",
+    ]), {
+      CLAIM_END: () => 1793232000n, // Oct 29, 2026
+      MERKLE_ROOT: () => BARD_ROOT,
+      hasClaimed: ([a]) => a === CLAIMED,
+      paused: () => false,
+    });
+    world.addContract(1, "0xf0DB65D17e30a966C2ae6A21f6BBA71cea6e9754", balanceOf, { balanceOf: () => 2_546_376n * e18 });
+    // Re Protocol (a Hedgey campaign): amount + proof from Hedgey's API, claimed(campaign, address) on-chain.
+    world.static[`${HEDGEY}/${ELIGIBLE}`] = { uuid: "431f05ff-38d0-4f86-a306-65d8d511d3c0", address: ELIGIBLE, amount: String(11_001n * e18), proof: [`0x${"22".repeat(32)}`] };
+    world.static[`${HEDGEY}/${CLAIMED}`] = { uuid: "431f05ff-38d0-4f86-a306-65d8d511d3c0", address: CLAIMED, amount: String(44n * e18), proof: [`0x${"33".repeat(32)}`] };
+    world.addContract(1, "0x8A2725a6f04816A5274dDD9FEaDd3bd0C253C1A6", parseAbi([
+      "function campaigns(bytes16) view returns (address manager, address token, uint256 amount, uint256 start, uint256 end, uint8 tokenLockup, bytes32 root, bool delegating)",
+      "function claimed(bytes16, address) view returns (bool)",
+      "function claim(bytes16 campaignId, bytes32[] proof, uint256 claimAmount)",
+    ]), {
+      campaigns: ([id]) =>
+        id === "0x431f05ff38d04f86a30665d8d511d3c0"
+          ? [zeroAddress, "0x526526528F35AC738177003b8773B402B8Df8143", 1_410_043n * e18, 1781787600n, 1814461200n, 0, `0x${"44".repeat(32)}`, false]
+          : [zeroAddress, zeroAddress, 0n, 0n, 0n, 0, `0x${"00".repeat(32)}`, false],
+      claimed: ([, a]) => a === CLAIMED,
+      claim: (_, { from }) => (same(from, ELIGIBLE) ? undefined : revert("already claimed")),
+    });
+    // Doppler Finance (Base): allocations registered in the contract, claim() until the deadline.
+    world.addContract(8453, "0x13125738747498eEf7B17ccd9a0cce395BAb733F", parseAbi([
+      "function allocations(address) view returns (uint256)",
+      "function claimed(address) view returns (bool)",
+      "function claimDeadline() view returns (uint256)",
+      "function claim()",
+    ]), {
+      allocations: ([a]) => (a === ELIGIBLE ? 37_135n * e18 : a === CLAIMED ? 3_454_435n * e18 : 0n),
+      claimed: ([a]) => a === CLAIMED,
+      claimDeadline: () => 1795867200n, // Nov 28, 2026, 12:00 UTC
+      claim: (_, { from }) => (same(from, ELIGIBLE) ? undefined : revert("already claimed")),
+    });
   });
 
   test("finds every airdrop never claimed: UNI 2020, Zora, and Sonic before its burn date", async () => {
     const r = await checkAirdrops(ELIGIBLE);
-    const by = Object.fromEntries(r.findings.map((f) => [f.asset.symbol, f]));
-    assert.deepEqual(Object.keys(by).sort(), ["1INCH", "CRV", "CVX", "LDO", "S", "SAFE", "UNI", "ZORA"]);
-    assert.equal(by.CRV.asset.amount, 1000n * 10n ** 18n);
-    assert.equal(by.SAFE.asset.amount, 40n * 10n ** 18n, "vested minus already claimed");
-    assert.equal(by.LDO.asset.amount, 7n * 10n ** 18n);
-    assert.equal(by.CVX.asset.amount, 3n * 10n ** 18n);
-    assert.equal(by["1INCH"].asset.amount, 50n * 10n ** 18n);
-    assert.equal(by.UNI.asset.amount, 400n * 10n ** 18n);
+    const by = Object.fromEntries(r.findings.map((f) => [f.networkName, f]));
+    assert.deepEqual(
+      r.findings.map((f) => f.asset.symbol).sort(),
+      ["1INCH", "AVNT", "BARD", "COW", "COW", "CRV", "CVX", "DYDX", "LDO", "RE", "S", "SAFE", "UNI", "XDP", "ZORA"],
+    );
+    const amount = (label: string) => by[label].asset.amount;
+    assert.equal(amount("Curve early-user airdrop"), 1000n * e18);
+    assert.equal(amount("Safe airdrop"), 40n * e18, "vested minus already claimed");
+    assert.equal(amount("Lido early-staker airdrop"), 7n * e18);
+    assert.equal(amount("Convex airdrop"), 3n * e18);
+    assert.equal(amount("1inch airdrop"), 50n * e18);
+    assert.equal(amount("Uniswap airdrop"), 400n * e18);
     assert.ok(r.findings.every((f) => f.claimAt), "every airdrop finding says where to claim (the UI has no source for id \"airdrops\")");
-    assert.equal(by.ZORA.asset.amount, 20_000n * 10n ** 18n);
-    assert.equal(by.S.asset.amount, 1000n * 10n ** 18n, "the season past its burn date is left out");
-    assert.match(by.S.note ?? "", /burned/);
+    assert.ok(r.findings.every((f) => f.minUsd === 2), "dust (under $2 once priced) is hidden");
+    assert.equal(amount("Zora airdrop"), 20_000n * e18);
+    assert.equal(amount("Sonic airdrop"), 1000n * e18, "the season past its burn date is left out");
+    assert.match(by["Sonic airdrop"].note ?? "", /burned/);
+    assert.equal(amount("dYdX rewards"), 400n * e18, "cumulative rewards minus what was already claimed");
+    assert.equal(amount("COW for locked GNO"), 1000n * e18);
+    assert.equal(amount("COW for locked GNO (Gnosis Chain)"), 300n * e18);
+    assert.equal(by["COW for locked GNO (Gnosis Chain)"].asset.tokenChain, "xdai", "priced as COW on Gnosis Chain");
+    assert.equal(amount("Avantis Season 2 airdrop"), 2643n * e18);
+    assert.equal(amount("Lombard BARD airdrop"), 702n * e18, "only the wave whose distributor still pays");
+    assert.match(by["Lombard BARD airdrop"].note ?? "", /before October 29, 2026/);
+    assert.equal(amount("Re Protocol airdrop"), 11_001n * e18);
+    assert.equal(amount("Doppler Finance XDP airdrop"), 37_135n * e18);
+    assert.match(by["Doppler Finance XDP airdrop"].note ?? "", /November 28, 2026/);
   });
   test("counts a claimed airdrop as completed", async () => {
     const r = await checkAirdrops(CLAIMED);
-    assert.deepEqual([r.findings.length, r.completed], [0, 7]);
+    assert.deepEqual([r.findings.length, r.completed], [0, 14]);
+  });
+  test("dYdX: a new Merkle root fails the check, an empty treasury shows nothing", async () => {
+    try {
+      dydxRoot = `0x${"99".repeat(32)}`;
+      await assert.rejects(checkAirdrops(ELIGIBLE, only("dydx-2021")), /new Merkle root/);
+      dydxRoot = DYDX_ROOT;
+      dydxTreasury = 1n;
+      assert.deepEqual(await checkAirdrops(ELIGIBLE, only("dydx-2021")), { findings: [], completed: 0 });
+    } finally {
+      dydxRoot = DYDX_ROOT;
+      dydxTreasury = 6_000_000n * e18;
+    }
+    assert.ok(!world.requests.some((u) => u.includes("/airdrops/dydx/0.json")), "only the file for the address's first hex digit is fetched");
+  });
+  test("COW for locked GNO: the rest of a started claim, and nothing when the claim would revert", async () => {
+    const r = await checkAirdrops(PARTIAL, only("cow-lgno-2022"));
+    assert.equal(r.findings.length, 1);
+    assert.equal(r.findings[0].asset.amount, 250n * e18, "what is left in the TokenDistro");
+    assert.match(r.findings[0].note ?? "", /started claiming/);
+    assert.deepEqual(await checkAirdrops(PARTIAL, only("cow-lgno-gnosis-2022")), { findings: [], completed: 0 }, "not in the Gnosis Chain list");
+    assert.deepEqual(await checkAirdrops(BLOCKED, only("cow-lgno-2022")), { findings: [], completed: 0 }, "listed, but the claim reverts");
+  });
+  test("Lombard: an API failure fails the check, and the airdrop disappears after its deadline", async () => {
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      if (String(input).startsWith(LOMBARD)) return new Response("Bad Gateway", { status: 502 });
+      return world.fetch(input, init);
+    }) as typeof fetch;
+    try {
+      await assert.rejects(checkAirdrops(ELIGIBLE, only("lombard-2026")), /Lombard API: HTTP 502/);
+    } finally {
+      globalThis.fetch = world.fetch as typeof fetch;
+    }
+    world.static[`${LOMBARD}/${PARTIAL}/hard-claims`] = { claims: [{ distributor_address: BARD_DISTRIBUTOR, amount: String(5n * e18), merkle_root: `0x${"de".repeat(32)}` }] };
+    await assert.rejects(checkAirdrops(PARTIAL, only("lombard-2026")), /another Merkle root/, "an allocation the distributor can't pay is an error, not a finding");
+    try {
+      at("2026-10-29T00:00:00Z");
+      const asked = world.requests.length;
+      assert.deepEqual(await checkAirdrops(ELIGIBLE, only("lombard-2026")), { findings: [], completed: 0 });
+      assert.equal(world.requests.length, asked, "Lombard's API isn't even asked once the claim period is over");
+    } finally {
+      at("2026-10-01T12:00:00Z");
+    }
+  });
+  test("Re Protocol and Doppler disappear once their claim periods end", async () => {
+    try {
+      at("2027-07-01T17:00:00Z");
+      assert.deepEqual(await checkAirdrops(ELIGIBLE, only("re-2026")), { findings: [], completed: 0 });
+      at("2026-11-28T12:00:00Z");
+      assert.deepEqual(await checkAirdrops(ELIGIBLE, only("doppler-2026")), { findings: [], completed: 0 });
+    } finally {
+      at("2026-10-01T12:00:00Z");
+    }
   });
   test("Kamino (Solana): unclaimed, claimed, clawed back and not eligible", async () => {
     const PROGRAM = "KdisqEcXbXKaTrBFqeDLhMmBvymLTwj9GmhDcdJyGat";
