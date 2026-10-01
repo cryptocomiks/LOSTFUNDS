@@ -68,4 +68,5 @@ export const NETWORK_COLORS: Record<string, string> = {
   singularx: "linear-gradient(135deg,#4C6FFF,#0B1033)",
   "ens-deeds": "#5298FF",
   "polygon-staking": "#6C00F6",
+  scd: "linear-gradient(135deg,#F4B731,#1AAB9B)",
 };

@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { before, describe, test } from "node:test";
-import { keccak256, parseAbi, parseAbiItem, toHex, zeroAddress, type Address, type Hex } from "viem";
+import { decodeFunctionData, keccak256, pad, parseAbi, parseAbiItem, toHex, zeroAddress, type Address, type Hex } from "viem";
 import { checkSource } from "../src/lib/checker.ts";
 import { checkEnsDeeds } from "../src/lib/checks/ens-deeds.ts";
 import { checkExchange, DEPOSIT_EXCHANGES } from "../src/lib/checks/exchanges.ts";
 import { checkPolygonStaking, VALIDATOR_SHARES } from "../src/lib/checks/polygon-staking.ts";
+import { checkScd, jamFor } from "../src/lib/checks/scd.ts";
 import { L1 } from "../src/lib/networks.ts";
 import { sourceById } from "../src/lib/sources.ts";
 import { MockChain, revert } from "./mockchain.ts";
@@ -402,5 +403,123 @@ describe("Polygon staking (Ethereum)", () => {
 
   test("an RPC failure fails the check instead of reporting it clean", async () => {
     await withNodesDown(() => assert.rejects(checkPolygonStaking(USER)));
+  });
+});
+
+/* ───────────────────────── Maker SCD vaults ───────────────────────── */
+
+describe("Maker Single-Collateral Dai vaults", () => {
+  const TUB: Address = "0x448a5065aeBB8E423F0896E6c5D525C040f59af3";
+  const VOX: Address = "0x9B0F70Df76165442ca6092939132bBAEA77f2d7A";
+  const SAI_PROXY: Address = "0x526af336D614adE5cc252A407062B8861aF998F5";
+  const PROXY: Address = "0x6666666666666666666666666666666666666666";
+  const RAY = 10n ** 27n;
+  const PER = (105n * RAY) / 100n; // 1 PETH = 1.05 WETH
+  const TAG = 199n * RAY; // shutdown price, USD per PETH
+  const rmul = (x: bigint, y: bigint) => (x * y + RAY / 2n) / RAY;
+  const rdiv = (x: bigint, y: bigint) => (x * RAY + y / 2n) / y;
+  const id = (n: number) => pad(toHex(n), { size: 32 });
+  const cups: Record<string, { lad: Address; ink: bigint; art: bigint }> = {
+    [id(1)]: { lad: USER, ink: 10n * e18, art: 0n }, // the wallet's own CDP, no debt
+    [id(2)]: { lad: PROXY, ink: 3n * e18, art: 0n }, // opened through the user's DSProxy
+    [id(3)]: { lad: USER, ink: 5n * e18, art: 199n * e18 }, // still owes 199 SAI = 1 PETH at the shutdown price
+    [id(4)]: { lad: OTHER, ink: 7n * e18, art: 0n }, // given to someone else since the snapshot
+    [id(5)]: { lad: USER, ink: 2n * e18, art: 0n }, // the Tub refuses to free it
+  };
+  const refused = new Set<string>([id(5)]);
+
+  before(() => {
+    const tubAbi = parseAbi([
+      "function cups(bytes32) view returns (address lad, uint256 ink, uint256 art, uint256 ire)",
+      "function off() view returns (bool)",
+      "function out() view returns (bool)",
+      "function per() view returns (uint256)",
+      "function tag() view returns (uint256)",
+      "function axe() view returns (uint256)",
+      "function chi() returns (uint256)",
+      "function vox() view returns (address)",
+      "function bite(bytes32 cup)",
+      "function free(bytes32 cup, uint256 wad)",
+    ]);
+    const cupOf = (c: unknown) => cups[String(c)] ?? { lad: zeroAddress, ink: 0n, art: 0n };
+    world.addContract(1, TUB, tubAbi, {
+      cups: ([c]) => [cupOf(c).lad, cupOf(c).ink, cupOf(c).art, 0n],
+      off: () => true,
+      out: () => true,
+      per: () => PER,
+      tag: () => TAG,
+      axe: () => RAY,
+      chi: () => RAY,
+      vox: () => VOX,
+      bite: () => undefined, // anyone, once SCD is shut down
+      free: ([c, wad], { from }) => {
+        const cup = cupOf(c);
+        if (cup.lad.toLowerCase() !== String(from).toLowerCase() || refused.has(String(c))) revert("not allowed");
+        if (cup.art > 0n) revert("unsafe");
+        const left = cup.ink - (wad as bigint);
+        if (left < 0n || (left > 0n && left <= 5n * 10n ** 15n)) revert("dust");
+      },
+    });
+    world.addContract(1, VOX, parseAbi(["function par() returns (uint256)"]), { par: () => RAY });
+    // The user's DSProxy: execute(SaiProxy, free(tub, cup, jam)) frees `ink` computed the way SaiProxy does.
+    const saiAbi = parseAbi(["function free(address tub_, bytes32 cup, uint256 jam)"]);
+    world.addContract(1, PROXY, parseAbi(["function owner() view returns (address)", "function execute(address _target, bytes _data) payable returns (bytes32)"]), {
+      owner: () => USER,
+      execute: ([target, data], { from }) => {
+        if (String(from).toLowerCase() !== USER.toLowerCase() || String(target).toLowerCase() !== SAI_PROXY.toLowerCase()) revert("ds-auth-unauthorized");
+        const { args } = decodeFunctionData({ abi: saiAbi, data: data as Hex });
+        const [, cup, jam] = args as readonly [Address, Hex, bigint];
+        let ink = rdiv(jam, PER);
+        ink = rmul(ink, PER) <= jam ? ink : ink - 1n;
+        const left = cupOf(cup).ink - ink;
+        if (left < 0n || (left > 0n && left <= 5n * 10n ** 15n)) revert("dust");
+        return `0x${"0".repeat(64)}`;
+      },
+    });
+    for (const k of "0123456789abcdef") world.static[`https://lostfunds.vercel.app/legacy/scd-cups/${k}.json`] = {};
+    world.static["https://lostfunds.vercel.app/legacy/scd-cups/1.json"] = { [USER.toLowerCase()]: [1, 2, 3, 4, 5] };
+  });
+
+  test("jamFor: SaiProxy's rounding frees exactly the CDP's collateral", () => {
+    for (const ink of [1n, 999n, 5n * 10n ** 15n + 1n, 3n * e18, 450437394003594558300n, 123456789012345678901n])
+      for (const per of [RAY, PER, 1051432093602071663044652213n]) {
+        const jam = jamFor(ink, per)!;
+        let back = rdiv(jam, per);
+        back = rmul(back, per) <= jam ? back : back - 1n;
+        assert.equal(back, ink, `ink ${ink} per ${per}`);
+      }
+  });
+
+  test("finds collateral left in the user's CDPs, own or through a DSProxy, after any debt", async () => {
+    const r = await checkScd(USER);
+    const by = Object.fromEntries(r.findings.map((f) => [f.networkName, f]));
+    assert.deepEqual(Object.keys(by).sort(), ["Maker SCD vault #1", "Maker SCD vault #2", "Maker SCD vault #3"], "not the CDP given away, nor the one the Tub refuses");
+    assert.equal(by["Maker SCD vault #1"].asset.amount, rmul(10n * e18, PER));
+    assert.equal(by["Maker SCD vault #1"].asset.symbol, "ETH");
+    assert.match(by["Maker SCD vault #1"].note ?? "", new RegExp(`free\\(${id(1)}, ${10n * e18}\\)`));
+    assert.equal(by["Maker SCD vault #2"].asset.amount, rmul(3n * e18, PER));
+    assert.match(by["Maker SCD vault #2"].note ?? "", new RegExp(`on your DSProxy \\(${PROXY}\\), Write Contract → execute\\(address, bytes\\) with target ${SAI_PROXY}`));
+    assert.equal(by["Maker SCD vault #2"].claimAt, `Etherscan → your DSProxy ${PROXY} → Write Contract → execute`);
+    assert.equal(by["Maker SCD vault #3"].asset.amount, rmul(4n * e18, PER), "1 PETH goes to settle the debt");
+    assert.match(by["Maker SCD vault #3"].note ?? "", /first settle its debt with bite/);
+    assert.equal(r.error, undefined);
+  });
+
+  test("an address with no CDP sees nothing, without a single RPC call", async () => {
+    const before = world.requests.length;
+    assert.deepEqual(await checkScd(EMPTY), { findings: [], completed: 0 });
+    assert.deepEqual(world.requests.slice(before), ["https://lostfunds.vercel.app/legacy/scd-cups/2.json"]);
+  });
+
+  test("an RPC failure or a missing list fails the check instead of reporting it clean", async () => {
+    await withNodesDown(() => assert.rejects(checkScd(USER)));
+    const url = "https://lostfunds.vercel.app/legacy/scd-cups/1.json";
+    const saved = world.static[url];
+    delete world.static[url];
+    try {
+      await assert.rejects(checkScd(USER), /SCD vaults list: HTTP 404/);
+    } finally {
+      world.static[url] = saved;
+    }
   });
 });

@@ -12,6 +12,7 @@ import { checkLinea } from "./checks/linea";
 import { checkOpStack } from "./checks/opstack";
 import { checkPolygon, POLYGON } from "./checks/polygon";
 import { checkPolygonStaking, POLYGON_STAKING } from "./checks/polygon-staking";
+import { checkScd, SCD } from "./checks/scd";
 import { checkScroll } from "./checks/scroll";
 import { checkWormhole } from "./checks/wormhole";
 import { checkZkSync } from "./checks/zksync";
@@ -111,6 +112,7 @@ SOURCES.push(
     accepts: ["evm"],
     run: (user) => checkPolygonStaking(user as Address),
   },
+  { id: SCD.id, name: SCD.name, group: "legacy", bridgeUrl: "Etherscan (SCD Tub, or your DSProxy)", accepts: ["evm"], run: (user) => checkScd(user as Address) },
 );
 
 export const sourceById = (id: string) => SOURCES.find((s) => s.id === id);
