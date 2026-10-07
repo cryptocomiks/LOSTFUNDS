@@ -1,4 +1,5 @@
 import { SITE } from "@/config/site";
+import { T } from "@/lib/i18n";
 import { Logo } from "./icons";
 
 export function Footer() {
@@ -10,11 +11,14 @@ export function Footer() {
           {SITE.name}
         </div>
         <p className="mt-4 max-w-2xl">
-          {SITE.name} is a free, open-source, read-only tool. It never asks you to connect a wallet or sign anything, and
-          your address never leaves your browser except to query public blockchain data. Results are provided as is: always
-          double-check in the bridge&apos;s official app before acting.
+          <T
+            en={`${SITE.name} is a free, open-source, read-only tool. It never asks you to connect a wallet or sign anything, and your address never leaves your browser except to query public blockchain data. Results are provided as is: always double-check in the official app before acting.`}
+            fr={`${SITE.name} est un outil gratuit, open source et en lecture seule. Il ne demande jamais de connecter un wallet ni de signer quoi que ce soit, et votre adresse ne quitte votre navigateur que pour interroger des données publiques de la blockchain. Résultats fournis tels quels : vérifiez toujours dans l'app officielle avant d'agir.`}
+          />
         </p>
-        <p className="mt-3">Not affiliated with any bridge or chain listed on this page.</p>
+        <p className="mt-3">
+          <T en="Not affiliated with any project listed on this page." fr="Sans lien avec les projets cités sur cette page." />
+        </p>
       </div>
     </footer>
   );

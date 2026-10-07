@@ -10,8 +10,8 @@ export function Section({
   alt = false,
 }: {
   id: string;
-  eyebrow?: string;
-  title: string;
+  eyebrow?: ReactNode;
+  title: ReactNode;
   intro?: ReactNode;
   children: ReactNode;
   alt?: boolean;

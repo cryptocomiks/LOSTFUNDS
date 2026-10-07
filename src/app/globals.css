@@ -195,3 +195,9 @@ body {
     animation: none;
   }
 }
+
+/* Language: both versions are in the page, the inline script in <head> picks one before paint. */
+html:not([data-lang="fr"]) .l-fr,
+html[data-lang="fr"] .l-en {
+  display: none !important;
+}

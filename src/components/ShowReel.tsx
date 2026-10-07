@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { T } from "@/lib/i18n";
 import { Reveal } from "./Reveal";
 
 const SoundOn = () => (
@@ -51,9 +52,9 @@ export function ShowReel() {
     <section id="film" className="overflow-hidden">
       <div className="mx-auto max-w-[1180px] px-4 py-16 sm:px-6 sm:py-24">
         <Reveal>
-          <p className="mb-3 text-center text-[15px] font-semibold text-accent">See it in action</p>
+          <p className="mb-3 text-center text-[15px] font-semibold text-accent"><T en="See it in action" fr="En action" /></p>
           <h2 className="mx-auto max-w-[720px] text-center text-[34px] leading-[1.08] font-semibold tracking-[-0.022em] sm:text-[48px]">
-            What you left behind, in fifteen seconds.
+            <T en="What you left behind, in fifteen seconds." fr="Ce que vous avez oublié, en quinze secondes." />
           </h2>
         </Reveal>
         <Reveal delay={120}>
@@ -76,7 +77,7 @@ export function ShowReel() {
               aria-label={muted ? "Turn sound on" : "Mute"}
             >
               {muted ? <SoundOff /> : <SoundOn />}
-              {muted ? "Sound on" : "Mute"}
+              {muted ? <T en="Sound on" fr="Son" /> : <T en="Mute" fr="Couper" />}
             </button>
           </div>
         </Reveal>

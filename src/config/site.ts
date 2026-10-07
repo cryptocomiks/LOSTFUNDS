@@ -4,6 +4,8 @@
  */
 export const SITE = {
   name: "lostfunds",
+  /** Public address of the site, used for link previews and shared results. */
+  url: "https://lostfunds.vercel.app",
   title: "lostfunds — find the crypto you forgot to claim",
   description:
     "Unfinished bridge withdrawals, unclaimed airdrops, rewards and old deposits: check any Ethereum or Solana address in seconds. Free, read-only, no wallet connection.",

@@ -8,17 +8,22 @@ export function formatAmount(amount: bigint, decimals: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: digits, maximumSignificantDigits: n >= 1000 ? undefined : 6 });
 }
 
-export function formatUsd(n: number): string {
+export function formatUsd(n: number, lang: "en" | "fr" = "en"): string {
+  const digits = n >= 1000 ? 0 : 2;
+  if (lang === "fr") {
+    if (n < 0.01) return "<0,01 $";
+    return `${n.toLocaleString("fr-FR", { minimumFractionDigits: digits, maximumFractionDigits: digits })} $`;
+  }
   if (n < 0.01) return "<$0.01";
   return n.toLocaleString("en-US", {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: n >= 1000 ? 0 : 2,
+    maximumFractionDigits: digits,
   });
 }
 
-export function formatDate(unix: number): string {
-  return new Date(unix * 1000).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+export function formatDate(unix: number, lang: "en" | "fr" = "en"): string {
+  return new Date(unix * 1000).toLocaleDateString(lang === "fr" ? "fr-FR" : "en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
 export function shortAddress(a: string): string {

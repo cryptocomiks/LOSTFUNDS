@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { GUIDES, type Guide } from "@/content/guides";
+import { GUIDES_FR } from "@/content/guides.fr";
+import { T, useLang } from "@/lib/i18n";
 import { Chevron } from "./icons";
 import { Reveal } from "./Reveal";
 import { Section } from "./Section";
@@ -22,7 +24,9 @@ function Steps({ items, start = 1 }: { items: string[]; start?: number }) {
   );
 }
 
-function Item({ g, open, onToggle }: { g: Guide; open: boolean; onToggle: () => void }) {
+function Item({ g: base, open, onToggle }: { g: Guide; open: boolean; onToggle: () => void }) {
+  const lang = useLang();
+  const g = lang === "fr" && GUIDES_FR[base.id] ? { ...base, ...GUIDES_FR[base.id] } : base;
   return (
     <li id={`guide-${g.id}`} className="scroll-mt-20">
       <h4>
@@ -38,7 +42,7 @@ function Item({ g, open, onToggle }: { g: Guide; open: boolean; onToggle: () => 
               {g.title}
               {g.live && (
                 <span className="rounded-full bg-green-soft px-2 py-0.5 text-[11px] font-semibold tracking-wide text-green">
-                  LIVE CHECK
+                  <T en="LIVE CHECK" fr="VÉRIFIÉ EN DIRECT" />
                 </span>
               )}
             </span>
@@ -64,7 +68,7 @@ function Item({ g, open, onToggle }: { g: Guide; open: boolean; onToggle: () => 
             {g.manual && (
               <div className="mt-6 rounded-2xl bg-fill p-5 sm:p-6">
                 <p className="mb-4 text-[12px] font-semibold tracking-[0.1em] text-text-3 uppercase">
-                  No app? Do it yourself
+                  <T en="No app? Do it yourself" fr="Pas d'app ? Faites-le vous-même" />
                 </p>
                 <Steps items={g.manual} start={g.steps.length + 1} />
               </div>
@@ -86,6 +90,15 @@ const CATEGORIES = [
   "Solana",
   "Not checked automatically yet",
 ] as const;
+const CATEGORY_FR: Record<(typeof CATEGORIES)[number], string> = {
+  "Bridge withdrawals (L2 → Ethereum)": "Retraits de bridge (L2 → Ethereum)",
+  "Cross-chain transfers": "Transferts cross-chain",
+  Airdrops: "Airdrops",
+  "Rewards & withdrawals": "Récompenses et retraits",
+  "Old contracts & migrations": "Anciens contrats et migrations",
+  Solana: "Solana",
+  "Not checked automatically yet": "Pas encore vérifié automatiquement",
+};
 type Category = (typeof CATEGORIES)[number];
 
 const L2 = new Set(["opstack", "arbitrum", "polygon-pos", "zksync", "linea", "scroll"]);
@@ -119,8 +132,13 @@ export function Guides() {
     <Section
       id="guides"
       eyebrow="Guides"
-      title="How to claim."
-      intro="You always claim with your own wallet, through the project's official app or contract. Type those addresses yourself: never follow links from DMs or ads."
+      title={<T en="How to claim." fr="Comment réclamer." />}
+      intro={
+        <T
+          en="You always claim with your own wallet, through the project's official app or contract. Type those addresses yourself: never follow links from DMs or ads."
+          fr="Vous réclamez toujours avec votre propre wallet, via l'app ou le contrat officiel du projet. Tapez ces adresses vous-même : ne suivez jamais un lien reçu en DM ou dans une pub."
+        />
+      }
       alt
     >
       <div className="space-y-8">
@@ -129,7 +147,9 @@ export function Guides() {
           if (!list.length) return null;
           return (
             <Reveal key={c}>
-              <h3 className="mb-3 px-1 text-[13px] font-semibold tracking-wide text-text-3 uppercase">{c}</h3>
+              <h3 className="mb-3 px-1 text-[13px] font-semibold tracking-wide text-text-3 uppercase">
+                <T en={c} fr={CATEGORY_FR[c]} />
+              </h3>
               <ul className="divide-y divide-[var(--border)] overflow-hidden rounded-3xl border border-line bg-surface shadow-soft">
                 {list.map((g) => (
                   <Item key={g.id} g={g} open={open === g.id} onToggle={() => setOpen(open === g.id ? null : g.id)} />
