@@ -5,7 +5,8 @@
 export const SITE = {
   name: "FundsCheckers",
   /** Public address of the site, used for link previews and shared results. */
-  url: "https://www.fundscheckers.com",
+  // Switches to https://www.fundscheckers.com once its DNS points to Vercel.
+  url: "https://lostfunds.vercel.app",
   /** The address as people type it, without https:// or www. */
   domain: "fundscheckers.com",
   title: "FundsCheckers — find the crypto you forgot to claim",
