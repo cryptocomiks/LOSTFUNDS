@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "tsx scripts/gen-source-meta.ts",
     "build": "next build",
     "start": "npx serve out",
     "lint": "tsc --noEmit",

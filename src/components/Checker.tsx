@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Address } from "viem";
-import { checkSource, InputError, resolveInput, runChecks, sourcesFor, type Target, type WalletKind } from "@/lib/checker";
+import type { Target, WalletKind } from "@/lib/checker";
 import { T, useLang, type Lang } from "@/lib/i18n";
 import { readCache, writeCache } from "@/lib/resultCache";
 import { NETWORK_COLORS } from "@/lib/brand";
 import { formatAmount, formatDate, formatUsd, shortAddress } from "@/lib/format";
-import { GROUPS, sourceById, type CheckSource, type Group } from "@/lib/sources";
+import { GROUPS, type Group } from "@/lib/groups";
+import { sourceMetaById as sourceById, sourcesMetaFor as sourcesFor, type SourceMeta } from "@/lib/sourceMeta";
 import type { Finding, NetworkResult, WithdrawalStatus } from "@/lib/types";
 import { ShareResult } from "./ShareResult";
 import {
@@ -25,6 +26,19 @@ import {
 } from "./icons";
 
 type Phase = "idle" | "resolving" | "checking" | "done";
+
+/**
+ * The checks themselves (viem and every protocol's code) are a separate download: the page shows up
+ * without them, and they load in the background right after, so "Check" is still instant.
+ */
+let enginePromise: Promise<typeof import("@/lib/checker")> | null = null;
+const engine = () => {
+  enginePromise ??= import("@/lib/checker").catch((e) => {
+    enginePromise = null; // a failed download (bad connection) is retried on the next click
+    throw e;
+  });
+  return enginePromise;
+};
 
 const STATUS: Record<WithdrawalStatus, { label: [string, string]; tone: string; group: [string, string]; order: number }> = {
   ready: { label: ["Ready to claim", "À réclamer"], tone: "bg-green-soft text-green", group: ["Ready to claim", "Prêt à réclamer"], order: 0 },
@@ -192,7 +206,7 @@ function GroupBlock({
   lang,
 }: {
   group: Group;
-  sources: CheckSource[];
+  sources: SourceMeta[];
   results: Record<string, NetworkResult>;
   onRetry: (id: string) => void;
   lang: Lang;
@@ -292,6 +306,16 @@ export function Checker() {
   /** Clipboard reading is only offered where the browser supports it (decided after mount). */
   const [canPaste, setCanPaste] = useState(false);
   useEffect(() => setCanPaste(typeof navigator !== "undefined" && !!navigator.clipboard?.readText), []);
+  // Fetch the checks as soon as the page is idle, so they're ready before the first click.
+  useEffect(() => {
+    const start = () => engine().catch(() => {});
+    if ("requestIdleCallback" in window) {
+      const id = requestIdleCallback(start, { timeout: 2500 });
+      return () => cancelIdleCallback(id);
+    }
+    const id = setTimeout(start, 1200);
+    return () => clearTimeout(id);
+  }, []);
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [errorIsInput, setErrorIsInput] = useState(false);
@@ -314,6 +338,7 @@ export function Checker() {
     startedAtRef.current = Date.now();
     setPhase("resolving");
     try {
+      const { resolveInput, runChecks } = await engine();
       const resolved = await resolveInput(raw);
       if (ctrl.signal.aborted) return;
       setTarget(resolved);
@@ -350,8 +375,10 @@ export function Checker() {
     } catch (e) {
       if (ctrl.signal.aborted) return;
       setPhase("idle");
-      setError(e instanceof InputError ? e.message : "Couldn't resolve that name. Check your connection and try again.");
-      setErrorIsInput(e instanceof InputError);
+      const InputError = await engine().then((m) => m.InputError, () => null);
+      const isInput = !!InputError && e instanceof InputError;
+      setError(isInput ? (e as Error).message : "Couldn't resolve that name. Check your connection and try again.");
+      setErrorIsInput(isInput);
     }
   }, []);
 
@@ -364,8 +391,10 @@ export function Checker() {
 
   const retry = useCallback(
     async (id: string) => {
-      const net = sourceById(id);
-      if (!net || !target) return;
+      if (!target) return;
+      const { checkSource, sourcesFor: engineSources } = await engine();
+      const net = engineSources(target.kind).find((s) => s.id === id);
+      if (!net) return;
       setResults((prev) => ({ ...prev, [id]: { networkId: id, state: "running", findings: [], completed: 0 } }));
       const r = await checkSource(net, target.address);
       setResults((prev) => ({ ...prev, [id]: r }));

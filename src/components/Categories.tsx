@@ -1,4 +1,5 @@
-import { SOURCES, type Group } from "@/lib/sources";
+import type { Group } from "@/lib/groups";
+import { SOURCE_META as SOURCES } from "@/lib/sourceMeta";
 import { Bolt, Book, Shield, Wallet } from "./icons";
 import { T } from "@/lib/i18n";
 import type { ReactNode } from "react";

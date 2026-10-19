@@ -1,0 +1,878 @@
+[
+ {
+  "id": "base",
+  "name": "Base",
+  "group": "l2",
+  "bridgeUrl": "superbridge.app/base",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "optimism",
+  "name": "OP Mainnet",
+  "group": "l2",
+  "bridgeUrl": "superbridge.app/optimism",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "mantle",
+  "name": "Mantle",
+  "group": "l2",
+  "bridgeUrl": "app.mantle.xyz/bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "zora",
+  "name": "Zora",
+  "group": "l2",
+  "bridgeUrl": "superbridge.app/zora",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "mode",
+  "name": "Mode",
+  "group": "l2",
+  "bridgeUrl": "superbridge.app/mode",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "unichain",
+  "name": "Unichain",
+  "group": "l2",
+  "bridgeUrl": "superbridge.app/unichain",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "ink",
+  "name": "Ink",
+  "group": "l2",
+  "bridgeUrl": "superbridge.app/ink",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "soneium",
+  "name": "Soneium",
+  "group": "l2",
+  "bridgeUrl": "superbridge.app/soneium",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "worldchain",
+  "name": "World Chain",
+  "group": "l2",
+  "bridgeUrl": "the official World Chain bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "blast",
+  "name": "Blast",
+  "group": "l2",
+  "bridgeUrl": "blast.io",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "celo",
+  "name": "Celo",
+  "group": "l2",
+  "bridgeUrl": "the official Celo bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "manta-pacific",
+  "name": "Manta Pacific",
+  "group": "l2",
+  "bridgeUrl": "pacific-bridge.manta.network",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "lisk",
+  "name": "Lisk",
+  "group": "l2",
+  "bridgeUrl": "superbridge.app/lisk",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "fraxtal",
+  "name": "Fraxtal",
+  "group": "l2",
+  "bridgeUrl": "frax.com",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "bob",
+  "name": "BOB",
+  "group": "l2",
+  "bridgeUrl": "app.gobob.xyz",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "megaeth",
+  "name": "MegaETH",
+  "group": "l2",
+  "bridgeUrl": "the official MegaETH bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "shape",
+  "name": "Shape",
+  "group": "l2",
+  "bridgeUrl": "the official Shape bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "boba",
+  "name": "Boba Network",
+  "group": "l2",
+  "bridgeUrl": "hub.boba.network",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "hashkey",
+  "name": "HashKey Chain",
+  "group": "l2",
+  "bridgeUrl": "the official HashKey Chain bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "hemi",
+  "name": "Hemi",
+  "group": "l2",
+  "bridgeUrl": "app.hemi.xyz",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "metal",
+  "name": "Metal L2",
+  "group": "l2",
+  "bridgeUrl": "superbridge.app/metal",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "superseed",
+  "name": "Superseed",
+  "group": "l2",
+  "bridgeUrl": "superbridge.app/superseed",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "codex",
+  "name": "Codex",
+  "group": "l2",
+  "bridgeUrl": "the official Codex bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "dbk",
+  "name": "DBK Chain",
+  "group": "l2",
+  "bridgeUrl": "the official DBK Chain bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "cyber",
+  "name": "Cyber",
+  "group": "l2",
+  "bridgeUrl": "the official Cyber bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "orderly",
+  "name": "Orderly",
+  "group": "l2",
+  "bridgeUrl": "the official Orderly bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "rise",
+  "name": "RISE",
+  "group": "l2",
+  "bridgeUrl": "the official RISE bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "derive",
+  "name": "Derive",
+  "group": "l2",
+  "bridgeUrl": "the official Derive bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "funki",
+  "name": "Funki",
+  "group": "l2",
+  "bridgeUrl": "the official Funki bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "nillion",
+  "name": "Nillion",
+  "group": "l2",
+  "bridgeUrl": "the official Nillion bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "towns",
+  "name": "Towns",
+  "group": "l2",
+  "bridgeUrl": "the official Towns bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "phala",
+  "name": "Phala",
+  "group": "l2",
+  "bridgeUrl": "the official Phala bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "arbitrum",
+  "name": "Arbitrum One",
+  "group": "l2",
+  "bridgeUrl": "portal.arbitrum.io/bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "arbitrum-nova",
+  "name": "Arbitrum Nova",
+  "group": "l2",
+  "bridgeUrl": "portal.arbitrum.io/bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "robinhood",
+  "name": "Robinhood Chain",
+  "group": "l2",
+  "bridgeUrl": "the official Robinhood Chain bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "plume",
+  "name": "Plume",
+  "group": "l2",
+  "bridgeUrl": "the official Plume bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "gravity",
+  "name": "Gravity",
+  "group": "l2",
+  "bridgeUrl": "the official Gravity bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "scroll",
+  "name": "Scroll",
+  "group": "l2",
+  "bridgeUrl": "portal.scroll.io/bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "linea",
+  "name": "Linea",
+  "group": "l2",
+  "bridgeUrl": "linea.build/hub/bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "zksync",
+  "name": "ZKsync Era",
+  "group": "l2",
+  "bridgeUrl": "portal.zksync.io",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "abstract",
+  "name": "Abstract",
+  "group": "l2",
+  "bridgeUrl": "the official Abstract bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "sophon",
+  "name": "Sophon",
+  "group": "l2",
+  "bridgeUrl": "portal.sophon.xyz",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "lens",
+  "name": "Lens",
+  "group": "l2",
+  "bridgeUrl": "lens.xyz/bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "cronos-zkevm",
+  "name": "Cronos zkEVM",
+  "group": "l2",
+  "bridgeUrl": "zkevm.cronos.org/bridge",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "polygon",
+  "name": "Polygon PoS",
+  "group": "l2",
+  "bridgeUrl": "portal.polygon.technology",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "wormhole",
+  "name": "Wormhole",
+  "group": "solana",
+  "bridgeUrl": "portalbridge.com",
+  "accepts": [
+   "evm",
+   "solana"
+  ]
+ },
+ {
+  "id": "debridge",
+  "name": "deBridge",
+  "group": "solana",
+  "bridgeUrl": "app.debridge.finance",
+  "accepts": [
+   "evm",
+   "solana"
+  ]
+ },
+ {
+  "id": "cctp",
+  "name": "Circle CCTP",
+  "group": "solana",
+  "bridgeUrl": "the app you used, or a CCTP relayer",
+  "accepts": [
+   "evm",
+   "solana"
+  ]
+ },
+ {
+  "id": "gnosis",
+  "name": "Gnosis Bridge",
+  "group": "solana",
+  "bridgeUrl": "bridge.gnosischain.com",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "celer",
+  "name": "Celer cBridge",
+  "group": "solana",
+  "bridgeUrl": "cbridge.celer.network",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "airdrop-uni-2020",
+  "name": "Uniswap (UNI)",
+  "group": "airdrops",
+  "bridgeUrl": "app.uniswap.org, or the MerkleDistributor contract on Etherscan",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "airdrop-curve-2020",
+  "name": "Curve (CRV)",
+  "group": "airdrops",
+  "bridgeUrl": "the vesting contract on Etherscan (claim, for your address)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "airdrop-safe-2022",
+  "name": "Safe (SAFE)",
+  "group": "airdrops",
+  "bridgeUrl": "app.safe.global (SAFE claiming), or claimVestedTokens on the vesting contract",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "airdrop-1inch-2020",
+  "name": "1inch (1INCH)",
+  "group": "airdrops",
+  "bridgeUrl": "the MerkleDistributor on Etherscan (claim, with the index, amount and proof from 1inch's API)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "airdrop-lido-early-2021",
+  "name": "Lido early stakers (LDO)",
+  "group": "airdrops",
+  "bridgeUrl": "the MerkleDistributor on Etherscan (claim, with your row from github.com/lidofinance/airdrop-data)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "airdrop-lido-1inch-2021",
+  "name": "Lido × 1inch LPs (LDO)",
+  "group": "airdrops",
+  "bridgeUrl": "the MerkleDistributor on Etherscan (claim, with your row from github.com/lidofinance/airdrop-data)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "airdrop-convex-2021",
+  "name": "Convex (CVX)",
+  "group": "airdrops",
+  "bridgeUrl": "the MerkleAirdrop on Etherscan (claim, with your proof from github.com/convex-eth/platform)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "airdrop-zora-2025",
+  "name": "Zora (ZORA)",
+  "group": "airdrops",
+  "bridgeUrl": "zora.co, or the claim contract on Basescan (claim, sent from the eligible wallet)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "airdrop-sonic-2025",
+  "name": "Sonic (S)",
+  "group": "airdrops",
+  "bridgeUrl": "my.soniclabs.com/airdrop",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "airdrop-dydx-2021",
+  "name": "dYdX (DYDX)",
+  "group": "airdrops",
+  "bridgeUrl": "dydx.community (Claim rewards), from the eligible wallet",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "airdrop-cow-lgno-2022",
+  "name": "COW for locked GNO",
+  "group": "airdrops",
+  "bridgeUrl": "swap.cow.fi → Account (Locked GNO vesting), on Ethereum",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "airdrop-cow-lgno-gnosis-2022",
+  "name": "COW for locked GNO · Gnosis",
+  "group": "airdrops",
+  "bridgeUrl": "swap.cow.fi → Account (Locked GNO vesting), on Gnosis Chain",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "airdrop-avantis-2026",
+  "name": "Avantis (AVNT)",
+  "group": "airdrops",
+  "bridgeUrl": "claimAirdrop() on the Avantis airdrop contract on Basescan (Write as Proxy), from the eligible wallet",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "airdrop-lombard-2026",
+  "name": "Lombard (BARD)",
+  "group": "airdrops",
+  "bridgeUrl": "claim.lombard.finance, before October 29, 2026",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "airdrop-re-2026",
+  "name": "Re Protocol (RE)",
+  "group": "airdrops",
+  "bridgeUrl": "app.hedgey.finance/claim/431f05ff-38d0-4f86-a306-65d8d511d3c0, before July 1, 2027",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "airdrop-doppler-2026",
+  "name": "Doppler Finance (XDP)",
+  "group": "airdrops",
+  "bridgeUrl": "app.doppler.finance/airdrop, on Base, before November 28, 2026",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "airdrop-kamino-s3",
+  "name": "Kamino (KMNO)",
+  "group": "airdrops",
+  "bridgeUrl": "app.kamino.finance",
+  "accepts": [
+   "solana"
+  ]
+ },
+ {
+  "id": "aave-v2",
+  "name": "Aave v2",
+  "group": "rewards",
+  "bridgeUrl": "app.aave.com",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "aave-v3",
+  "name": "Aave v3",
+  "group": "rewards",
+  "bridgeUrl": "app.aave.com",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "merkl",
+  "name": "Merkl",
+  "group": "rewards",
+  "bridgeUrl": "app.merkl.xyz",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "lido-withdrawals",
+  "name": "Lido withdrawals",
+  "group": "rewards",
+  "bridgeUrl": "stake.lido.fi/withdrawals/claim",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "expired-locks",
+  "name": "Expired locks",
+  "group": "rewards",
+  "bridgeUrl": "the protocol's own app",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "curve-fees",
+  "name": "Curve fees",
+  "group": "rewards",
+  "bridgeUrl": "curve.finance (DAO page)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "eigenlayer-withdrawals",
+  "name": "EigenLayer withdrawals",
+  "group": "rewards",
+  "bridgeUrl": "app.eigenlayer.xyz",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "eigenlayer-rewards",
+  "name": "EigenLayer rewards",
+  "group": "rewards",
+  "bridgeUrl": "app.eigenlayer.xyz",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "aave-safety-module",
+  "name": "Aave Safety Module",
+  "group": "rewards",
+  "bridgeUrl": "app.aave.com (Staking)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "synthetix-escrow",
+  "name": "Synthetix escrow",
+  "group": "rewards",
+  "bridgeUrl": "etherscan.io (RewardEscrowV2 → vest)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "convex-staking",
+  "name": "Convex staking",
+  "group": "rewards",
+  "bridgeUrl": "convexfinance.com",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "balancer-fees",
+  "name": "Balancer fees",
+  "group": "rewards",
+  "bridgeUrl": "balancer.fi (veBAL)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "reclaim-rent",
+  "name": "Empty token accounts",
+  "group": "reclaim",
+  "bridgeUrl": "Solflare (Close Account), or sol-incinerator.com",
+  "accepts": [
+   "solana"
+  ]
+ },
+ {
+  "id": "reclaim-stake",
+  "name": "Inactive stake",
+  "group": "reclaim",
+  "bridgeUrl": "your wallet's staking tab",
+  "accepts": [
+   "solana"
+  ]
+ },
+ {
+  "id": "reclaim-marinade",
+  "name": "Marinade tickets",
+  "group": "reclaim",
+  "bridgeUrl": "app.marinade.finance",
+  "accepts": [
+   "solana"
+  ]
+ },
+ {
+  "id": "legacy-thedao",
+  "name": "The DAO",
+  "group": "legacy",
+  "bridgeUrl": "the WithdrawDAO contract on Etherscan (approve your DAO tokens to it, then withdraw)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "legacy-sai",
+  "name": "Maker SAI/PETH",
+  "group": "legacy",
+  "bridgeUrl": "the SaiTap contract on Etherscan (approve your SAI to it, then cash)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "legacy-mkr-2016",
+  "name": "MKR (2016)",
+  "group": "legacy",
+  "bridgeUrl": "the MKR Redeemer contract on Etherscan (approve your old MKR to it, then redeem)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "legacy-dgd",
+  "name": "DigixDAO (DGD)",
+  "group": "legacy",
+  "bridgeUrl": "the Acid contract on Etherscan (approve your DGD to it, then burn)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "legacy-gnt",
+  "name": "Golem (GNT)",
+  "group": "legacy",
+  "bridgeUrl": "migrate.golem.network, or migrate on the GNT contract on Etherscan",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "legacy-kncl",
+  "name": "Kyber (KNCL)",
+  "group": "legacy",
+  "bridgeUrl": "kyberswap.com/kyberdao/stake-knc (Migrate), or mintWithOldKnc on the KNC contract on Etherscan",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "legacy-weth-old",
+  "name": "Old wrapped ETH",
+  "group": "legacy",
+  "bridgeUrl": "the token contract (withdraw, with your full balance in wei)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "etherdelta",
+  "name": "EtherDelta",
+  "group": "legacy",
+  "bridgeUrl": "forkdelta.app/shutdown/withdraw",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "idex",
+  "name": "IDEX v1",
+  "group": "legacy",
+  "bridgeUrl": "Etherscan (Write Contract)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "tokenstore",
+  "name": "Token.Store",
+  "group": "legacy",
+  "bridgeUrl": "Etherscan (Write Contract)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "singularx",
+  "name": "SingularX",
+  "group": "legacy",
+  "bridgeUrl": "Etherscan (Write Contract)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "switcheo",
+  "name": "Switcheo",
+  "group": "legacy",
+  "bridgeUrl": "Etherscan (Write Contract)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "ens-deeds",
+  "name": "ENS auction deposits",
+  "group": "legacy",
+  "bridgeUrl": "Etherscan (old .eth registrar)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "polygon-staking",
+  "name": "Polygon staking",
+  "group": "legacy",
+  "bridgeUrl": "staking.polygon.technology",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "scd",
+  "name": "Maker SCD (Sai) vaults",
+  "group": "legacy",
+  "bridgeUrl": "Etherscan (SCD Tub, or your DSProxy)",
+  "accepts": [
+   "evm"
+  ]
+ }
+]

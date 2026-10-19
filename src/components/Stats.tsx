@@ -1,5 +1,5 @@
 import { GUIDES } from "@/content/guides";
-import { SOURCES } from "@/lib/sources";
+import { SOURCE_META as SOURCES } from "@/lib/sourceMeta";
 import { T } from "@/lib/i18n";
 import { Reveal } from "./Reveal";
 

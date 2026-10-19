@@ -8,6 +8,8 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
   title: SITE.title,
   description: SITE.description,
+  alternates: { canonical: "/" },
+  keywords: ["unclaimed airdrop", "lost crypto", "stuck bridge withdrawal", "unclaimed crypto", "airdrop checker", "crypto oubliée", "airdrop non réclamé"],
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },
@@ -28,6 +30,19 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: SITE.title, description: SITE.description, images: ["/og.png"] },
 };
 
+const STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: SITE.name,
+  url: SITE.url,
+  description: SITE.description,
+  applicationCategory: "FinanceApplication",
+  operatingSystem: "Any",
+  inLanguage: ["en", "fr"],
+  isAccessibleForFree: true,
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+};
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -43,6 +58,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: LANG_SCRIPT }} />
+        {/* What the site is, for search engines. */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }} />
       </head>
       <body className="min-h-dvh">
         {children}
