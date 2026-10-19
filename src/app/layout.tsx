@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { SITE } from "@/config/site";
+import { SiteAnalytics } from "@/components/SiteAnalytics";
 import { LANG_SCRIPT } from "@/lib/i18n";
 import "./globals.css";
 
@@ -43,7 +44,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: LANG_SCRIPT }} />
       </head>
-      <body className="min-h-dvh">{children}</body>
+      <body className="min-h-dvh">
+        {children}
+        <SiteAnalytics />
+      </body>
     </html>
   );
 }
