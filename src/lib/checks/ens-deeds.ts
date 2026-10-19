@@ -47,7 +47,7 @@ const LOGS = { ...L1, noTimestamps: true };
 
 /** Files published with the site, from anywhere the checks run (LOSTFUNDS_SITE overrides it outside a browser). */
 const siteFile = (path: string) =>
-  `${typeof window === "undefined" ? (typeof process !== "undefined" && process.env.LOSTFUNDS_SITE) || "https://lostfunds.vercel.app" : ""}${path}`;
+  `${typeof window === "undefined" ? (typeof process !== "undefined" && process.env.LOSTFUNDS_SITE) || "https://www.fundscheckers.com" : ""}${path}`;
 
 async function movedDeeds(user: Address): Promise<Hex[]> {
   const me = user.toLowerCase();

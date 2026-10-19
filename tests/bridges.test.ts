@@ -981,7 +981,7 @@ describe("Airdrops", () => {
     world.static["https://raw.githubusercontent.com/lidofinance/airdrop-data/main/oneinch_lido_airdrop.csv"] = csv("");
     world.addContract(1, "0x4b3EDb22952Fb4A70140E39FB1adD05A6B49622B", parseAbi(["function isClaimed(uint256) view returns (bool)"]), { isClaimed: ([i]) => i === 1n });
     // Convex: compact list published with the site, then hasClaimed(address).
-    world.static["https://lostfunds.vercel.app/airdrops/convex-cvx.json"] = { [lower(ELIGIBLE)]: String(3n * e18), [lower(CLAIMED)]: "1" };
+    world.static["https://www.fundscheckers.com/airdrops/convex-cvx.json"] = { [lower(ELIGIBLE)]: String(3n * e18), [lower(CLAIMED)]: "1" };
     world.addContract(1, "0x2E088A0A19dda628B4304301d1EA70b114e4AcCd", parseAbi(["function hasClaimed(address) view returns (bool)"]), { hasClaimed: ([a]) => a === CLAIMED });
     // Safe: ELIGIBLE redeemed a vesting with 40 SAFE vested but unclaimed; CLAIMED took all of it.
     const VEST = "0xA0b937D5c8E32a80E3a8ed4227CD020221544ee6";
@@ -1012,7 +1012,7 @@ describe("Airdrops", () => {
     const balanceOf = parseAbi(["function balanceOf(address) view returns (uint256)"]);
     // dYdX: cumulative rewards in the list published with the site (by first hex digit), claimed so far read on-chain.
     // ELIGIBLE has 500 DYDX, already took 100; CLAIMED took all 80.
-    world.static["https://lostfunds.vercel.app/airdrops/dydx/3.json"] = { [lower(ELIGIBLE)]: String(500n * e18), [lower(CLAIMED)]: String(80n * e18) };
+    world.static["https://www.fundscheckers.com/airdrops/dydx/3.json"] = { [lower(ELIGIBLE)]: String(500n * e18), [lower(CLAIMED)]: String(80n * e18) };
     world.addContract(1, "0x01d3348601968aB85b4bb028979006eac235a588", parseAbi([
       "function getActiveRoot() view returns (bytes32 merkleRoot, uint256 epoch, bytes ipfsCid)",
       "function getClaimed(address) view returns (uint256)",

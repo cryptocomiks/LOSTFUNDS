@@ -236,7 +236,7 @@ describe("ENS auction deposits (old .eth registrar)", () => {
     won(add("echo", OTHER, 3n * e18), USER, 3); // outbid (status 3)
     won(add("safe", SAFE, e18 / 10n), SAFE);
     for (let i = 0; i < 12; i++) movedTo(HOARDER, add(`name${i}`, HOARDER, (BigInt(i) + 1n) * 10n ** 16n));
-    for (const k of "0123456789abcdef") world.static[`https://lostfunds.vercel.app/legacy/ens-deeds/${k}.json`] = moved[k] ?? {};
+    for (const k of "0123456789abcdef") world.static[`https://www.fundscheckers.com/legacy/ens-deeds/${k}.json`] = moved[k] ?? {};
   });
 
   test("finds the deposits locked in deeds the address won or received", async () => {
@@ -285,7 +285,7 @@ describe("ENS auction deposits (old .eth registrar)", () => {
 
   test("a failed event search or a missing list fails the check instead of reporting it clean", async () => {
     await withNodesDown(() => assert.rejects(checkEnsDeeds(USER)));
-    const url = `https://lostfunds.vercel.app/legacy/ens-deeds/1.json`;
+    const url = `https://www.fundscheckers.com/legacy/ens-deeds/1.json`;
     const saved = world.static[url];
     delete world.static[url];
     try {
@@ -499,8 +499,8 @@ describe("Maker Single-Collateral Dai vaults", () => {
         return `0x${"0".repeat(64)}`;
       },
     });
-    for (const k of "0123456789abcdef") world.static[`https://lostfunds.vercel.app/legacy/scd-cups/${k}.json`] = {};
-    world.static["https://lostfunds.vercel.app/legacy/scd-cups/1.json"] = { [USER.toLowerCase()]: [1, 2, 3, 4, 5] };
+    for (const k of "0123456789abcdef") world.static[`https://www.fundscheckers.com/legacy/scd-cups/${k}.json`] = {};
+    world.static["https://www.fundscheckers.com/legacy/scd-cups/1.json"] = { [USER.toLowerCase()]: [1, 2, 3, 4, 5] };
   });
 
   test("jamFor: SaiProxy's rounding frees exactly the CDP's collateral", () => {
@@ -531,12 +531,12 @@ describe("Maker Single-Collateral Dai vaults", () => {
   test("an address with no CDP sees nothing, without a single RPC call", async () => {
     const before = world.requests.length;
     assert.deepEqual(await checkScd(EMPTY), { findings: [], completed: 0 });
-    assert.deepEqual(world.requests.slice(before), ["https://lostfunds.vercel.app/legacy/scd-cups/2.json"]);
+    assert.deepEqual(world.requests.slice(before), ["https://www.fundscheckers.com/legacy/scd-cups/2.json"]);
   });
 
   test("an RPC failure or a missing list fails the check instead of reporting it clean", async () => {
     await withNodesDown(() => assert.rejects(checkScd(USER)));
-    const url = "https://lostfunds.vercel.app/legacy/scd-cups/1.json";
+    const url = "https://www.fundscheckers.com/legacy/scd-cups/1.json";
     const saved = world.static[url];
     delete world.static[url];
     try {

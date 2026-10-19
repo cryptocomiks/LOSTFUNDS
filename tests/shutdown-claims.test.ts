@@ -203,7 +203,7 @@ describe("zkSync Lite", () => {
   const HOLDER = getAddress("0xb57b8bbfe2b3d3874c9300a95c7587dc341111e7");
   /** In the same file, but not listed. */
   const NOT_LISTED: Address = "0xb500000000000000000000000000000000000001";
-  const FILE = "https://lostfunds.vercel.app/legacy/zksync-lite/b5.json";
+  const FILE = "https://www.fundscheckers.com/legacy/zksync-lite/b5.json";
   const shard = JSON.parse(readFileSync(new URL("../public/legacy/zksync-lite/b5.json", import.meta.url), "utf8")) as ZkSyncLiteShard;
   const claimed = new Set<bigint>();
   let root: Hex = ZKSYNC_LITE_ROOT;

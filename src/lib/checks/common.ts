@@ -6,7 +6,7 @@ export const now = () => Math.floor(Date.now() / 1000);
 
 /** Files published with the site, from anywhere the checks run (LOSTFUNDS_SITE overrides the host outside a browser). */
 export const siteFile = (path: string) =>
-  `${typeof window === "undefined" ? (typeof process !== "undefined" && process.env.LOSTFUNDS_SITE) || "https://lostfunds.vercel.app" : ""}${path}`;
+  `${typeof window === "undefined" ? (typeof process !== "undefined" && process.env.LOSTFUNDS_SITE) || "https://www.fundscheckers.com" : ""}${path}`;
 
 export interface CheckOutput {
   findings: Finding[];

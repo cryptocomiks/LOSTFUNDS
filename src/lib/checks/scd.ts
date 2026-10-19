@@ -64,7 +64,7 @@ export function jamFor(ink: bigint, per: bigint): bigint | null {
 
 /** Files published with the site, from anywhere the checks run (LOSTFUNDS_SITE overrides it outside a browser). */
 const siteFile = (path: string) =>
-  `${typeof window === "undefined" ? (typeof process !== "undefined" && process.env.LOSTFUNDS_SITE) || "https://lostfunds.vercel.app" : ""}${path}`;
+  `${typeof window === "undefined" ? (typeof process !== "undefined" && process.env.LOSTFUNDS_SITE) || "https://www.fundscheckers.com" : ""}${path}`;
 
 async function listedCups(user: Address): Promise<number[]> {
   const me = user.toLowerCase();
