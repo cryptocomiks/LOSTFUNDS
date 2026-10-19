@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, describe, test } from "node:test";
-import { concat, encodePacked, keccak256, numberToHex, pad, parseAbi, parseAbiItem, size, toEventSelector, toHex, toRlp, zeroAddress, type Address, type Hex } from "viem";
-import { AIRDROP_LIST, checkAirdrops } from "../src/lib/checks/airdrops.ts";
+import { concat, encodePacked, stringToHex, keccak256, numberToHex, pad, parseAbi, parseAbiItem, size, toEventSelector, toHex, toRlp, zeroAddress, type Address, type Hex } from "viem";
+import { AIRDROP_LIST, checkAirdrops, pharosProofFile } from "../src/lib/checks/airdrops.ts";
 import { checkCctp, checkCctpFromSolana } from "../src/lib/checks/cctp.ts";
 import { checkDebridge } from "../src/lib/checks/debridge.ts";
 import { checkPolygon, decodeExitPayload } from "../src/lib/checks/polygon.ts";
@@ -919,7 +919,7 @@ describe("Wallet kinds", () => {
     );
   });
   test("an Ethereum address runs everything", () => {
-    assert.equal(sourcesFor("evm").length, 96);
+    assert.equal(sourcesFor("evm").length, 97);
   });
 });
 
@@ -944,6 +944,11 @@ describe("Airdrops", () => {
   const BARD_ROOT = "0x57bcd6d4b5b9b80a0c66d7e4e3d131842a4777ff67da805bc778b444389fd2ad";
   const LOMBARD = "https://mainnet.prod.lombard.finance/api/v1/bard/distributor";
   const HEDGEY = "https://api.hedgey.finance/token-claims/proof/431f05ff-38d0-4f86-a306-65d8d511d3c0";
+  const PHAROS: Address = "0xe5bfde2310fa2a315f814dcc0c8b97c159c8062d";
+  const PHAROS_ROOT: Hex = `0x${"7a".repeat(32)}`;
+  let pharosRoot: Hex = PHAROS_ROOT;
+  /** In the Pharos list, but the claim would revert. */
+  const PHAROS_BLOCKED: Address = "0x32b6666666666666666666666666666666666666";
   after(() => {
     Date.now = realNow;
   });
@@ -1097,6 +1102,21 @@ describe("Airdrops", () => {
       claimDeadline: () => 1795867200n, // Nov 28, 2026, 12:00 UTC
       claim: (_, { from }) => (same(from, ELIGIBLE) ? undefined : revert("already claimed")),
     });
+    // Pharos (Pharos mainnet): proof file for the "32b" prefix, then hasClaimed / claimTiers / claim.
+    world.static[pharosProofFile(ELIGIBLE)] = [
+      [lower(ELIGIBLE), String(14n * e18), PHAROS_ROOT, [`0x${"11".repeat(32)}`]],
+      [lower(CLAIMED), String(3n * e18), PHAROS_ROOT, []],
+      [lower(PHAROS_BLOCKED), String(5n * e18), PHAROS_ROOT, []],
+    ];
+    world.addContract(1672, PHAROS, parseAbi([
+      "function claimTiers(bytes32) view returns (bytes32 merkleRoot, address token, uint256 startTime, uint256 endTime)",
+      "function hasClaimed(address) view returns (bool)",
+      "function claim(bytes32 tier, uint256 amount, bytes32[] merkleProof)",
+    ]), {
+      claimTiers: ([t]) => (t === stringToHex("now", { size: 32 }) ? [pharosRoot, "0x0000000000000000000000000000000000000000", 1777374000n, 1792926000n] : [`0x${"00".repeat(32)}`, "0x0000000000000000000000000000000000000000", 0n, 0n]),
+      hasClaimed: ([a]) => a === CLAIMED,
+      claim: (_, { from }) => (same(from, PHAROS_BLOCKED) ? revert("Invalid proof") : undefined),
+    });
   });
 
   test("finds every airdrop never claimed: UNI 2020, Zora, and Sonic before its burn date", async () => {
@@ -1104,7 +1124,7 @@ describe("Airdrops", () => {
     const by = Object.fromEntries(r.findings.map((f) => [f.networkName, f]));
     assert.deepEqual(
       r.findings.map((f) => f.asset.symbol).sort(),
-      ["1INCH", "AVNT", "BARD", "COW", "COW", "CRV", "CVX", "DYDX", "LDO", "RE", "S", "SAFE", "UNI", "XDP", "ZORA"],
+      ["1INCH", "AVNT", "BARD", "COW", "COW", "CRV", "CVX", "DYDX", "LDO", "PROS", "RE", "S", "SAFE", "UNI", "XDP", "ZORA"],
     );
     const amount = (label: string) => by[label].asset.amount;
     assert.equal(amount("Curve early-user airdrop"), 1000n * e18);
@@ -1131,7 +1151,7 @@ describe("Airdrops", () => {
   });
   test("counts a claimed airdrop as completed", async () => {
     const r = await checkAirdrops(CLAIMED);
-    assert.deepEqual([r.findings.length, r.completed], [0, 14]);
+    assert.deepEqual([r.findings.length, r.completed], [0, 15]);
   });
   test("dYdX: a new Merkle root fails the check, an empty treasury shows nothing", async () => {
     try {
@@ -1171,6 +1191,29 @@ describe("Airdrops", () => {
       const asked = world.requests.length;
       assert.deepEqual(await checkAirdrops(ELIGIBLE, only("lombard-2026")), { findings: [], completed: 0 });
       assert.equal(world.requests.length, asked, "Lombard's API isn't even asked once the claim period is over");
+    } finally {
+      at("2026-10-01T12:00:00Z");
+    }
+  });
+  test("Pharos: the claim the contract accepts, before the deadline; a stale file or a missing one fails the check", async () => {
+    const r = await checkAirdrops(ELIGIBLE, only("pharos-2026"));
+    assert.equal(r.findings.length, 1);
+    assert.deepEqual([r.findings[0].asset.symbol, r.findings[0].asset.amount, r.findings[0].asset.priceKey], ["PROS", 14n * e18, "coingecko:pharos-network"]);
+    assert.match(r.findings[0].note ?? "", /before October 25, 2026 \(11:00 UTC\)/);
+    assert.deepEqual(await checkAirdrops(PHAROS_BLOCKED, only("pharos-2026")), { findings: [], completed: 0 }, "listed, but the claim reverts");
+    assert.deepEqual(await checkAirdrops("0x32b5555555555555555555555555555555555555", only("pharos-2026")), { findings: [], completed: 0 });
+    pharosRoot = `0x${"01".repeat(32)}`;
+    try {
+      await assert.rejects(checkAirdrops(ELIGIBLE, only("pharos-2026")), /another Merkle root/);
+    } finally {
+      pharosRoot = PHAROS_ROOT;
+    }
+    await assert.rejects(checkAirdrops("0x9990000000000000000000000000000000000000", only("pharos-2026")), /Pharos proofs: HTTP 404/, "every prefix has a file");
+    try {
+      at("2026-10-25T11:00:00Z");
+      const asked = world.requests.length;
+      assert.deepEqual(await checkAirdrops(ELIGIBLE, only("pharos-2026")), { findings: [], completed: 0 });
+      assert.equal(world.requests.length, asked, "nothing is fetched once the claim period is over");
     } finally {
       at("2026-10-01T12:00:00Z");
     }

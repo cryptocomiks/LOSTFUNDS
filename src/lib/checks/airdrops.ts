@@ -1,4 +1,5 @@
-import { encodeFunctionData, formatUnits, getAddress, parseAbi, type Address, type Hex } from "viem";
+import { md5 } from "@noble/hashes/legacy.js";
+import { bytesToHex, encodeFunctionData, formatUnits, getAddress, parseAbi, stringToBytes, stringToHex, type Address, type Hex } from "viem";
 import { l1Client } from "../clients";
 import { evmClient } from "../evm";
 import { accountsData, findProgramAddress } from "../solana";
@@ -435,6 +436,54 @@ async function dopplerLookup(user: string): Promise<Lookup> {
   };
 }
 
+/**
+ * Pharos' PROS airdrop (Pharos mainnet), claimable from April 28 to October 25, 2026, 11:00 UTC; unclaimed PROS then go
+ * back to the Pharos Foundation. Pharos publishes every wallet's amount and proof in files by claim tier and by the
+ * address's first three hex digits (named after an MD5 of both), served with CORS; only the instant tier ("now") has
+ * files. claim(tier, amount, proof) on the airdrop contract pays native PROS.
+ */
+const PHAROS_AIRDROP: Address = "0xe5bfde2310fa2a315f814dcc0c8b97c159c8062d";
+/** The "now" tier's endTime (October 25, 2026, 11:00 UTC): after it, the files aren't even fetched. */
+const PHAROS_END = 1792926000;
+const PHAROS_TIER = "now";
+const pharosAbi = parseAbi([
+  "function claimTiers(bytes32) view returns (bytes32 merkleRoot, address token, uint256 startTime, uint256 endTime)",
+  "function hasClaimed(address) view returns (bool)",
+  "function claim(bytes32 tier, uint256 amount, bytes32[] merkleProof)",
+]);
+/** The proof file holding `user`, as Pharos' claim page builds its URL. */
+export const pharosProofFile = (user: string) => {
+  const key = bytesToHex(md5(stringToBytes(`pharosairdrop${PHAROS_TIER}${user.slice(2, 5)}`.toLowerCase()))).slice(2);
+  return `https://static.claim.pharos.xyz/resources/airdrops/PROD/PHAROSAIRDROP/${PHAROS_TIER}/proof_${key}_${PHAROS_TIER}.json`;
+};
+
+async function pharosLookup(user: string): Promise<Lookup> {
+  if (now() >= PHAROS_END) return null;
+  // Every prefix has a file (about 57 wallets each): a missing one means the layout changed, not "not eligible".
+  const res = await fetch(pharosProofFile(user), { signal: AbortSignal.timeout(20_000) });
+  if (!res.ok) throw new Error(`Pharos proofs: HTTP ${res.status}`);
+  const row = ((await res.json()) as [string, string, Hex, Hex[]][]).find((r) => r[0].toLowerCase() === user.toLowerCase());
+  if (!row) return null;
+  const [, amount, root, proof] = row;
+  const c = evmClient(1672)!;
+  const from = user as Address;
+  const tier = stringToHex(PHAROS_TIER, { size: 32 });
+  const [claimed, [onChainRoot, , , end]] = await Promise.all([
+    c.readContract({ address: PHAROS_AIRDROP, abi: pharosAbi, functionName: "hasClaimed", args: [from] }),
+    c.readContract({ address: PHAROS_AIRDROP, abi: pharosAbi, functionName: "claimTiers", args: [tier] }),
+  ]);
+  if (claimed) return { claimed: true };
+  if (now() >= Number(end)) return null;
+  if (onChainRoot.toLowerCase() !== root.toLowerCase()) throw new Error("Pharos proofs: allocation from another Merkle root");
+  const data = encodeFunctionData({ abi: pharosAbi, functionName: "claim", args: [tier, BigInt(amount), proof] });
+  if (!(await wouldSucceed(c, { from, to: PHAROS_AIRDROP, data }))) return null;
+  return {
+    claimed: false,
+    amount: BigInt(amount),
+    note: `Pharos' PROS airdrop was never claimed by this wallet. Claim it on Pharos mainnet before ${longDate(Number(end))} (11:00 UTC): unclaimed PROS then go back to the Pharos Foundation.`,
+  };
+}
+
 export const AIRDROP_LIST: Airdrop[] = [
   {
     id: "uni-2020",
@@ -729,6 +778,20 @@ export const AIRDROP_LIST: Airdrop[] = [
     txUrl: `https://basescan.org/address/${DOPPLER_AIRDROP}`,
     asset: (amount) => ({ symbol: "XDP", decimals: 18, amount, token: "0x07b3D902783c3C12b077508c3B5c00113d1291D0", tokenChain: "base" }),
     lookup: dopplerLookup,
+  },
+  {
+    id: "pharos-2026",
+    accepts: ["evm"],
+    name: "Pharos (PROS)",
+    label: "Pharos PROS airdrop",
+    symbol: "PROS",
+    decimals: 18,
+    claimAt: "claim.pharos.xyz, on Pharos mainnet, before October 25, 2026, 11:00 UTC",
+    date: 1777374000, // claims opened Apr 28, 2026, 11:00 UTC
+    note: "",
+    txUrl: `https://pharosscan.xyz/address/${PHAROS_AIRDROP}`,
+    asset: (amount) => ({ symbol: "PROS", decimals: 18, amount, priceKey: "coingecko:pharos-network" }),
+    lookup: pharosLookup,
   },
   {
     id: "kamino-s3",

@@ -15,7 +15,7 @@ export const GUIDES: Guide[] = [
   {
     id: "airdrops",
     title: "Unclaimed airdrops",
-    subtitle: "Uniswap, dYdX, COW for locked GNO, Curve, Safe, 1inch, Lido, Convex, Zora, Avantis, Lombard, Re, Doppler, Sonic, Kamino",
+    subtitle: "Uniswap, dYdX, COW for locked GNO, Curve, Safe, 1inch, Lido, Convex, Zora, Avantis, Lombard, Re, Doppler, Pharos, Sonic, Kamino",
     live: true,
     steps: [
       "Uniswap, September 2020: never expires, around 12.5 million UNI still unclaimed. Open the official Uniswap app with the eligible wallet; if no Claim UNI prompt shows, claim on the MerkleDistributor (0x090D4613473dEE047c3f2706764f49E0821D256e) on Etherscan, Write Contract → claim, with your index, amount and proof from Uniswap's published list (github.com/Uniswap/mrkl-drop-data-chunks).",
@@ -25,7 +25,7 @@ export const GUIDES: Guide[] = [
       "Curve, August 2020: early-user CRV, fully vested. On the vesting contract (0x575CCD8e2D300e2377B43478339E364000318E2c) on Etherscan, Write Contract → claim, with your address. Anyone can send it for you; the CRV always goes to the eligible address.",
       "Safe, 2022: only if you redeemed your allocation back then. Open app.safe.global with the eligible wallet and claim the vested SAFE, or call claimVestedTokens on the vesting contract.",
       "1inch (Dec 2020), Lido (early stakers, Jan 2021, and 1inch LPs, Mar 2021) and Convex (May 2021): no deadline. Call claim on the project's distributor on Etherscan with your index, amount and proof, from 1inch's API (governance.1inch.io), github.com/lidofinance/airdrop-data or github.com/convex-eth/platform.",
-      "Lombard BARD (wave 4, Ethereum): claim at claim.lombard.finance with the eligible wallet before October 29, 2026. Re Protocol RE (Ethereum): claim on Hedgey's claim page (app.hedgey.finance/claim/431f05ff-38d0-4f86-a306-65d8d511d3c0) before July 1, 2027. Doppler Finance XDP (Base): claim at app.doppler.finance/airdrop before November 28, 2026, 12:00 UTC.",
+      "Lombard BARD (wave 4, Ethereum): claim at claim.lombard.finance with the eligible wallet before October 29, 2026. Re Protocol RE (Ethereum): claim on Hedgey's claim page (app.hedgey.finance/claim/431f05ff-38d0-4f86-a306-65d8d511d3c0) before July 1, 2027. Doppler Finance XDP (Base): claim at app.doppler.finance/airdrop before November 28, 2026, 12:00 UTC. Pharos PROS (Pharos mainnet): claim at claim.pharos.xyz with the eligible wallet before October 25, 2026, 11:00 UTC.",
       "Avantis Season 2 (Base): the official claim window is over, but the contract still pays. From the eligible wallet, call claimAirdrop() on the airdrop contract (0x7E221Ee3A68D5948c6C472A8FaC5ddeB894E2c1A) on Basescan, Write as Proxy. Claim soon: Avantis can take the rest back.",
       "Sonic (Sonic chain): only if you still hold Sonic airdrop NFTs. Unlock them at my.soniclabs.com/airdrop before October 15, 2026: whatever is still locked then is burned.",
       "Kamino Season 3 (Solana): the official claim period is over, but unclaimed KMNO are still on-chain until Kamino claws them back. Claim at app.kamino.finance with the eligible wallet, soon.",

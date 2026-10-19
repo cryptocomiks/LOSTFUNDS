@@ -72,6 +72,7 @@ export const NETWORK_COLORS: Record<string, string> = {
   "airdrop-lombard-2026": "linear-gradient(135deg,#F2E8DA,#1A1A1A)",
   "airdrop-re-2026": "linear-gradient(135deg,#55E6C1,#0E3B43)",
   "airdrop-doppler-2026": "linear-gradient(135deg,#2D6BFF,#0B0F2E)",
+  "airdrop-pharos-2026": "linear-gradient(135deg,#6D5BFF,#0A0A23)",
   "lido-withdrawals": "linear-gradient(135deg,#00A3FF,#F69988)",
   "expired-locks": "linear-gradient(135deg,#FFD84D,#3A3A3A)",
   "curve-fees": "linear-gradient(135deg,#FF0000,#FFFF00 35%,#00FF00 55%,#0000FF)",
