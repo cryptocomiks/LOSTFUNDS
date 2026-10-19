@@ -63,8 +63,8 @@ export function ShowReel() {
             <video
               ref={ref}
               className="block aspect-video w-full"
-              src="/video/lostfunds-film.mp4"
-              poster="/video/lostfunds-film-poster.jpg"
+              src="/video/fundscheckers-film.mp4"
+              poster="/video/fundscheckers-film-poster.jpg"
               muted
               loop
               playsInline
