@@ -75,11 +75,19 @@ export interface EvmChain {
 const pn = (sub: string) => `https://${sub}.publicnode.com`;
 const drpc = (sub: string) => `https://${sub}.drpc.org`;
 
+/** Public nodes viem still lists that no longer answer keyless requests (checked October 2026). */
+const DEAD_RPCS = new Set([
+  "https://story.drpc.org", // free plan dropped the chain
+  "https://api.blockeden.xyz/metis/67nCBdZQSH9z3YqDDjdm", // paid plan only
+  "https://metis-mainnet.public.blastapi.io", // Blast API shut down
+  "https://fantom-rpc.publicnode.com", // 404
+]);
+
 const def = (chain: Chain, name: string, llama: string, nativePrice: string, rpcs: string[]): EvmChain => ({
   id: chain.id,
   name,
   chain,
-  rpcs: [...rpcs, ...chain.rpcUrls.default.http.filter((u) => !rpcs.includes(u))],
+  rpcs: [...rpcs, ...chain.rpcUrls.default.http.filter((u) => !rpcs.includes(u))].filter((u) => !DEAD_RPCS.has(u)),
   llama,
   nativePrice,
 });

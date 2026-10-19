@@ -15,7 +15,6 @@ export const NETWORK_COLORS: Record<string, string> = {
   megaeth: "#1C1C1C",
   shape: "#3D3DFF",
   metal: "linear-gradient(135deg,#C8C8C8,#5A5A5A)",
-  superseed: "#20D0A2",
   codex: "#1F4DFF",
   mantle: "#65B3AE",
   celo: "#FCFF52",

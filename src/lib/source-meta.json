@@ -189,15 +189,6 @@
   ]
  },
  {
-  "id": "superseed",
-  "name": "Superseed",
-  "group": "l2",
-  "bridgeUrl": "superbridge.app/superseed",
-  "accepts": [
-   "evm"
-  ]
- },
- {
   "id": "codex",
   "name": "Codex",
   "group": "l2",
