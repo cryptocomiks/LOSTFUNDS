@@ -61,6 +61,17 @@
   ],
   "redirects": [
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "lostfunds.vercel.app"
+        }
+      ],
+      "destination": "https://www.fundscheckers.com/",
+      "permanent": true
+    },
+    {
       "source": "/:path*",
       "has": [
         {
