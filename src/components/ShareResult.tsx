@@ -90,7 +90,7 @@ async function drawCard(d: ShareData, lang: Lang): Promise<Blob | null> {
   g.fillText(lang === "fr" ? "Gratuit · Lecture seule · Sans connexion de wallet" : "Free · Read-only · No wallet connection", 80, 520);
   g.fillStyle = "#f5f5f7";
   g.font = font(600, 36);
-  g.fillText(SITE.url.replace(/^https?:\/\//, ""), 80, 572);
+  g.fillText(SITE.domain, 80, 572);
   return new Promise((r) => c.toBlob((b) => r(b), "image/png"));
 }
 
@@ -104,7 +104,7 @@ export function ShareResult({ data, lang }: { data: ShareData; lang: Lang }) {
     setNote(null);
     try {
       const blob = await drawCard(data, lang);
-      const file = blob && new File([blob], "lostfunds.png", { type: "image/png" });
+      const file = blob && new File([blob], "fundscheckers.png", { type: "image/png" });
       if (file && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], text, url });
         return;
@@ -117,7 +117,7 @@ export function ShareResult({ data, lang }: { data: ShareData; lang: Lang }) {
       if (blob) {
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = "lostfunds.png";
+        a.download = "fundscheckers.png";
         a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 5000);
       }

@@ -1,4 +1,4 @@
-# lostfunds
+# FundsCheckers
 
 Find the crypto you forgot to claim: unfinished bridge withdrawals, stuck cross-chain transfers,
 unclaimed airdrops, rewards and old deposits. Free, read-only, no wallet connection.

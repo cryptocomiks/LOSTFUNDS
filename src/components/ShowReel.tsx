@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { SITE } from "@/config/site";
 import { T } from "@/lib/i18n";
 import { Reveal } from "./Reveal";
 
@@ -68,7 +69,7 @@ export function ShowReel() {
               loop
               playsInline
               preload="metadata"
-              aria-label="lostfunds: a 15-second film showing how the checker finds unclaimed bridge withdrawals"
+              aria-label={`${SITE.name}: a 15-second film showing how the checker finds unclaimed bridge withdrawals`}
             />
             <button
               type="button"
