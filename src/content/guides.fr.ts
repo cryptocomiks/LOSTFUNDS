@@ -4,7 +4,7 @@ import type { Guide } from "./guides";
 export const GUIDES_FR: Record<string, Pick<Guide, "title" | "subtitle" | "steps" | "note" | "manual">> = {
   airdrops: {
     title: "Airdrops non réclamés",
-    subtitle: "Uniswap, dYdX, COW pour GNO verrouillés, Curve, Safe, 1inch, Lido, Convex, Zora, Avantis, Lombard, Re, Doppler, Sonic, Kamino",
+    subtitle: "Uniswap, dYdX, COW pour GNO verrouillés, Curve, Safe, 1inch, Lido, Convex, Zora, Avantis, Lombard, Re, Doppler, Pharos, Sonic, Kamino",
     steps: [
       "Uniswap, septembre 2020 : n'expire jamais, environ 12,5 millions d'UNI toujours non réclamés. Ouvrez l'app officielle Uniswap avec le wallet éligible ; si aucune invite « Claim UNI » n'apparaît, réclamez sur le MerkleDistributor (0x090D4613473dEE047c3f2706764f49E0821D256e) sur Etherscan, Write Contract → claim, avec votre index, montant et preuve tirés de la liste publiée par Uniswap (github.com/Uniswap/mrkl-drop-data-chunks).",
       "Récompenses dYdX (minage rétroactif 2021, récompenses de trading jusqu'en 2023) : pas de date limite, environ 5,9 millions de DYDX jamais réclamés. Ouvrez dydx.community avec le wallet éligible et utilisez Claim rewards ; le site lit votre montant et votre preuve dans la liste publiée par dYdX et réclame sur Ethereum.",
@@ -13,7 +13,7 @@ export const GUIDES_FR: Record<string, Pick<Guide, "title" | "subtitle" | "steps
       "Curve, août 2020 : CRV des premiers utilisateurs, entièrement débloqués. Sur le contrat de vesting (0x575CCD8e2D300e2377B43478339E364000318E2c) sur Etherscan, Write Contract → claim, avec votre adresse. N'importe qui peut l'envoyer pour vous ; les CRV vont toujours à l'adresse éligible.",
       "Safe, 2022 : seulement si vous aviez validé votre allocation à l'époque. Ouvrez app.safe.global avec le wallet éligible et réclamez les SAFE débloqués, ou appelez claimVestedTokens sur le contrat de vesting.",
       "1inch (déc. 2020), Lido (premiers stakers, janv. 2021, et LP 1inch, mars 2021) et Convex (mai 2021) : pas de date limite. Appelez claim sur le distributeur du projet sur Etherscan avec votre index, montant et preuve, issus de l'API de 1inch (governance.1inch.io), de github.com/lidofinance/airdrop-data ou de github.com/convex-eth/platform.",
-      "Lombard BARD (vague 4, Ethereum) : réclamez sur claim.lombard.finance avec le wallet éligible avant le 29 octobre 2026. Re Protocol RE (Ethereum) : réclamez sur la page Hedgey (app.hedgey.finance/claim/431f05ff-38d0-4f86-a306-65d8d511d3c0) avant le 1er juillet 2027. Doppler Finance XDP (Base) : réclamez sur app.doppler.finance/airdrop avant le 28 novembre 2026, 12 h UTC.",
+      "Lombard BARD (vague 4, Ethereum) : réclamez sur claim.lombard.finance avec le wallet éligible avant le 29 octobre 2026. Re Protocol RE (Ethereum) : réclamez sur la page Hedgey (app.hedgey.finance/claim/431f05ff-38d0-4f86-a306-65d8d511d3c0) avant le 1er juillet 2027. Doppler Finance XDP (Base) : réclamez sur app.doppler.finance/airdrop avant le 28 novembre 2026, 12 h UTC. Pharos PROS (Pharos mainnet) : réclamez sur claim.pharos.xyz avec le wallet éligible avant le 25 octobre 2026, 11 h UTC.",
       "Avantis Saison 2 (Base) : la période officielle est terminée, mais le contrat paie toujours. Depuis le wallet éligible, appelez claimAirdrop() sur le contrat d'airdrop (0x7E221Ee3A68D5948c6C472A8FaC5ddeB894E2c1A) sur Basescan, Write as Proxy. Faites-le vite : Avantis peut reprendre le reste.",
       "Sonic (chaîne Sonic) : seulement si vous détenez encore des NFT d'airdrop Sonic. Débloquez-les sur my.soniclabs.com/airdrop avant le 15 octobre 2026 : ce qui sera encore verrouillé sera brûlé.",
       "Kamino Saison 3 (Solana) : la période officielle est terminée, mais les KMNO non réclamés restent on-chain jusqu'à ce que Kamino les récupère. Réclamez sur app.kamino.finance avec le wallet éligible, rapidement.",
@@ -38,7 +38,7 @@ export const GUIDES_FR: Record<string, Pick<Guide, "title" | "subtitle" | "steps
   },
   rewards: {
     title: "Récompenses et retraits non réclamés",
-    subtitle: "Lido, verrous expirés, frais Curve et Balancer, EigenLayer, Aave, Synthetix, Convex",
+    subtitle: "Lido, verrous expirés, frais Curve et Balancer, EigenLayer, Aave, Synthetix, Convex, Stargate",
     steps: [
       "Retraits Lido : ouvrez stake.lido.fi/withdrawals/claim avec le wallet qui détient la demande de retrait (un NFT unstETH), sélectionnez les demandes prêtes et cliquez sur Claim. Une demande encore en attente devient réclamable quand Lido la finalise, en général sous 1 à 5 jours. L'ETH n'est jamais envoyé automatiquement.",
       "Verrous expirés : quand un verrou vote-escrow se termine, rien n'est renvoyé. Retirez depuis l'app du protocole, avec le wallet qui a verrouillé : curve.finance (DAO → Lock) pour veCRV, balancer.fi pour veBAL, app.frax.finance pour veFXS, stakedao.org pour veSDT, app.pendle.finance/vependle pour vePENDLE, convexfinance.com pour vlCVX. Sur Etherscan, c'est withdraw() sur le contrat de verrouillage (processExpiredLocks avec false pour vlCVX).",
@@ -50,6 +50,8 @@ export const GUIDES_FR: Record<string, Pick<Guide, "title" | "subtitle" | "steps
       "Safety Module d'Aave : ouvrez app.aave.com, allez dans Staking avec le wallet qui a staké et réclamez les récompenses AAVE. Elles restent réclamables après le déstaking.",
       "Escrow Synthetix : ouvrez le contrat RewardEscrowV2 sur Etherscan (Ethereum : 0xFAd53Cc9480634563E8ec71E8e693Ffd07981d38) ou Optimistic Etherscan (OP Mainnet : 0x5Fc9B8d2B7766f061bD84a41255fD1A76Fd1FAa2), connectez le wallet qui a staké, puis Write Contract → vest avec vos identifiants d'entrées. Le résultat les liste quand il y en a peu ; sinon getAccountVestingEntryIDs (Read Contract : votre adresse, 0, 1000) les donne tous, et les passer tous fonctionne.",
       "Staking Convex : les CVX ou cvxCRV stakés dans les pools d'origine de Convex continuent de gagner des récompenses qui attendent d'être réclamées. Réclamez-les sur convexfinance.com avec le wallet qui a staké.",
+      "Partage de revenus veSTG de Stargate : si vous déteniez des veSTG le 10 août 2025, quand LayerZero a racheté Stargate, une part de la moitié des revenus de Stargate des six mois suivants vous revient, en USDC (USDT sur BNB Chain), sans date limite. Réclamez-la sur stargate.finance (Stake) avec le wallet qui détenait les veSTG, sur la chaîne indiquée dans le résultat, ou appelez claimUsdc() (sans argument) sur le distributeur 0x1E68BE052a9a9ff04714582831457a9B319Bcafe, à la même adresse sur Ethereum, Arbitrum, BNB Chain, Polygon, OP Mainnet, Avalanche et Fantom.",
+      "STG encore verrouillés dans veSTG : tous les verrous veSTG ont été débloqués quand LayerZero a racheté Stargate. Appelez withdraw() (sans argument) sur le contrat veSTG de la chaîne indiquée dans le résultat, depuis le wallet qui a verrouillé, et les STG reviennent. Les STG se convertissent en ZRO à un taux fixe (1 STG = 0,08634 ZRO) sur stargate.finance jusqu'au 15 décembre 2026.",
     ],
     note: "Chaque réclamation est une transaction ordinaire depuis votre propre wallet, et les fonds vont toujours à votre adresse. Aucun service honnête ne vous demandera votre phrase secrète, ni d'« approuver » des tokens pour les recevoir.",
   },
@@ -93,7 +95,7 @@ export const GUIDES_FR: Record<string, Pick<Guide, "title" | "subtitle" | "steps
   },
   "legacy-deposits": {
     title: "Anciens exchanges, dépôts ENS et staking",
-    subtitle: "EtherDelta, IDEX v1, Token.Store, SingularX, Switcheo, actes d'enchères ENS, staking Polygon, coffres Maker SCD",
+    subtitle: "EtherDelta, IDEX v1, Token.Store, SingularX, Switcheo, actes d'enchères ENS, staking Polygon, coffres Maker SCD, Kinto",
     steps: [
       "EtherDelta et ForkDelta (2016–2022), Token.Store et SingularX : ce que vous avez laissé sur ces exchanges est toujours dans leurs contrats, et vous pouvez le retirer à tout moment, seul. Pour le contrat principal d'EtherDelta, la page de retrait de ForkDelta (forkdelta.app/shutdown/withdraw) liste vos soldes. Sinon, sur Etherscan : ouvrez le contrat indiqué dans le résultat, Write Contract, connectez votre wallet et appelez withdraw(amount) pour l'ETH ou withdrawToken(token, amount) pour un token, avec le montant donné dans le résultat.",
       "IDEX v1 (2017–2020) : IDEX ne traite plus les retraits, mais son contrat (0x2a0c0DBEcC7E4D658f48E01e3fA353F44050c208) vous laisse retirer seul dès que votre compte n'a eu aucune activité pendant 240 blocs (moins d'une heure). Sur Etherscan, Write Contract → withdraw(token, amount), avec le token 0x0000000000000000000000000000000000000000 pour l'ETH.",
@@ -101,6 +103,7 @@ export const GUIDES_FR: Record<string, Pick<Guide, "title" | "subtitle" | "steps
       "Dépôts d'enchères ENS (2017–2019) : l'ETH payé pour un nom .eth est bloqué dans l'acte (deed) du nom. Sur Etherscan, ouvrez l'ancien registrar d'ENS (0x6090A6e47849629b7245Dfa1Ca21D94cd15878Ef), Write Contract → releaseDeed(hash), avec le hash donné dans le résultat, depuis le wallet propriétaire de l'acte. Tout l'ETH revient à ce wallet ; le propriétaire actuel du nom ne change pas.",
       "Staking Polygon : les récompenses, et les POL déstakés dont la période d'attente est finie, se réclament sur staking.polygon.technology avec le wallet qui a staké. Les POL encore délégués à un validateur qui a cessé de valider ne rapportent rien : déstakez-les là-bas, attendez 80 checkpoints (environ un jour), puis réclamez-les.",
       "Coffres Maker Single-Collateral Dai (CDP, arrêtés en 2020) : si le coffre a encore une dette, n'importe qui peut la solder avec bite(cup) sur le Tub (0x448a5065aeBB8E423F0896E6c5D525C040f59af3). Ensuite le propriétaire retire le reste : pour un coffre ouvert via le CDP Portal de Maker, appelez execute sur votre DSProxy avec la cible et les données données dans le résultat (l'ETH arrive directement dans votre wallet) ; pour un coffre détenu directement par votre wallet, appelez free sur le Tub, approuvez le Tub pour ces PETH, appelez exit, puis unwrappez le WETH.",
+      "Kinto (arrêté en septembre 2025) : les soldes d'au moins 50 $ restés sur Kinto ont été convertis en USDC et attendent dans le contrat KintoLeftOver sur Ethereum (0x47A56a558892De88367108183Df913852617e77C), sans date limite. Sur Etherscan, Write Contract → acceptAndClaim() (sans argument), depuis le wallet indiqué dans le résultat : les USDC lui sont envoyés dans la même transaction.",
     ],
     note: "Chacune de ces actions est une transaction Ethereum ordinaire envoyée depuis votre propre wallet. Personne ne peut retirer à votre place, et vous n'avez jamais besoin de partager une clé ou de signer un message pour ça. Vérifiez l'adresse du contrat sur Etherscan avant d'envoyer quoi que ce soit.",
     manual: [
@@ -171,10 +174,16 @@ export const GUIDES_FR: Record<string, Pick<Guide, "title" | "subtitle" | "steps
   },
   "zksync-lite": {
     title: "zkSync Lite (fermé)",
-    subtitle: "zkSync 1.0 a été arrêté en mai 2026",
+    subtitle: "Soldes restés quand zkSync 1.0 s'est arrêté le 4 mai 2026, à réclamer sur Ethereum",
     steps: [
-      "Les soldes restés sur zkSync Lite se récupèrent via la procédure de sortie officielle publiée par Matter Labs.",
-      "Suivez les instructions de fermeture de zkSync Lite dans la documentation officielle de ZKsync. N'utilisez que les liens que vous y trouvez.",
+      "zkSync Lite (zkSync 1.0) a cessé de produire des blocs le 4 mai 2026. Tous les soldes qui y restaient, ETH et tokens, attendent désormais dans un contrat de réclamation officiel sur Ethereum (0x0a14B696350546110a0D8acDb86226983af9D2a0, géré par la gouvernance de ZKsync). Il n'y a pas de date limite.",
+      "Ouvrez lite.zksync.io (tapez l'adresse vous-même) et connectez le wallet qui utilisait zkSync Lite. Le site retrouve vos soldes dans l'état final publié, construit la preuve et envoie la réclamation. Matter Labs paie le gas des 100 000 premières réclamations.",
+      "Chaque token se réclame séparément, et les fonds vont toujours à l'adresse qui les détenait sur zkSync Lite.",
+    ],
+    note: "Le vérificateur couvre les soldes d'au moins 200 $ (au 19 octobre 2026) qui n'avaient pas encore été réclamés à cette date : environ 25 800 soldes, 10,7 M$ au total. Les plus petits se réclament de la même façon : vérifiez sur lite.zksync.io avec votre wallet.",
+    manual: [
+      "Sans le portail : téléchargez l'instantané de Matter Labs (zksync-lite-sunset.matterlabs.dev/mainnet/data.zip, aussi sur IPFS : QmSqzPQNRcz3grznTMCYDDunDFGZCXFFjew7fgYpFcGYoh) et lancez l'exit tree generator de github.com/matter-labs/zksync (core/bin/exit_tree_generator) : create-new-leaves, puis create-proof --account <votre adresse> --tokens <adresse du token>. Il affiche l'index de réclamation, le montant et la preuve.",
+      "Sur Etherscan, ouvrez le contrat de réclamation, Write as Proxy → claim(index, token, amount, merkleProof), avec le token 0x0000000000000000000000000000000000000000 pour l'ETH. claimTo(index, claimant, token, amount, merkleProof) permet à un autre wallet de l'envoyer pour vous ; les fonds vont quand même au bénéficiaire.",
     ],
   },
   sonic: {

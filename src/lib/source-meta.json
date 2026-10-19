@@ -396,6 +396,15 @@
   ]
  },
  {
+  "id": "zksync-lite",
+  "name": "zkSync Lite",
+  "group": "l2",
+  "bridgeUrl": "lite.zksync.io",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
   "id": "wormhole",
   "name": "Wormhole",
   "group": "solana",
@@ -588,6 +597,15 @@
   ]
  },
  {
+  "id": "airdrop-pharos-2026",
+  "name": "Pharos (PROS)",
+  "group": "airdrops",
+  "bridgeUrl": "claim.pharos.xyz, on Pharos mainnet, before October 25, 2026, 11:00 UTC",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
   "id": "airdrop-kamino-s3",
   "name": "Kamino (KMNO)",
   "group": "airdrops",
@@ -700,6 +718,15 @@
   "name": "Balancer fees",
   "group": "rewards",
   "bridgeUrl": "balancer.fi (veBAL)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "stargate-vestg",
+  "name": "Stargate veSTG",
+  "group": "rewards",
+  "bridgeUrl": "stargate.finance (Stake)",
   "accepts": [
    "evm"
   ]
@@ -862,6 +889,15 @@
   "name": "Maker SCD (Sai) vaults",
   "group": "legacy",
   "bridgeUrl": "Etherscan (SCD Tub, or your DSProxy)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "kinto",
+  "name": "Kinto (shut down)",
+  "group": "legacy",
+  "bridgeUrl": "Etherscan (KintoLeftOver → acceptAndClaim)",
   "accepts": [
    "evm"
   ]

@@ -10,6 +10,7 @@ import { checkDebridge } from "./checks/debridge";
 import { checkEnsDeeds, ENS_DEEDS } from "./checks/ens-deeds";
 import { checkExchange, DEPOSIT_EXCHANGES } from "./checks/exchanges";
 import { checkGnosisBridge } from "./checks/gnosis";
+import { checkKinto, KINTO } from "./checks/kinto";
 import { checkLegacy, LEGACY_LIST } from "./checks/legacy";
 import { checkLinea } from "./checks/linea";
 import { checkMerkl } from "./checks/merkl";
@@ -22,6 +23,7 @@ import { checkScd, SCD } from "./checks/scd";
 import { checkScroll } from "./checks/scroll";
 import { checkWormhole } from "./checks/wormhole";
 import { checkZkSync } from "./checks/zksync";
+import { checkZkSyncLite, ZKSYNC_LITE } from "./checks/zksync-lite";
 import { NETWORKS, type Family, type Network } from "./networks";
 
 import type { Group } from "./groups";
@@ -64,6 +66,8 @@ export const SOURCES: CheckSource[] = [
         : FAMILY[n.family](n, user as Address),
   })),
   { id: POLYGON.id, name: POLYGON.name, group: "l2", bridgeUrl: "portal.polygon.technology", accepts: ["evm"], run: (user) => checkPolygon(user as Address) },
+  // zkSync Lite was shut down: what was left in it is claimed on Ethereum (see checks/zksync-lite.ts).
+  { id: ZKSYNC_LITE.id, name: ZKSYNC_LITE.name, group: "l2", bridgeUrl: "lite.zksync.io", accepts: ["evm"], run: (user) => checkZkSyncLite(user as Address) },
   { id: "wormhole", name: "Wormhole", group: "solana", bridgeUrl: "portalbridge.com", accepts: ["evm", "solana"], run: checkWormhole },
   { id: "debridge", name: "deBridge", group: "solana", bridgeUrl: "app.debridge.finance", accepts: ["evm", "solana"], run: checkDebridge },
   {
@@ -133,6 +137,7 @@ SOURCES.push(
     run: (user) => checkPolygonStaking(user as Address),
   },
   { id: SCD.id, name: SCD.name, group: "legacy", bridgeUrl: "Etherscan (SCD Tub, or your DSProxy)", accepts: ["evm"], run: (user) => checkScd(user as Address) },
+  { id: KINTO.id, name: KINTO.name, group: "legacy", bridgeUrl: "Etherscan (KintoLeftOver → acceptAndClaim)", accepts: ["evm"], run: (user) => checkKinto(user as Address) },
 );
 
 export const sourceById = (id: string) => SOURCES.find((s) => s.id === id);

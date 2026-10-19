@@ -82,6 +82,7 @@ const STATIC_HOSTS = new Set([
   "governance.1inch.io",
   "safe-claiming-app-data.safe.global",
   "lostfunds.vercel.app",
+  "static.claim.pharos.xyz",
   "api.merkl.xyz",
   "mainnet.prod.lombard.finance",
   "api.hedgey.finance",
