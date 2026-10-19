@@ -5,7 +5,7 @@ import { before, describe, test } from "node:test";
 import { concat, getAddress, keccak256, numberToHex, parseAbi, type Address, type Hex } from "viem";
 import { checkSource } from "../src/lib/checker.ts";
 import { checkKinto, KINTO_LEFTOVER } from "../src/lib/checks/kinto.ts";
-import { checkStargateUsdc, STARGATE_CHAINS, VE_DISTRIBUTOR } from "../src/lib/checks/stargate.ts";
+import { checkStargate, STARGATE_CHAINS, VE_DISTRIBUTOR } from "../src/lib/checks/stargate.ts";
 import { checkZkSyncLite, ZKSYNC_LITE_CLAIM, ZKSYNC_LITE_ROOT, type ZkSyncLiteShard } from "../src/lib/checks/zksync-lite.ts";
 import { NETWORK_COLORS } from "../src/lib/brand.ts";
 import { GUIDES } from "../src/content/guides.ts";
@@ -51,23 +51,25 @@ async function withChainsDown<T>(chainIds: number[], fn: () => Promise<T>): Prom
   }
 }
 
-/* ───────────────────────── Stargate veSTG USDC ───────────────────────── */
+/* ───────────────────────── Stargate veSTG ───────────────────────── */
 
-describe("Stargate veSTG USDC", () => {
-  // What each address can still claim, and has claimed, per chain.
+describe("Stargate veSTG", () => {
+  // What each address can still claim, has claimed, and still has locked, per chain.
   const left: Record<number, Record<string, bigint>> = {
     1: { [USER]: 438_880_819n, [REJECTED]: 9n * e6 },
     42161: { [USER]: 12n * e6 },
     56: { [USER]: 3n * e18 }, // USDT, 18 decimals
   };
   const claimed: Record<number, Record<string, bigint>> = { 1: { [CLAIMED]: 50n * e6 }, 10: { [CLAIMED]: 2n * e6, [USER]: 1n * e6 } };
+  const locked: Record<number, Record<string, bigint>> = { 10: { [USER]: 25_000n * e18 }, 137: { [REJECTED]: 5_000n * e18 } };
   before(() => {
     const abi = parseAbi([
       "function getUsdcClaimable(address _user) view returns (uint256 usdcClaimable)",
       "function userClaimedAmounts(address user) view returns (uint256 claimedAmount)",
       "function claimUsdc() returns (uint256 usdcClaimed)",
     ]);
-    for (const { chainId } of STARGATE_CHAINS)
+    const veAbi = parseAbi(["function locked(address) view returns (int128 amount, uint256 end)", "function withdraw()"]);
+    for (const { chainId, ve } of STARGATE_CHAINS) {
       world.addContract(chainId, VE_DISTRIBUTOR, abi, {
         getUsdcClaimable: ([a]) => left[chainId]?.[a as string] ?? 0n,
         userClaimedAmounts: ([a]) => claimed[chainId]?.[a as string] ?? 0n,
@@ -78,18 +80,31 @@ describe("Stargate veSTG USDC", () => {
           return amount;
         },
       });
+      world.addContract(chainId, ve, veAbi, {
+        locked: ([a]) => [locked[chainId]?.[a as string] ?? 0n, 1_800_000_000n],
+        withdraw: (_, { from }) => {
+          if (from === REJECTED) revert("The lock didn't expire");
+        },
+      });
+    }
+    world.prices["coingecko:stargate-finance"] = 0.2;
   });
 
-  test("finds the share never claimed on each chain, as the claim pays it", async () => {
-    const r = await checkStargateUsdc(USER);
+  test("finds the USDC share never claimed and the STG still locked, on each chain, as the claims pay them", async () => {
+    const r = await checkStargate(USER);
     assert.equal(r.error, undefined);
     assert.equal(r.completed, 1, "OP Mainnet: claimed, nothing left");
     const by = Object.fromEntries(r.findings.map((f) => [f.networkName, f]));
     assert.deepEqual(Object.keys(by).sort(), [
+      "STG locked in veSTG (OP Mainnet)",
       "Stargate veSTG revenue share (Arbitrum)",
       "Stargate veSTG revenue share (BNB Chain)",
       "Stargate veSTG revenue share (Ethereum)",
     ]);
+    const stg = by["STG locked in veSTG (OP Mainnet)"];
+    assert.deepEqual([stg.asset.symbol, stg.asset.amount, stg.asset.priceKey], ["STG", 25_000n * e18, "coingecko:stargate-finance"]);
+    assert.equal(stg.txUrl, `https://optimistic.etherscan.io/address/0x43d2761ed16C89A2C4342e2B16A3C61Ccf88f05B#writeContract`);
+    assert.match(stg.note ?? "", /withdraw\(\)/);
     const eth = by["Stargate veSTG revenue share (Ethereum)"];
     assert.equal(eth.asset.amount, 438_880_819n);
     assert.equal(eth.asset.symbol, "USDC");
@@ -100,10 +115,10 @@ describe("Stargate veSTG USDC", () => {
     assert.deepEqual([bsc.asset.symbol, bsc.asset.decimals, bsc.asset.amount], ["USDT", 18, 3n * e18]);
   });
 
-  test("nothing for a stranger; a fully claimed share counts as claimed; a claim the contract refuses is hidden", async () => {
-    assert.deepEqual(await checkStargateUsdc(STRANGER), { findings: [], completed: 0 });
-    assert.deepEqual(await checkStargateUsdc(CLAIMED), { findings: [], completed: 2 });
-    assert.deepEqual(await checkStargateUsdc(REJECTED), { findings: [], completed: 0 });
+  test("nothing for a stranger; a fully claimed share counts as claimed; a claim or withdrawal the contract refuses is hidden", async () => {
+    assert.deepEqual(await checkStargate(STRANGER), { findings: [], completed: 0 });
+    assert.deepEqual(await checkStargate(CLAIMED), { findings: [], completed: 2 });
+    assert.deepEqual(await checkStargate(REJECTED), { findings: [], completed: 0 });
   });
 
   test("priced and shown through its source, in the rewards group", async () => {
@@ -117,12 +132,12 @@ describe("Stargate veSTG USDC", () => {
   });
 
   test("one chain down keeps the others' results but reads as failed; all down throws", async () => {
-    const r = await withChainsDown([42161], () => checkStargateUsdc(USER));
-    assert.equal(r.findings.length, 2);
+    const r = await withChainsDown([42161], () => checkStargate(USER));
+    assert.equal(r.findings.length, 3);
     assert.match(r.error ?? "", /^Arbitrum: /);
     await withChainsDown(
       STARGATE_CHAINS.map((c) => c.chainId),
-      () => assert.rejects(checkStargateUsdc(USER)),
+      () => assert.rejects(checkStargate(USER)),
     );
     const shown = await withChainsDown([1], () => checkSource(sourceById("stargate-vestg")!, USER));
     assert.equal(shown.state, "error");

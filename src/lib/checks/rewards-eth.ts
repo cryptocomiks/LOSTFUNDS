@@ -7,7 +7,7 @@ import { BALANCER_FEES, checkBalancerFees, checkCurveFees, CURVE_FEES } from "./
 import { checkLido, LIDO } from "./lido";
 import { checkLocks, LOCKS } from "./locks";
 import { checkSafetyModule, SAFETY_MODULE } from "./safetymodule";
-import { checkStargateUsdc, STARGATE_USDC } from "./stargate";
+import { checkStargate, STARGATE_VESTG } from "./stargate";
 import { checkSynthetixEscrow, SNX_ESCROW } from "./synthetix";
 
 /**
@@ -35,5 +35,5 @@ export const ETH_REWARD_SOURCES: CheckSource[] = [
   source(SNX_ESCROW, "etherscan.io (RewardEscrowV2 → vest)", checkSynthetixEscrow),
   source(CONVEX, "convexfinance.com", checkConvex),
   source(BALANCER_FEES, "balancer.fi (veBAL)", checkBalancerFees),
-  source(STARGATE_USDC, "stargate.finance (Stake)", checkStargateUsdc),
+  source(STARGATE_VESTG, "stargate.finance (Stake)", checkStargate),
 ];
