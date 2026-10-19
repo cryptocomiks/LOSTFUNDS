@@ -5,7 +5,7 @@ import { accountsData, findProgramAddress } from "../solana";
 import { base58 } from "@scure/base";
 import type { Asset } from "../types";
 import type { CheckOutput, FindingSource } from "./common";
-import { makeFinding, now } from "./common";
+import { makeFinding, now, siteFile } from "./common";
 import { wouldSucceed } from "./simulate";
 
 /**
@@ -143,9 +143,6 @@ function lidoCsv(url: string) {
   });
   return async (user: Address) => (await load()).get(user.toLowerCase()) ?? null;
 }
-
-/** Files published with the site (a compact copy of a project's list), from anywhere the checks run. */
-const siteFile = (path: string) => `${typeof window === "undefined" ? "https://lostfunds.vercel.app" : ""}${path}`;
 
 const CURVE_VESTING: Address = "0x575CCD8e2D300e2377B43478339E364000318E2c";
 const curveAbi = parseAbi([

@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { base64 } from "@scure/base";
 import { before, describe, test } from "node:test";
-import { parseAbi, type Address } from "viem";
+import { concat, getAddress, keccak256, numberToHex, parseAbi, type Address, type Hex } from "viem";
 import { checkSource } from "../src/lib/checker.ts";
 import { checkKinto, KINTO_LEFTOVER } from "../src/lib/checks/kinto.ts";
 import { checkStargateUsdc, STARGATE_CHAINS, VE_DISTRIBUTOR } from "../src/lib/checks/stargate.ts";
+import { checkZkSyncLite, ZKSYNC_LITE_CLAIM, ZKSYNC_LITE_ROOT, type ZkSyncLiteShard } from "../src/lib/checks/zksync-lite.ts";
 import { NETWORK_COLORS } from "../src/lib/brand.ts";
 import { GUIDES } from "../src/content/guides.ts";
 import { GUIDES_FR } from "../src/content/guides.fr.ts";
@@ -175,5 +178,114 @@ describe("Kinto leftover balances", () => {
     const en = GUIDES.find((g) => g.id === "legacy-deposits")!;
     assert.ok(en.steps.some((s) => s.includes(KINTO_LEFTOVER)));
     assert.ok(GUIDES_FR["legacy-deposits"].steps!.some((s) => s.includes(KINTO_LEFTOVER)));
+  });
+});
+
+/* ───────────────────────── zkSync Lite ───────────────────────── */
+
+describe("zkSync Lite", () => {
+  // A real address from the published list, with four balances (and its real proofs, which the mock contract verifies).
+  const HOLDER = getAddress("0xb57b8bbfe2b3d3874c9300a95c7587dc341111e7");
+  /** In the same file, but not listed. */
+  const NOT_LISTED: Address = "0xb500000000000000000000000000000000000001";
+  const FILE = "https://lostfunds.vercel.app/legacy/zksync-lite/b5.json";
+  const shard = JSON.parse(readFileSync(new URL("../public/legacy/zksync-lite/b5.json", import.meta.url), "utf8")) as ZkSyncLiteShard;
+  const claimed = new Set<bigint>();
+  let root: Hex = ZKSYNC_LITE_ROOT;
+  /** Tokens the contract would fail to pay. */
+  const unpaid = new Set<string>();
+  before(() => {
+    world.static[FILE] = shard;
+    world.addContract(
+      1,
+      ZKSYNC_LITE_CLAIM,
+      parseAbi([
+        "function MERKLE_ROOT() view returns (bytes32)",
+        "function isClaimed(uint256 index) view returns (bool)",
+        "function claim(uint256 index, address token, uint256 amount, bytes32[] merkleProof)",
+      ]),
+      {
+        MERKLE_ROOT: () => root,
+        isClaimed: ([i]) => claimed.has(i as bigint),
+        // As the contract does: the leaf, from the sender, must lead to the root through the proof.
+        claim: ([index, token, amount, proof], { from }) => {
+          if (claimed.has(index as bigint)) revert("ZkSyncLiteSunsetClaimDistributor__AlreadyClaimed()");
+          let h = keccak256(concat([numberToHex(index as bigint, { size: 32 }), from!, token as Address, numberToHex(amount as bigint, { size: 32 })]));
+          for (const p of proof as Hex[]) h = keccak256(h <= p ? concat([h, p]) : concat([p, h]));
+          if (h !== root) revert("ZkSyncLiteSunsetClaimDistributor__InvalidProof()");
+          if (unpaid.has(String(token).toLowerCase())) revert("SafeERC20: low-level call failed");
+        },
+      },
+    );
+    world.prices[`ethereum:${"0x6B175474E89094C44Da98b954EedeAC495271d0F".toLowerCase()}`] = 1;
+  });
+
+  test("finds every balance left in the account, each with a proof the contract accepts", async () => {
+    const r = await checkZkSyncLite(HOLDER);
+    assert.equal(r.completed, 0);
+    assert.deepEqual(
+      r.findings.map((f) => [f.asset.symbol, f.asset.amount]),
+      [
+        ["ETH", 376120400009300000n],
+        ["DAI", 845858010000000000000n],
+        ["USDC", 385620000n],
+        ["USDT", 282570000n],
+      ],
+    );
+    const eth = r.findings[0];
+    assert.equal(eth.asset.token, undefined, "ETH is the native coin");
+    assert.equal(r.findings[1].asset.token, "0x6B175474E89094C44Da98b954EedeAC495271d0F");
+    assert.ok(r.findings.every((f) => f.status === "ready" && f.guideId === "zksync-lite" && f.claimAt === "lite.zksync.io"));
+    assert.match(eth.note ?? "", /claim #8649353/);
+  });
+
+  test("an address that isn't listed costs one file and no RPC call", async () => {
+    const calls = world.rpcLog.length;
+    assert.deepEqual(await checkZkSyncLite(NOT_LISTED), { findings: [], completed: 0 });
+    assert.equal(world.rpcLog.length, calls);
+  });
+
+  test("a claimed balance counts as claimed; one the contract can't pay is hidden", async () => {
+    claimed.add(8649353n);
+    unpaid.add("0xdac17f958d2ee523a2206206994597c13d831ec7");
+    try {
+      const r = await checkZkSyncLite(HOLDER);
+      assert.equal(r.completed, 1);
+      assert.deepEqual(r.findings.map((f) => f.asset.symbol), ["DAI", "USDC"]);
+    } finally {
+      claimed.clear();
+      unpaid.clear();
+    }
+  });
+
+  test("a new root, a damaged file, a missing file or an RPC failure fails the check", async () => {
+    root = `0x${"ab".repeat(32)}`;
+    try {
+      await assert.rejects(checkZkSyncLite(HOLDER), /new Merkle root/);
+    } finally {
+      root = ZKSYNC_LITE_ROOT;
+    }
+    world.static[FILE] = { ...shard, nodes: base64.encode(base64.decode(shard.nodes!).subarray(0, -32)) };
+    await assert.rejects(checkZkSyncLite(HOLDER), /damaged/);
+    // The last node is the highest one, in every proof of the file: replace it with zeros.
+    const raw = base64.decode(shard.nodes!);
+    raw.fill(0, raw.length - 32);
+    world.static[FILE] = { ...shard, nodes: base64.encode(raw) };
+    await assert.rejects(checkZkSyncLite(HOLDER), /doesn't lead to the claim contract's root/);
+    delete world.static[FILE];
+    await assert.rejects(checkZkSyncLite(HOLDER), /zkSync Lite list: HTTP 404/);
+    world.static[FILE] = shard;
+    await withChainsDown([1], () => assert.rejects(checkZkSyncLite(HOLDER)));
+  });
+
+  test("in the L2 group, with a color and a live guide in both languages", () => {
+    const src = sourceById("zksync-lite")!;
+    assert.equal(src.group, "l2");
+    assert.deepEqual(src.accepts, ["evm"]);
+    assert.ok(NETWORK_COLORS["zksync-lite"]);
+    const en = GUIDES.find((g) => g.id === "zksync-lite")!;
+    assert.ok(en.live);
+    assert.ok(en.steps.some((s) => s.includes(ZKSYNC_LITE_CLAIM)));
+    assert.ok(GUIDES_FR["zksync-lite"].steps!.some((s) => s.includes(ZKSYNC_LITE_CLAIM)));
   });
 });

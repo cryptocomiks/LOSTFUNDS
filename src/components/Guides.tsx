@@ -101,7 +101,7 @@ const CATEGORY_FR: Record<(typeof CATEGORIES)[number], string> = {
 };
 type Category = (typeof CATEGORIES)[number];
 
-const L2 = new Set(["opstack", "arbitrum", "polygon-pos", "zksync", "linea", "scroll"]);
+const L2 = new Set(["opstack", "arbitrum", "polygon-pos", "zksync", "zksync-lite", "linea", "scroll"]);
 const CROSS_CHAIN = new Set(["debridge", "celer", "cctp", "wormhole", "gnosis"]);
 
 function categoryOf(g: Guide): Category {

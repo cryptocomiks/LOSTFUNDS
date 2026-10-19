@@ -203,11 +203,18 @@ export const GUIDES: Guide[] = [
   },
   {
     id: "zksync-lite",
-    title: "zkSync Lite (sunset)",
-    subtitle: "zkSync 1.0 was shut down in May 2026",
+    title: "zkSync Lite (shut down)",
+    subtitle: "Balances left when zkSync 1.0 stopped on May 4, 2026, claimed on Ethereum",
+    live: true,
     steps: [
-      "Balances left on zkSync Lite are recovered through the official exit procedure published by Matter Labs.",
-      "Follow the zkSync Lite shutdown instructions in the official ZKsync docs. Only use links you find there.",
+      "zkSync Lite (zkSync 1.0) stopped producing blocks on May 4, 2026. Every balance left in it, ETH and tokens, now waits in an official claim contract on Ethereum (0x0a14B696350546110a0D8acDb86226983af9D2a0, run by ZKsync's governance). There is no deadline.",
+      "Open lite.zksync.io (type it yourself) and connect the wallet that used zkSync Lite. It finds your balances in the published final state, builds the proof and sends the claim. Matter Labs pays the gas of the first 100,000 claims.",
+      "Each token is a separate claim, and the funds always go to the address that held them on zkSync Lite.",
+    ],
+    note: "The checker covers the balances worth at least $200 (on October 19, 2026) that were still unclaimed then: about 25,800 balances, $10.7M in all. Smaller ones are claimed the same way: check lite.zksync.io with your wallet.",
+    manual: [
+      "Without the portal: download Matter Labs' snapshot (zksync-lite-sunset.matterlabs.dev/mainnet/data.zip, also on IPFS as QmSqzPQNRcz3grznTMCYDDunDFGZCXFFjew7fgYpFcGYoh) and run the exit tree generator from github.com/matter-labs/zksync (core/bin/exit_tree_generator): create-new-leaves, then create-proof --account <your address> --tokens <token address>. It prints the claim index, the amount and the proof.",
+      "On Etherscan, open the claim contract, Write as Proxy → claim(index, token, amount, merkleProof), with token 0x0000000000000000000000000000000000000000 for ETH. claimTo(index, claimant, token, amount, merkleProof) lets another wallet send it for you; the funds still go to the claimant.",
     ],
   },
   {

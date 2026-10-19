@@ -40,6 +40,7 @@ export const NETWORK_COLORS: Record<string, string> = {
   scroll: "#EBC28E",
   linea: "#61DFFF",
   zksync: "#1E69FF",
+  "zksync-lite": "linear-gradient(135deg,#8C8DFC,#1E69FF)",
   abstract: "#00C16A",
   sophon: "linear-gradient(135deg,#6FE3FF,#2A5BFF)",
   lens: "#ABFE2C",

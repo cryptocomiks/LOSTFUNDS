@@ -173,10 +173,16 @@ export const GUIDES_FR: Record<string, Pick<Guide, "title" | "subtitle" | "steps
   },
   "zksync-lite": {
     title: "zkSync Lite (fermé)",
-    subtitle: "zkSync 1.0 a été arrêté en mai 2026",
+    subtitle: "Soldes restés quand zkSync 1.0 s'est arrêté le 4 mai 2026, à réclamer sur Ethereum",
     steps: [
-      "Les soldes restés sur zkSync Lite se récupèrent via la procédure de sortie officielle publiée par Matter Labs.",
-      "Suivez les instructions de fermeture de zkSync Lite dans la documentation officielle de ZKsync. N'utilisez que les liens que vous y trouvez.",
+      "zkSync Lite (zkSync 1.0) a cessé de produire des blocs le 4 mai 2026. Tous les soldes qui y restaient, ETH et tokens, attendent désormais dans un contrat de réclamation officiel sur Ethereum (0x0a14B696350546110a0D8acDb86226983af9D2a0, géré par la gouvernance de ZKsync). Il n'y a pas de date limite.",
+      "Ouvrez lite.zksync.io (tapez l'adresse vous-même) et connectez le wallet qui utilisait zkSync Lite. Le site retrouve vos soldes dans l'état final publié, construit la preuve et envoie la réclamation. Matter Labs paie le gas des 100 000 premières réclamations.",
+      "Chaque token se réclame séparément, et les fonds vont toujours à l'adresse qui les détenait sur zkSync Lite.",
+    ],
+    note: "Le vérificateur couvre les soldes d'au moins 200 $ (au 19 octobre 2026) qui n'avaient pas encore été réclamés à cette date : environ 25 800 soldes, 10,7 M$ au total. Les plus petits se réclament de la même façon : vérifiez sur lite.zksync.io avec votre wallet.",
+    manual: [
+      "Sans le portail : téléchargez l'instantané de Matter Labs (zksync-lite-sunset.matterlabs.dev/mainnet/data.zip, aussi sur IPFS : QmSqzPQNRcz3grznTMCYDDunDFGZCXFFjew7fgYpFcGYoh) et lancez l'exit tree generator de github.com/matter-labs/zksync (core/bin/exit_tree_generator) : create-new-leaves, puis create-proof --account <votre adresse> --tokens <adresse du token>. Il affiche l'index de réclamation, le montant et la preuve.",
+      "Sur Etherscan, ouvrez le contrat de réclamation, Write as Proxy → claim(index, token, amount, merkleProof), avec le token 0x0000000000000000000000000000000000000000 pour l'ETH. claimTo(index, claimant, token, amount, merkleProof) permet à un autre wallet de l'envoyer pour vous ; les fonds vont quand même au bénéficiaire.",
     ],
   },
   sonic: {
