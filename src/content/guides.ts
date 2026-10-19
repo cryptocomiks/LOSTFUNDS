@@ -53,7 +53,7 @@ export const GUIDES: Guide[] = [
   {
     id: "rewards",
     title: "Unclaimed rewards & withdrawals",
-    subtitle: "Lido, expired locks, Curve and Balancer fees, EigenLayer, Aave, Synthetix, Convex",
+    subtitle: "Lido, expired locks, Curve and Balancer fees, EigenLayer, Aave, Synthetix, Convex, Stargate",
     live: true,
     steps: [
       "Lido withdrawals: open stake.lido.fi/withdrawals/claim with the wallet that holds the withdrawal request (an unstETH NFT), select the requests that are ready and click Claim. A request still pending becomes claimable once Lido finalizes it, usually within 1 to 5 days. The ETH is never sent automatically.",
@@ -66,6 +66,7 @@ export const GUIDES: Guide[] = [
       "Aave Safety Module: open app.aave.com, go to Staking with the wallet that staked and claim the AAVE rewards. They stay claimable after unstaking.",
       "Synthetix escrow: open the RewardEscrowV2 contract on Etherscan (Ethereum: 0xFAd53Cc9480634563E8ec71E8e693Ffd07981d38) or Optimistic Etherscan (OP Mainnet: 0x5Fc9B8d2B7766f061bD84a41255fD1A76Fd1FAa2), connect the wallet that staked, then Write Contract → vest with your entry IDs. The result lists them when there are only a few; otherwise getAccountVestingEntryIDs (Read Contract: your address, 0, 1000) gives them all, and passing all of them works.",
       "Convex staking: CVX or cvxCRV staked in Convex's original pools keeps earning rewards that wait to be claimed. Claim them at convexfinance.com with the staking wallet.",
+      "Stargate veSTG revenue share: if you held veSTG on August 10, 2025, when LayerZero bought Stargate, you are owed a share of half of Stargate's revenue for the six months that followed, in USDC (USDT on BNB Chain), with no deadline. Claim it on stargate.finance (Stake) with the wallet that held veSTG, on the chain named in the result, or call claimUsdc() (no arguments) on the distributor 0x1E68BE052a9a9ff04714582831457a9B319Bcafe, the same address on Ethereum, Arbitrum, BNB Chain, Polygon, OP Mainnet, Avalanche and Fantom.",
     ],
     note: "Every claim is an ordinary transaction from your own wallet, and the funds always go to your address. Nobody legitimate will ask for your seed phrase, or to \"approve\" tokens so you can receive them.",
   },
@@ -114,7 +115,7 @@ export const GUIDES: Guide[] = [
   {
     id: "legacy-deposits",
     title: "Old exchanges, ENS deposits and staking",
-    subtitle: "EtherDelta, IDEX v1, Token.Store, SingularX, Switcheo, ENS auction deeds, Polygon staking, Maker SCD vaults",
+    subtitle: "EtherDelta, IDEX v1, Token.Store, SingularX, Switcheo, ENS auction deeds, Polygon staking, Maker SCD vaults, Kinto",
     live: true,
     steps: [
       "EtherDelta and ForkDelta (2016–2022), Token.Store and SingularX: what you left on these exchanges is still in their contracts, and you can withdraw it at any time, alone. For EtherDelta's main contract, ForkDelta's withdrawal page (forkdelta.app/shutdown/withdraw) lists your balances. Or use Etherscan: open the contract shown in the result, Write Contract, connect your wallet and call withdraw(amount) for ETH or withdrawToken(token, amount) for a token, with the amount given in the result.",
@@ -123,6 +124,7 @@ export const GUIDES: Guide[] = [
       "ENS auction deposits (2017–2019): the ETH paid for a .eth name is locked in the name's deed. On Etherscan, open ENS's old registrar (0x6090A6e47849629b7245Dfa1Ca21D94cd15878Ef), Write Contract → releaseDeed(hash), with the hash given in the result, from the wallet that owns the deed. All the ETH goes back to that wallet; who owns the name today doesn't change.",
       "Polygon staking: rewards, and unstaked POL whose waiting period is over, are claimed at staking.polygon.technology with the wallet that staked. POL still delegated to a validator that stopped validating earns nothing: unstake it there, wait 80 checkpoints (about a day), then claim it.",
       "Maker Single-Collateral Dai vaults (CDPs, shut down in 2020): if the vault still has debt, anyone can settle it with bite(cup) on the Tub (0x448a5065aeBB8E423F0896E6c5D525C040f59af3). Then the owner withdraws the rest: from a vault opened through Maker's CDP Portal, call execute on your DSProxy with the target and data given in the result (the ETH comes straight to your wallet); from a vault owned by your wallet itself, call free on the Tub, approve the Tub to spend that PETH, call exit, and unwrap the WETH.",
+      "Kinto (shut down in September 2025): balances of at least $50 left on Kinto were converted to USDC and wait in the KintoLeftOver contract on Ethereum (0x47A56a558892De88367108183Df913852617e77C), with no deadline. On Etherscan, Write Contract → acceptAndClaim() (no arguments), from the wallet named in the result: the USDC is sent to it in the same transaction.",
     ],
     note: "Each of these is an ordinary Ethereum transaction sent from your own wallet. Nobody can withdraw for you, and you never need to share a key or sign a message for it. Check the contract address on Etherscan before sending anything.",
     manual: [

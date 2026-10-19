@@ -10,6 +10,7 @@ import { checkDebridge } from "./checks/debridge";
 import { checkEnsDeeds, ENS_DEEDS } from "./checks/ens-deeds";
 import { checkExchange, DEPOSIT_EXCHANGES } from "./checks/exchanges";
 import { checkGnosisBridge } from "./checks/gnosis";
+import { checkKinto, KINTO } from "./checks/kinto";
 import { checkLegacy, LEGACY_LIST } from "./checks/legacy";
 import { checkLinea } from "./checks/linea";
 import { checkMerkl } from "./checks/merkl";
@@ -142,6 +143,7 @@ SOURCES.push(
     run: (user) => checkPolygonStaking(user as Address),
   },
   { id: SCD.id, name: SCD.name, group: "legacy", bridgeUrl: "Etherscan (SCD Tub, or your DSProxy)", accepts: ["evm"], run: (user) => checkScd(user as Address) },
+  { id: KINTO.id, name: KINTO.name, group: "legacy", bridgeUrl: "Etherscan (KintoLeftOver → acceptAndClaim)", accepts: ["evm"], run: (user) => checkKinto(user as Address) },
 );
 
 export const sourceById = (id: string) => SOURCES.find((s) => s.id === id);

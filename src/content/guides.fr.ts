@@ -38,7 +38,7 @@ export const GUIDES_FR: Record<string, Pick<Guide, "title" | "subtitle" | "steps
   },
   rewards: {
     title: "Récompenses et retraits non réclamés",
-    subtitle: "Lido, verrous expirés, frais Curve et Balancer, EigenLayer, Aave, Synthetix, Convex",
+    subtitle: "Lido, verrous expirés, frais Curve et Balancer, EigenLayer, Aave, Synthetix, Convex, Stargate",
     steps: [
       "Retraits Lido : ouvrez stake.lido.fi/withdrawals/claim avec le wallet qui détient la demande de retrait (un NFT unstETH), sélectionnez les demandes prêtes et cliquez sur Claim. Une demande encore en attente devient réclamable quand Lido la finalise, en général sous 1 à 5 jours. L'ETH n'est jamais envoyé automatiquement.",
       "Verrous expirés : quand un verrou vote-escrow se termine, rien n'est renvoyé. Retirez depuis l'app du protocole, avec le wallet qui a verrouillé : curve.finance (DAO → Lock) pour veCRV, balancer.fi pour veBAL, app.frax.finance pour veFXS, stakedao.org pour veSDT, app.pendle.finance/vependle pour vePENDLE, convexfinance.com pour vlCVX. Sur Etherscan, c'est withdraw() sur le contrat de verrouillage (processExpiredLocks avec false pour vlCVX).",
@@ -50,6 +50,7 @@ export const GUIDES_FR: Record<string, Pick<Guide, "title" | "subtitle" | "steps
       "Safety Module d'Aave : ouvrez app.aave.com, allez dans Staking avec le wallet qui a staké et réclamez les récompenses AAVE. Elles restent réclamables après le déstaking.",
       "Escrow Synthetix : ouvrez le contrat RewardEscrowV2 sur Etherscan (Ethereum : 0xFAd53Cc9480634563E8ec71E8e693Ffd07981d38) ou Optimistic Etherscan (OP Mainnet : 0x5Fc9B8d2B7766f061bD84a41255fD1A76Fd1FAa2), connectez le wallet qui a staké, puis Write Contract → vest avec vos identifiants d'entrées. Le résultat les liste quand il y en a peu ; sinon getAccountVestingEntryIDs (Read Contract : votre adresse, 0, 1000) les donne tous, et les passer tous fonctionne.",
       "Staking Convex : les CVX ou cvxCRV stakés dans les pools d'origine de Convex continuent de gagner des récompenses qui attendent d'être réclamées. Réclamez-les sur convexfinance.com avec le wallet qui a staké.",
+      "Partage de revenus veSTG de Stargate : si vous déteniez des veSTG le 10 août 2025, quand LayerZero a racheté Stargate, une part de la moitié des revenus de Stargate des six mois suivants vous revient, en USDC (USDT sur BNB Chain), sans date limite. Réclamez-la sur stargate.finance (Stake) avec le wallet qui détenait les veSTG, sur la chaîne indiquée dans le résultat, ou appelez claimUsdc() (sans argument) sur le distributeur 0x1E68BE052a9a9ff04714582831457a9B319Bcafe, à la même adresse sur Ethereum, Arbitrum, BNB Chain, Polygon, OP Mainnet, Avalanche et Fantom.",
     ],
     note: "Chaque réclamation est une transaction ordinaire depuis votre propre wallet, et les fonds vont toujours à votre adresse. Aucun service honnête ne vous demandera votre phrase secrète, ni d'« approuver » des tokens pour les recevoir.",
   },
@@ -93,7 +94,7 @@ export const GUIDES_FR: Record<string, Pick<Guide, "title" | "subtitle" | "steps
   },
   "legacy-deposits": {
     title: "Anciens exchanges, dépôts ENS et staking",
-    subtitle: "EtherDelta, IDEX v1, Token.Store, SingularX, Switcheo, actes d'enchères ENS, staking Polygon, coffres Maker SCD",
+    subtitle: "EtherDelta, IDEX v1, Token.Store, SingularX, Switcheo, actes d'enchères ENS, staking Polygon, coffres Maker SCD, Kinto",
     steps: [
       "EtherDelta et ForkDelta (2016–2022), Token.Store et SingularX : ce que vous avez laissé sur ces exchanges est toujours dans leurs contrats, et vous pouvez le retirer à tout moment, seul. Pour le contrat principal d'EtherDelta, la page de retrait de ForkDelta (forkdelta.app/shutdown/withdraw) liste vos soldes. Sinon, sur Etherscan : ouvrez le contrat indiqué dans le résultat, Write Contract, connectez votre wallet et appelez withdraw(amount) pour l'ETH ou withdrawToken(token, amount) pour un token, avec le montant donné dans le résultat.",
       "IDEX v1 (2017–2020) : IDEX ne traite plus les retraits, mais son contrat (0x2a0c0DBEcC7E4D658f48E01e3fA353F44050c208) vous laisse retirer seul dès que votre compte n'a eu aucune activité pendant 240 blocs (moins d'une heure). Sur Etherscan, Write Contract → withdraw(token, amount), avec le token 0x0000000000000000000000000000000000000000 pour l'ETH.",
@@ -101,6 +102,7 @@ export const GUIDES_FR: Record<string, Pick<Guide, "title" | "subtitle" | "steps
       "Dépôts d'enchères ENS (2017–2019) : l'ETH payé pour un nom .eth est bloqué dans l'acte (deed) du nom. Sur Etherscan, ouvrez l'ancien registrar d'ENS (0x6090A6e47849629b7245Dfa1Ca21D94cd15878Ef), Write Contract → releaseDeed(hash), avec le hash donné dans le résultat, depuis le wallet propriétaire de l'acte. Tout l'ETH revient à ce wallet ; le propriétaire actuel du nom ne change pas.",
       "Staking Polygon : les récompenses, et les POL déstakés dont la période d'attente est finie, se réclament sur staking.polygon.technology avec le wallet qui a staké. Les POL encore délégués à un validateur qui a cessé de valider ne rapportent rien : déstakez-les là-bas, attendez 80 checkpoints (environ un jour), puis réclamez-les.",
       "Coffres Maker Single-Collateral Dai (CDP, arrêtés en 2020) : si le coffre a encore une dette, n'importe qui peut la solder avec bite(cup) sur le Tub (0x448a5065aeBB8E423F0896E6c5D525C040f59af3). Ensuite le propriétaire retire le reste : pour un coffre ouvert via le CDP Portal de Maker, appelez execute sur votre DSProxy avec la cible et les données données dans le résultat (l'ETH arrive directement dans votre wallet) ; pour un coffre détenu directement par votre wallet, appelez free sur le Tub, approuvez le Tub pour ces PETH, appelez exit, puis unwrappez le WETH.",
+      "Kinto (arrêté en septembre 2025) : les soldes d'au moins 50 $ restés sur Kinto ont été convertis en USDC et attendent dans le contrat KintoLeftOver sur Ethereum (0x47A56a558892De88367108183Df913852617e77C), sans date limite. Sur Etherscan, Write Contract → acceptAndClaim() (sans argument), depuis le wallet indiqué dans le résultat : les USDC lui sont envoyés dans la même transaction.",
     ],
     note: "Chacune de ces actions est une transaction Ethereum ordinaire envoyée depuis votre propre wallet. Personne ne peut retirer à votre place, et vous n'avez jamais besoin de partager une clé ou de signer un message pour ça. Vérifiez l'adresse du contrat sur Etherscan avant d'envoyer quoi que ce soit.",
     manual: [
