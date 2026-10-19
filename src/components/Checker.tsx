@@ -688,6 +688,27 @@ export function Checker() {
                   : "Some apps (Starknet, LayerZero, Synapse…) can't be checked automatically yet. If you used one, follow its guide below."}
               </p>
             </div>
+
+            {/* Most people have more than one wallet */}
+            {phase === "done" && (
+              <div className="mt-10 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInput("");
+                    scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+                    const field = document.getElementById("address");
+                    const started = Date.now();
+                    const focus = () => (scrollY < 4 || Date.now() - started > 2500 ? field?.focus({ preventScroll: true }) : requestAnimationFrame(focus));
+                    requestAnimationFrame(focus);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-5 py-2.5 text-[15px] font-medium text-text shadow-soft transition hover:-translate-y-0.5 hover:shadow-float active:scale-[0.97]"
+                >
+                  <Search width={16} height={16} className="text-text-3" />
+                  {fr ? "Vérifier une autre adresse" : "Check another address"}
+                </button>
+              </div>
+            )}
           </div>
         </section>
       )}
