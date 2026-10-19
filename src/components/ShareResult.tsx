@@ -61,15 +61,17 @@ async function drawCard(d: ShareData, lang: Lang): Promise<Blob | null> {
   g.beginPath();
   g.roundRect(80, 72, 64, 64, 18);
   g.fill();
-  g.strokeStyle = "#fff";
-  g.lineWidth = 5;
-  g.lineCap = "round";
+  // The logo: a magnifier with a check (same paths as the site icon, 32×32 box).
   g.save();
   g.translate(80, 72);
   g.scale(2, 2);
-  g.lineWidth = 2.4;
-  g.stroke(new Path2D("M10.5 18.5a6 6 0 1 0 1.2-6.9"));
-  g.stroke(new Path2D("M10.5 8.5v4h4"));
+  g.strokeStyle = "#fff";
+  g.lineCap = "round";
+  g.lineJoin = "round";
+  for (const [d, w] of [["M20.9 14.2a6.7 6.7 0 1 1-13.4 0a6.7 6.7 0 1 1 13.4 0", 2.6], ["M19.2 19.2l4.4 4.4", 3.2], ["M11.3 14.4l2.1 2.1 3.9-4.1", 2.5]] as const) {
+    g.lineWidth = w;
+    g.stroke(new Path2D(d));
+  }
   g.restore();
   g.fillStyle = "#f5f5f7";
   g.font = font(700, 40);

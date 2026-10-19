@@ -25,15 +25,12 @@ export const Logo = (props: P) => (
       </linearGradient>
     </defs>
     <rect width="32" height="32" rx="9" fill="url(#lf-g)" />
-    <path
-      d="M10.5 18.5a6 6 0 1 0 1.2-6.9M10.5 8.5v4h4"
-      fill="none"
-      stroke="#fff"
-      strokeWidth="2.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <circle cx="16.5" cy="16" r="1.9" fill="#fff" />
+    {/* A magnifier with a check: funds, checked. */}
+    <g fill="none" stroke="#fff" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="14.2" cy="14.2" r="6.7" strokeWidth="2.6" />
+      <path d="M19.2 19.2l4.4 4.4" strokeWidth="3.2" />
+      <path d="M11.3 14.4l2.1 2.1 3.9-4.1" strokeWidth="2.5" />
+    </g>
   </svg>
 );
 

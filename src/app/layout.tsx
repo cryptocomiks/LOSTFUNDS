@@ -7,7 +7,15 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
   title: SITE.title,
   description: SITE.description,
-  icons: { icon: "/icon.svg" },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "48x48" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { title: SITE.name, statusBarStyle: "black-translucent" },
   openGraph: {
     title: SITE.title,
     description: SITE.description,

@@ -458,6 +458,7 @@ export function Checker() {
             >
               <Search className="shrink-0 text-text-3" />
               <input
+                id="address"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={fr ? "Collez une adresse Ethereum ou Solana, ou un nom ENS" : "Paste an Ethereum or Solana address, or ENS name"}

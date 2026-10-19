@@ -1,3 +1,4 @@
+import { BackToTop } from "@/components/BackToTop";
 import { Categories } from "@/components/Categories";
 import { Checker } from "@/components/Checker";
 import { Faq } from "@/components/Faq";
@@ -26,6 +27,7 @@ export default function Home() {
         <Safety />
       </main>
       <Footer />
+      <BackToTop />
     </>
   );
 }
