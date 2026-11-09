@@ -405,6 +405,15 @@
   ]
  },
  {
+  "id": "starknet",
+  "name": "Starknet",
+  "group": "l2",
+  "bridgeUrl": "starkgate.starknet.io",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
   "id": "wormhole",
   "name": "Wormhole",
   "group": "solana",
@@ -741,6 +750,15 @@
   ]
  },
  {
+  "id": "liquity-v2",
+  "name": "Liquity v2",
+  "group": "rewards",
+  "bridgeUrl": "Etherscan (BorrowerOperations → claimCollateral)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
   "id": "apecoin-staking",
   "name": "ApeCoin staking",
   "group": "rewards",
@@ -763,6 +781,15 @@
   "name": "Sablier streams",
   "group": "rewards",
   "bridgeUrl": "app.sablier.com",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "aerodrome-velodrome",
+  "name": "Aerodrome & Velodrome",
+  "group": "rewards",
+  "bridgeUrl": "aerodrome.finance / velodrome.finance (Dash)",
   "accepts": [
    "evm"
   ]

@@ -3,12 +3,14 @@ import type { CheckSource } from "../sources";
 import { APECOIN_STAKING, checkApeCoinStaking } from "./apecoin";
 import { checkZoraRewards, ZORA_REWARDS } from "./zora-rewards";
 import { checkSablier, SABLIER } from "./sablier";
+import { checkVeDex, VE_DEX } from "./aerodrome";
 import type { CheckOutput, FindingSource } from "./common";
 import { CONVEX, checkConvex } from "./convex";
 import { checkEigenRewards, checkEigenWithdrawals, EIGEN_REWARDS, EIGEN_WITHDRAWALS } from "./eigenlayer";
 import { BALANCER_FEES, checkBalancerFees, checkCurveFees, CURVE_FEES } from "./feedistributors";
 import { checkLido, LIDO } from "./lido";
 import { checkLiquity, LIQUITY } from "./liquity";
+import { checkLiquityV2, LIQUITY_V2 } from "./liquity-v2";
 import { checkLocks, LOCKS } from "./locks";
 import { checkSafetyModule, SAFETY_MODULE } from "./safetymodule";
 import { checkStargate, STARGATE_VESTG } from "./stargate";
@@ -41,7 +43,9 @@ export const ETH_REWARD_SOURCES: CheckSource[] = [
   source(BALANCER_FEES, "balancer.fi (veBAL)", checkBalancerFees),
   source(STARGATE_VESTG, "stargate.finance (Stake)", checkStargate),
   source(LIQUITY, "a Liquity frontend, or Etherscan", checkLiquity),
+  source(LIQUITY_V2, "Etherscan (BorrowerOperations → claimCollateral)", checkLiquityV2),
   source(APECOIN_STAKING, "Etherscan (ApeCoinStaking)", checkApeCoinStaking),
   source(ZORA_REWARDS, "zora.co (profile → rewards)", checkZoraRewards),
   source(SABLIER, "app.sablier.com", checkSablier),
+  source(VE_DEX, "aerodrome.finance / velodrome.finance (Dash)", checkVeDex),
 ];

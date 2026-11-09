@@ -53,7 +53,7 @@ export const GUIDES: Guide[] = [
   {
     id: "rewards",
     title: "Unclaimed rewards & withdrawals",
-    subtitle: "Lido, expired locks, Curve and Balancer fees, EigenLayer, Aave, Synthetix, Convex, Stargate, Liquity, ApeCoin, Zora, Sablier",
+    subtitle: "Lido, expired locks, Curve and Balancer fees, EigenLayer, Aave, Synthetix, Convex, Stargate, Liquity, ApeCoin, Zora, Sablier, Aerodrome, Velodrome",
     live: true,
     steps: [
       "Lido withdrawals: open stake.lido.fi/withdrawals/claim with the wallet that holds the withdrawal request (an unstETH NFT), select the requests that are ready and click Claim. A request still pending becomes claimable once Lido finalizes it, usually within 1 to 5 days. The ETH is never sent automatically.",
@@ -68,6 +68,8 @@ export const GUIDES: Guide[] = [
       "Convex staking: CVX or cvxCRV staked in Convex's original pools keeps earning rewards that wait to be claimed. Claim them at convexfinance.com with the staking wallet.",
       "Stargate veSTG revenue share: if you held veSTG on August 10, 2025, when LayerZero bought Stargate, you are owed a share of half of Stargate's revenue for the six months that followed, in USDC (USDT on BNB Chain), with no deadline. Claim it on stargate.finance (Stake) with the wallet that held veSTG, on the chain named in the result, or call claimUsdc() (no arguments) on the distributor 0x1E68BE052a9a9ff04714582831457a9B319Bcafe, the same address on Ethereum, Arbitrum, BNB Chain, Polygon, OP Mainnet, Avalanche and Fantom.",
       "Liquity: when a Liquity trove is redeemed against, or liquidated in Recovery Mode, the collateral above its debt is set aside for its owner and never sent: call claimCollateral() (no arguments) on Liquity's BorrowerOperations (0x24179CD81c9e782A4096035f7eC97fB8B783e007) on Etherscan, from the address named in the result. If the trove was opened through a DSProxy (DeFi Saver and similar apps) or an Instadapp account, claim it from that app. ETH and LQTY earned in the Stability Pool are paid by withdrawFromSP(0) on 0x66017D22b0f8556afDd19FC67041899Eb65a21bb, ETH and LUSD fees from LQTY staking by unstake(0) on 0x4f9Fbb3f1E99B56e0Fe2892e623Ed36A76Fc605d.",
+      "Liquity v2 (BOLD): when a v2 trove is liquidated, the collateral above its debt is set aside for its owner in the branch's CollSurplusPool, on the current deployment and on the first one (wound down when Liquity relaunched in 2025). Call claimCollateral() (no arguments) on the BorrowerOperations named in the result, from the address named in the result.",
+      "Aerodrome and Velodrome: an expired veAERO / veVELO lock gives nothing back by itself. Open aerodrome.finance/dash (Base) or velodrome.finance/dash (OP Mainnet) with the wallet holding the veNFT, reset its votes if it still has some, then withdraw. Rebases are claimed from the same page.",
       "ApeCoin staking: ApeCoin's original staking contract on Ethereum (0x5954aB967Bc958940b7EB73ee84797Dc8a2AFbb9) stopped paying rewards in November 2024 (APE pool) and April 2025 (BAYC, MAYC and BAKC pools), when staking moved to ApeChain. APE left there earns nothing. On Etherscan, Write Contract from the staking wallet: withdrawSelfApeCoin(amount) and claimSelfApeCoin() for the APE pool; withdrawSelfBAYC / withdrawSelfMAYC with your token IDs and amounts, claimSelfBAYC / claimSelfMAYC with your token IDs for the ape pools; withdrawBAKC and claimSelfBAKC with the ape each dog is paired with. The amounts are in the result. NFT stakes belong to whoever holds the NFT today.",
       "Zora rewards: every mint of a Zora NFT or coin you created, or of a mint link you shared, credits you ETH in Zora's ProtocolRewards contract (0x7777777F279eba3d3Ad8F4E708545291A6fDBA8B, the same on Zora, Base, OP Mainnet, Arbitrum and Ethereum). It is never sent: withdraw it on zora.co from your profile, or call withdraw(your address, amount) on the contract with the block explorer of the chain named in the result.",
       "Sablier streams: tokens vested to you through Sablier (vesting, payroll, team or investor allocations) stay in the stream until you withdraw them. Open app.sablier.com with the wallet that holds the stream (the link in the result opens it), and click Withdraw.",
@@ -313,10 +315,12 @@ export const GUIDES: Guide[] = [
   {
     id: "starknet",
     title: "Starknet (StarkGate)",
+    live: true,
     steps: [
       "Open StarkGate and connect both your Starknet and Ethereum wallets.",
       "Once the L2 block is proven on Ethereum (a few hours), the withdrawal shows Withdraw / Complete.",
       "Confirm the transaction on Ethereum to receive the funds.",
+      "If StarkGate doesn't list it (old withdrawals often don't), finalize it on Etherscan: open the bridge contract named in the result, Write as Proxy, connect your Ethereum wallet and call withdraw(amount, recipient), or withdraw(token, amount, recipient) on newer bridges, with the values given in the result. Anyone can send it; the tokens always go to the recipient.",
     ],
   },
   {

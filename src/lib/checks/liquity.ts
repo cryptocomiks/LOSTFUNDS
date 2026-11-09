@@ -53,7 +53,7 @@ const instaAbi = parseAbi([
   "function accountAddr(uint64) view returns (address)",
 ]);
 
-type Kind = "wallet" | "dsproxy" | "dsa";
+export type Kind = "wallet" | "dsproxy" | "dsa";
 const VIA: Record<Kind, string> = {
   wallet: "",
   dsproxy: " through your DSProxy",
@@ -66,7 +66,7 @@ const APP: Record<Kind, string> = {
 };
 
 /** The user's wallet, their DSProxy and their Instadapp accounts, the ways a Liquity position could be held. */
-async function accountsOf(user: Address): Promise<{ address: Address; kind: Kind }[]> {
+export async function accountsOf(user: Address): Promise<{ address: Address; kind: Kind }[]> {
   const c = l1Client();
   const [proxy, link] = await Promise.all([
     c.readContract({ address: PROXY_REGISTRY, abi: registryAbi, functionName: "proxies", args: [user] }),

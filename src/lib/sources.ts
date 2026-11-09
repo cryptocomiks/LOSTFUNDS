@@ -25,6 +25,7 @@ import { checkInactiveStake, checkMarinadeTickets, checkTokenRent, MARINADE, REN
 import { checkPolygonStaking, POLYGON_STAKING } from "./checks/polygon-staking";
 import { checkScd, SCD } from "./checks/scd";
 import { checkScroll } from "./checks/scroll";
+import { checkStarknet, STARKNET } from "./checks/starknet";
 import { checkWormhole } from "./checks/wormhole";
 import { checkZkSync } from "./checks/zksync";
 import { checkZkSyncLite, ZKSYNC_LITE } from "./checks/zksync-lite";
@@ -72,6 +73,8 @@ export const SOURCES: CheckSource[] = [
   { id: POLYGON.id, name: POLYGON.name, group: "l2", bridgeUrl: "portal.polygon.technology", accepts: ["evm"], run: (user) => checkPolygon(user as Address) },
   // zkSync Lite was shut down: what was left in it is claimed on Ethereum (see checks/zksync-lite.ts).
   { id: ZKSYNC_LITE.id, name: ZKSYNC_LITE.name, group: "l2", bridgeUrl: "lite.zksync.io", accepts: ["evm"], run: (user) => checkZkSyncLite(user as Address) },
+  // Starknet → Ethereum: messages never consumed on L1 (snapshot + live search, see checks/starknet.ts).
+  { id: STARKNET.id, name: STARKNET.name, group: "l2", bridgeUrl: "starkgate.starknet.io", accepts: ["evm"], run: (user) => checkStarknet(user as Address) },
   { id: "wormhole", name: "Wormhole", group: "solana", bridgeUrl: "portalbridge.com", accepts: ["evm", "solana"], run: checkWormhole },
   { id: "debridge", name: "deBridge", group: "solana", bridgeUrl: "app.debridge.finance", accepts: ["evm", "solana"], run: checkDebridge },
   {
