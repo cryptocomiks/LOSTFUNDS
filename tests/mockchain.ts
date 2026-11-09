@@ -464,6 +464,8 @@ export class MockChain {
     this.solanaCalls.push(req.method);
     if (this.solanaErrors[req.method]) return { jsonrpc: "2.0", id: req.id, error: { code: -32603, message: this.solanaErrors[req.method] } };
     switch (req.method) {
+      case "getMinimumBalanceForRentExemption":
+        return reply(650_240 + 6_960 * Number((req.params as number[])[0] ?? 0));
       case "getMultipleAccounts": {
         const keys = req.params[0] as string[];
         const account = (k: string) =>

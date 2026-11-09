@@ -53,7 +53,7 @@ export const GUIDES: Guide[] = [
   {
     id: "rewards",
     title: "Unclaimed rewards & withdrawals",
-    subtitle: "Lido, expired locks, Curve and Balancer fees, EigenLayer, Aave, Synthetix, Convex, Stargate, Liquity",
+    subtitle: "Lido, expired locks, Curve and Balancer fees, EigenLayer, Aave, Synthetix, Convex, Stargate, Liquity, ApeCoin",
     live: true,
     steps: [
       "Lido withdrawals: open stake.lido.fi/withdrawals/claim with the wallet that holds the withdrawal request (an unstETH NFT), select the requests that are ready and click Claim. A request still pending becomes claimable once Lido finalizes it, usually within 1 to 5 days. The ETH is never sent automatically.",
@@ -68,6 +68,7 @@ export const GUIDES: Guide[] = [
       "Convex staking: CVX or cvxCRV staked in Convex's original pools keeps earning rewards that wait to be claimed. Claim them at convexfinance.com with the staking wallet.",
       "Stargate veSTG revenue share: if you held veSTG on August 10, 2025, when LayerZero bought Stargate, you are owed a share of half of Stargate's revenue for the six months that followed, in USDC (USDT on BNB Chain), with no deadline. Claim it on stargate.finance (Stake) with the wallet that held veSTG, on the chain named in the result, or call claimUsdc() (no arguments) on the distributor 0x1E68BE052a9a9ff04714582831457a9B319Bcafe, the same address on Ethereum, Arbitrum, BNB Chain, Polygon, OP Mainnet, Avalanche and Fantom.",
       "Liquity: when a Liquity trove is redeemed against, or liquidated in Recovery Mode, the collateral above its debt is set aside for its owner and never sent: call claimCollateral() (no arguments) on Liquity's BorrowerOperations (0x24179CD81c9e782A4096035f7eC97fB8B783e007) on Etherscan, from the address named in the result. If the trove was opened through a DSProxy (DeFi Saver and similar apps) or an Instadapp account, claim it from that app. ETH and LQTY earned in the Stability Pool are paid by withdrawFromSP(0) on 0x66017D22b0f8556afDd19FC67041899Eb65a21bb, ETH and LUSD fees from LQTY staking by unstake(0) on 0x4f9Fbb3f1E99B56e0Fe2892e623Ed36A76Fc605d.",
+      "ApeCoin staking: ApeCoin's original staking contract on Ethereum (0x5954aB967Bc958940b7EB73ee84797Dc8a2AFbb9) stopped paying rewards in November 2024 (APE pool) and April 2025 (BAYC, MAYC and BAKC pools), when staking moved to ApeChain. APE left there earns nothing. On Etherscan, Write Contract from the staking wallet: withdrawSelfApeCoin(amount) and claimSelfApeCoin() for the APE pool; withdrawSelfBAYC / withdrawSelfMAYC with your token IDs and amounts, claimSelfBAYC / claimSelfMAYC with your token IDs for the ape pools; withdrawBAKC and claimSelfBAKC with the ape each dog is paired with. The amounts are in the result. NFT stakes belong to whoever holds the NFT today.",
       "STG still locked in veSTG: every veSTG lock was unlocked when LayerZero bought Stargate. Call withdraw() (no arguments) on the veSTG contract of the chain named in the result, from the wallet that locked, and the STG comes back. STG converts into ZRO at a fixed rate (1 STG = 0.08634 ZRO) at stargate.finance until December 15, 2026.",
     ],
     note: "Every claim is an ordinary transaction from your own wallet, and the funds always go to your address. Nobody legitimate will ask for your seed phrase, or to \"approve\" tokens so you can receive them.",
@@ -75,7 +76,7 @@ export const GUIDES: Guide[] = [
   {
     id: "reclaim",
     title: "Reclaimable SOL",
-    subtitle: "Empty token accounts, wrapped SOL, inactive stake, Marinade tickets, Serum and OpenBook accounts",
+    subtitle: "Empty token accounts, wrapped SOL, inactive stake, Marinade tickets, Serum and OpenBook accounts, pump.fun creator fees, program buffers",
     live: true,
     steps: [
       "Empty token accounts: each token your wallet ever held has its own account, which keeps a rent deposit of about 0.002 SOL (a bit more for some Token-2022 tokens). Once its balance is 0, closing the account sends the deposit back to you. No tokens are touched, and the account is simply opened again if you receive that token later.",
@@ -86,6 +87,8 @@ export const GUIDES: Guide[] = [
       "Marinade unstake tickets: a delayed unstake of mSOL gave you a ticket, and the SOL waits in Marinade's reserve until it is claimed. Open app.marinade.finance with the same wallet and claim it; if the app doesn't list it, Marinade's command-line tool below can.",
       "Serum and OpenBook open orders accounts: trading on a Serum-based order book (Serum's DEX, Raydium and Jupiter in 2021–22, Bonfida…) opened one account per market, paid for by your wallet with about 0.023 SOL of rent. Tokens from filled orders also wait there until they are settled. Step Finance's dashboard, which did both for everyone, closed in February 2026, and no maintained app replaces it yet: recovering takes a short script (see the manual steps below), or the help of someone who can write one.",
       "Always in this order, from the wallet that owns the account: cancel any order still on the book, settle (SettleFunds sends the base and quote tokens to your token accounts), and only then close (CloseOpenOrders sends the rent to your wallet). Never close an account that still holds tokens.",
+      "pump.fun creator fees: every trade of a coin you created on pump.fun pays you a fee that waits in your creator vault (as SOL on the bonding curve, as wrapped SOL once the coin has moved to PumpSwap). Nothing is sent automatically: open pump.fun with the creator wallet, go to your profile and collect your creator rewards.",
+      "Program buffers: deploying a Solana program first uploads it into a buffer account paid for by the deployer, about 7 SOL per MB. A deploy that failed or was interrupted leaves its buffer and its SOL behind. Closing it from the wallet that is its authority sends everything back, and doesn't touch deployed programs.",
     ],
     note: "Only close accounts from your own wallet or a tool you typed in yourself, and never sign a \"close account\", \"burn\" or \"claim SOL\" request from a site you reached through a DM, an ad or an airdropped token: a malicious transaction can empty your wallet. Closing returns rent and burns nothing only when the balance is 0: tools that \"burn and close\" destroy whatever tokens are still in the account. Closing a stake account removes its rewards history from the chain, so export it first if you need it for taxes.",
     manual: [
@@ -93,6 +96,7 @@ export const GUIDES: Guide[] = [
       "solana withdraw-stake <STAKE_ACCOUNT> <YOUR_WALLET> ALL withdraws an inactive stake account's whole balance to your wallet.",
       "Marinade's own command-line tool (npm package @marinade.finance/marinade-ts-cli): marinade show-tickets lists your tickets, marinade claim <TICKET> claims one. The SOL always goes to the wallet that ordered the unstake.",
       "Serum and OpenBook open orders, with the JavaScript libraries @project-serum/serum (Serum, program 9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin) or @openbook-dex/openbook (OpenBook, program srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX): Market.load(connection, marketAddress, {}, programId), then market.settleFunds(connection, wallet, openOrders, baseTokenAccount, quoteTokenAccount) sends the tokens to your token accounts, then DexInstructions.closeOpenOrders({ market, openOrders, owner, solWallet, programId }) returns the rent. The result links to each account; its market is shown on Solscan.",
+      "solana program show --buffers lists the buffers your keypair is authority of, and solana program close --buffers closes them all; the SOL goes to that keypair's wallet.",
     ],
   },
   {

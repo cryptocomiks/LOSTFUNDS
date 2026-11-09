@@ -1,5 +1,6 @@
 import type { Address } from "viem";
 import type { CheckSource } from "../sources";
+import { APECOIN_STAKING, checkApeCoinStaking } from "./apecoin";
 import type { CheckOutput, FindingSource } from "./common";
 import { CONVEX, checkConvex } from "./convex";
 import { checkEigenRewards, checkEigenWithdrawals, EIGEN_REWARDS, EIGEN_WITHDRAWALS } from "./eigenlayer";
@@ -38,4 +39,5 @@ export const ETH_REWARD_SOURCES: CheckSource[] = [
   source(BALANCER_FEES, "balancer.fi (veBAL)", checkBalancerFees),
   source(STARGATE_VESTG, "stargate.finance (Stake)", checkStargate),
   source(LIQUITY, "a Liquity frontend, or Etherscan", checkLiquity),
+  source(APECOIN_STAKING, "Etherscan (ApeCoinStaking)", checkApeCoinStaking),
 ];

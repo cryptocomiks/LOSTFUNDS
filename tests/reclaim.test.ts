@@ -15,6 +15,8 @@ import {
   type TokenAccountInfo,
 } from "../src/lib/checks/reclaim.ts";
 import { checkOpenOrders, parseOpenOrders } from "../src/lib/checks/openorders.ts";
+import { checkBuffers } from "../src/lib/checks/buffers.ts";
+import { checkPumpFees, pumpSwapVaultAccount, pumpVault } from "../src/lib/checks/pumpfun.ts";
 import { formatAmount } from "../src/lib/format.ts";
 import { sourceById } from "../src/lib/sources.ts";
 import { MockChain } from "./mockchain.ts";
@@ -613,5 +615,80 @@ describe("Reclaimable SOL: Serum / OpenBook open orders", () => {
   test("an RPC failure fails the check instead of reading as clean", async () => {
     world.solanaErrors.getProgramAccounts = "Internal error";
     assert.equal((await checkSource(sourceById("reclaim-openorders")!, OWNER)).state, "error");
+  });
+});
+
+/* ───────────────────────── pump.fun creator fees ───────────────────────── */
+
+describe("pump.fun creator fees", () => {
+  // Derived for a real creator on mainnet (vault addresses seen in its transactions).
+  test("vault addresses match pump.fun's and PumpSwap's", () => {
+    assert.equal(pumpVault("7kkSzaePUmsLp1p8nwbFdnzsKWgDvU27qme1HueDb5S4"), "J5tRuHWWZxRFYKuejgBJidTMT7NT1ZQqSy8RFtgKV28T");
+    assert.equal(pumpSwapVaultAccount("DYVVZqhjy7jvyAaEu5PMmsjjZZL5v4TQ66gdMNVCaQz8"), "34u7zwYbKmWBoBovB5MS81NALCdfnFgsrfYRL9dn5DeG");
+  });
+
+  test("SOL above the vault's rent on the bonding curve, wrapped SOL on PumpSwap", async () => {
+    world.solanaLamports[pumpVault(OWNER)] = 650_240 + 300_000_000;
+    const ata = new Uint8Array(165);
+    new DataView(ata.buffer).setBigUint64(64, 2_500_000_000n, true);
+    world.solana[pumpSwapVaultAccount(OWNER)] = ata;
+    const r = await checkPumpFees(OWNER);
+    assert.deepEqual(
+      r.findings.map((f) => [f.networkName, f.asset.symbol, f.asset.amount]),
+      [
+        ["pump.fun creator fees", "SOL", 300_000_000n],
+        ["PumpSwap creator fees", "SOL", 2_500_000_000n],
+      ],
+    );
+    assert.ok(r.findings.every((f) => f.status === "ready" && f.networkId === "pumpfun-creator-fees"));
+  });
+
+  test("a vault holding only its rent, or no vault: nothing", async () => {
+    world.solanaLamports[pumpVault(OTHER)] = 650_240;
+    assert.deepEqual(await checkPumpFees(OTHER), { findings: [], completed: 0 });
+    assert.deepEqual(await checkPumpFees(key()), { findings: [], completed: 0 });
+  });
+
+  test("an RPC failure fails the check", async () => {
+    world.solanaErrors.getMultipleAccounts = "Internal error";
+    assert.equal((await checkSource(sourceById("pumpfun-creator-fees")!, OWNER)).state, "error");
+  });
+});
+
+/* ───────────────────────── Program buffers ───────────────────────── */
+
+describe("Reclaimable SOL: program buffers", () => {
+  const LOADER = "BPFLoaderUpgradeab1e11111111111111111111111";
+  const buffer = (authority: string | null, lamports: number) => {
+    const d = new Uint8Array(37 + 1000);
+    d[0] = 1; // Buffer
+    if (authority) {
+      d[4] = 1;
+      d.set(base58.decode(authority), 5);
+    }
+    return { pubkey: key(), data: d, lamports };
+  };
+  const programData = (authority: string) => {
+    const d = new Uint8Array(45 + 1000);
+    d[0] = 3; // ProgramData: slot, then Some(authority) at 12
+    d[12] = 1;
+    d.set(base58.decode(authority), 13);
+    return { pubkey: key(), data: d, lamports: 9_000_000_000 };
+  };
+
+  test("buffers whose authority is the wallet, nothing else", async () => {
+    world.solanaPrograms[LOADER] = [buffer(OWNER, 5_000_000_000), buffer(OWNER, 1_500_000_000), buffer(OTHER, 7_000_000_000), buffer(null, 2_000_000_000), programData(OWNER)];
+    const r = await checkBuffers(OWNER);
+    assert.equal(r.findings.length, 1);
+    assert.equal(r.findings[0].networkName, "2 program buffers");
+    assert.equal(r.findings[0].asset.amount, 6_500_000_000n);
+    assert.match(r.findings[0].claimAt ?? "", /solana program close --buffers/);
+    assert.equal((await checkBuffers(OTHER)).findings[0].networkName, "1 program buffer");
+    assert.deepEqual(await checkBuffers(key()), { findings: [], completed: 0 });
+  });
+
+  test("an RPC failure fails the check", async () => {
+    world.solanaErrors.getProgramAccounts = "Internal error";
+    assert.equal((await checkSource(sourceById("reclaim-buffers")!, OWNER)).state, "error");
   });
 });

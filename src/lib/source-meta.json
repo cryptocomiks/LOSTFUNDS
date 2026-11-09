@@ -741,6 +741,15 @@
   ]
  },
  {
+  "id": "apecoin-staking",
+  "name": "ApeCoin staking",
+  "group": "rewards",
+  "bridgeUrl": "Etherscan (ApeCoinStaking)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
   "id": "reclaim-rent",
   "name": "Empty token accounts",
   "group": "reclaim",
@@ -772,6 +781,24 @@
   "name": "Serum / OpenBook accounts",
   "group": "reclaim",
   "bridgeUrl": "a script (see the guide)",
+  "accepts": [
+   "solana"
+  ]
+ },
+ {
+  "id": "pumpfun-creator-fees",
+  "name": "pump.fun creator fees",
+  "group": "reclaim",
+  "bridgeUrl": "pump.fun (profile → creator rewards)",
+  "accepts": [
+   "solana"
+  ]
+ },
+ {
+  "id": "reclaim-buffers",
+  "name": "Program buffers",
+  "group": "reclaim",
+  "bridgeUrl": "Solana CLI (solana program close --buffers)",
   "accepts": [
    "solana"
   ]

@@ -4,6 +4,7 @@ import { neverActive } from "./checks/activity";
 import { AIRDROP_LIST, checkAirdrops } from "./checks/airdrops";
 import { checkArbitrum } from "./checks/arbitrum";
 import { checkCctp, checkCctpFromSolana } from "./checks/cctp";
+import { BUFFERS, checkBuffers } from "./checks/buffers";
 import { checkCeler } from "./checks/celer";
 import type { CheckOutput } from "./checks/common";
 import { checkDebridge } from "./checks/debridge";
@@ -17,6 +18,7 @@ import { checkMerkl } from "./checks/merkl";
 import { checkOpenOrders, OPEN_ORDERS } from "./checks/openorders";
 import { checkOpStack } from "./checks/opstack";
 import { checkPolygon, POLYGON } from "./checks/polygon";
+import { checkPumpFees, PUMP_FEES } from "./checks/pumpfun";
 import { ETH_REWARD_SOURCES } from "./checks/rewards-eth";
 import { checkInactiveStake, checkMarinadeTickets, checkTokenRent, MARINADE, RENT, STAKE } from "./checks/reclaim";
 import { checkPolygonStaking, POLYGON_STAKING } from "./checks/polygon-staking";
@@ -105,6 +107,8 @@ export const SOURCES: CheckSource[] = [
   { id: STAKE.id, name: STAKE.name, group: "reclaim", bridgeUrl: "your wallet's staking tab", accepts: ["solana"], run: checkInactiveStake },
   { id: MARINADE.id, name: MARINADE.name, group: "reclaim", bridgeUrl: "app.marinade.finance", accepts: ["solana"], run: checkMarinadeTickets },
   { id: OPEN_ORDERS.id, name: OPEN_ORDERS.name, group: "reclaim", bridgeUrl: "a script (see the guide)", accepts: ["solana"], run: checkOpenOrders },
+  { id: PUMP_FEES.id, name: PUMP_FEES.name, group: "reclaim", bridgeUrl: "pump.fun (profile → creator rewards)", accepts: ["solana"], run: checkPumpFees },
+  { id: BUFFERS.id, name: BUFFERS.name, group: "reclaim", bridgeUrl: "Solana CLI (solana program close --buffers)", accepts: ["solana"], run: checkBuffers },
   ...LEGACY_LIST.map((e) => ({
     id: `legacy-${e.id}`,
     name: e.name,

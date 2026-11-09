@@ -73,8 +73,8 @@ const CARDS: { group: Group; title: ReactNode; text: ReactNode; guide: string; i
     title: <T en="SOL you can reclaim" fr="Du SOL à récupérer" />,
     text: (
       <T
-        en="Solana keeps a deposit in every token account. Empty accounts, inactive stake and old Serum order accounts can give that SOL back."
-        fr="Solana bloque une caution dans chaque compte de token. Les comptes vides, le stake inactif et les vieux comptes d'ordres Serum peuvent vous rendre ce SOL."
+        en="Solana keeps a deposit in every token account. Empty accounts, inactive stake, old Serum order accounts, abandoned program buffers and pump.fun creator fees can give SOL back."
+        fr="Solana bloque une caution dans chaque compte de token. Les comptes vides, le stake inactif, les vieux comptes d'ordres Serum, les buffers de programmes abandonnés et les frais de créateur pump.fun peuvent vous rendre du SOL."
       />
     ),
     guide: "reclaim",

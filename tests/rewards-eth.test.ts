@@ -8,6 +8,7 @@ import { checkEigenRewards, checkEigenWithdrawals } from "../src/lib/checks/eige
 import { checkBalancerFees, checkCurveFees } from "../src/lib/checks/feedistributors.ts";
 import { checkLido } from "../src/lib/checks/lido.ts";
 import { checkLiquity } from "../src/lib/checks/liquity.ts";
+import { checkApeCoinStaking } from "../src/lib/checks/apecoin.ts";
 import { checkLocks } from "../src/lib/checks/locks.ts";
 import { checkSafetyModule } from "../src/lib/checks/safetymodule.ts";
 import { checkSynthetixEscrow } from "../src/lib/checks/synthetix.ts";
@@ -830,6 +831,85 @@ describe("Liquity", () => {
   });
 });
 
+/* ───────────────────────── ApeCoin staking ───────────────────────── */
+
+describe("ApeCoin staking", () => {
+  type Stake = { poolId: bigint; tokenId: bigint; deposited: bigint; unclaimed: bigint; rewards24hr: bigint; pair: { mainTokenId: bigint; mainTypePoolId: bigint } };
+  const stake = (poolId: number, tokenId: number, deposited: bigint, unclaimed: bigint, main?: [number, number]): Stake => ({
+    poolId: BigInt(poolId),
+    tokenId: BigInt(tokenId),
+    deposited,
+    unclaimed,
+    rewards24hr: 0n,
+    pair: { mainTokenId: BigInt(main?.[0] ?? 0), mainTypePoolId: BigInt(main?.[1] ?? 0) },
+  });
+  const stakes: Record<string, Stake[]> = {
+    [USER]: [stake(0, 0, 1000n * e18, 50n * e18), stake(1, 42, 10_094n * e18, 600n * e18), stake(1, 43, 0n, 0n), stake(3, 7, 856n * e18, 0n, [42, 1])],
+    [REJECTED]: [stake(0, 0, 500n * e18, 0n)],
+  };
+  const seen: string[] = [];
+  before(() => {
+    world.addContract(
+      1,
+      "0x5954aB967Bc958940b7EB73ee84797Dc8a2AFbb9",
+      parseAbi([
+        "struct DashboardPair { uint256 mainTokenId; uint256 mainTypePoolId; }",
+        "struct DashboardStake { uint256 poolId; uint256 tokenId; uint256 deposited; uint256 unclaimed; uint256 rewards24hr; DashboardPair pair; }",
+        "struct SingleNft { uint32 tokenId; uint224 amount; }",
+        "struct PairNft { uint128 mainTokenId; uint128 bakcTokenId; }",
+        "struct PairNftWithdrawWithAmount { uint32 mainTokenId; uint32 bakcTokenId; uint184 amount; bool isUncommit; }",
+        "function getAllStakes(address) view returns (DashboardStake[])",
+        "function withdrawSelfApeCoin(uint256)",
+        "function claimSelfApeCoin()",
+        "function withdrawSelfBAYC(SingleNft[])",
+        "function withdrawSelfMAYC(SingleNft[])",
+        "function claimSelfBAYC(uint256[])",
+        "function claimSelfMAYC(uint256[])",
+        "function withdrawBAKC(PairNftWithdrawWithAmount[], PairNftWithdrawWithAmount[])",
+        "function claimSelfBAKC(PairNft[], PairNft[])",
+      ]),
+      {
+        getAllStakes: ([a]) => stakes[a as string] ?? [],
+        withdrawSelfApeCoin: ([amount], { from }) => {
+          if (from === REJECTED) revert("Paused");
+          seen.push(`apecoin:${amount}`);
+        },
+        claimSelfApeCoin: () => {},
+        withdrawSelfBAYC: ([nfts]) => {
+          seen.push(`bayc:${(nfts as { tokenId: number }[]).map((n) => n.tokenId)}`);
+        },
+        claimSelfBAYC: () => {},
+        withdrawSelfMAYC: () => {},
+        claimSelfMAYC: () => {},
+        withdrawBAKC: ([bayc, mayc]) => {
+          seen.push(`bakc:${(bayc as { mainTokenId: number; bakcTokenId: number }[]).map((p) => `${p.mainTokenId}/${p.bakcTokenId}`)}:${(mayc as unknown[]).length}`);
+        },
+        claimSelfBAKC: () => revert("nothing to claim"),
+      },
+    );
+  });
+
+  test("APE still staked and rewards never claimed, per pool, once their withdraw / claim simulates", async () => {
+    const r = await checkApeCoinStaking(USER);
+    assert.deepEqual(r.findings.map((f) => [f.networkName, f.asset.amount, f.id.split(":").pop()]).sort(), [
+      ["ApeCoin staking (APE pool)", 1000n * e18, "staked"],
+      ["ApeCoin staking (APE pool)", 50n * e18, "rewards"],
+      ["ApeCoin staking (BAKC pool)", 856n * e18, "staked"],
+      ["ApeCoin staking (BAYC pool)", 10_094n * e18, "staked"],
+      ["ApeCoin staking (BAYC pool)", 600n * e18, "rewards"],
+    ].sort());
+    assert.ok(seen.includes(`apecoin:${1000n * e18}`));
+    assert.ok(seen.includes("bayc:42"), "only NFTs with APE staked are withdrawn");
+    assert.ok(seen.includes("bakc:42/7:0"), "a dog is withdrawn with the ape it's paired with");
+    assert.ok(r.findings.every((f) => f.asset.symbol === "APE" && f.status === "ready"));
+  });
+
+  test("nothing without stakes; hidden when the withdrawal would be rejected", async () => {
+    assert.deepEqual(await checkApeCoinStaking(NOBODY), { findings: [], completed: 0 });
+    assert.deepEqual((await checkApeCoinStaking(REJECTED)).findings, []);
+  });
+});
+
 /* ───────────────────────── Wiring ───────────────────────── */
 
 const CHECKS: Record<string, (user: Address) => Promise<{ findings: unknown[]; error?: string }>> = {
@@ -843,6 +923,7 @@ const CHECKS: Record<string, (user: Address) => Promise<{ findings: unknown[]; e
   "convex-staking": checkConvex,
   "balancer-fees": checkBalancerFees,
   liquity: checkLiquity,
+  "apecoin-staking": checkApeCoinStaking,
 };
 const IDS = Object.keys(CHECKS);
 
