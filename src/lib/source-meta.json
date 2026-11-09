@@ -732,6 +732,15 @@
   ]
  },
  {
+  "id": "liquity",
+  "name": "Liquity",
+  "group": "rewards",
+  "bridgeUrl": "a Liquity frontend, or Etherscan",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
   "id": "reclaim-rent",
   "name": "Empty token accounts",
   "group": "reclaim",
@@ -754,6 +763,15 @@
   "name": "Marinade tickets",
   "group": "reclaim",
   "bridgeUrl": "app.marinade.finance",
+  "accepts": [
+   "solana"
+  ]
+ },
+ {
+  "id": "reclaim-openorders",
+  "name": "Serum / OpenBook accounts",
+  "group": "reclaim",
+  "bridgeUrl": "a script (see the guide)",
   "accepts": [
    "solana"
   ]

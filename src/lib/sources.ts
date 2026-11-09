@@ -14,6 +14,7 @@ import { checkKinto, KINTO } from "./checks/kinto";
 import { checkLegacy, LEGACY_LIST } from "./checks/legacy";
 import { checkLinea } from "./checks/linea";
 import { checkMerkl } from "./checks/merkl";
+import { checkOpenOrders, OPEN_ORDERS } from "./checks/openorders";
 import { checkOpStack } from "./checks/opstack";
 import { checkPolygon, POLYGON } from "./checks/polygon";
 import { ETH_REWARD_SOURCES } from "./checks/rewards-eth";
@@ -103,6 +104,7 @@ export const SOURCES: CheckSource[] = [
   { id: RENT.id, name: RENT.name, group: "reclaim", bridgeUrl: "Solflare (Close Account), or sol-incinerator.com", accepts: ["solana"], run: checkTokenRent },
   { id: STAKE.id, name: STAKE.name, group: "reclaim", bridgeUrl: "your wallet's staking tab", accepts: ["solana"], run: checkInactiveStake },
   { id: MARINADE.id, name: MARINADE.name, group: "reclaim", bridgeUrl: "app.marinade.finance", accepts: ["solana"], run: checkMarinadeTickets },
+  { id: OPEN_ORDERS.id, name: OPEN_ORDERS.name, group: "reclaim", bridgeUrl: "a script (see the guide)", accepts: ["solana"], run: checkOpenOrders },
   ...LEGACY_LIST.map((e) => ({
     id: `legacy-${e.id}`,
     name: e.name,

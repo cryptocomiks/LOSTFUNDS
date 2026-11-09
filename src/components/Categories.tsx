@@ -49,8 +49,8 @@ const CARDS: { group: Group; title: ReactNode; text: ReactNode; guide: string; i
     title: <T en="Rewards & withdrawals left behind" fr="Récompenses et retraits oubliés" />,
     text: (
       <T
-        en="Finalized Lido withdrawals never claimed, expired locks never withdrawn, staking and lending rewards that piled up."
-        fr="Des retraits Lido finalisés jamais réclamés, des verrous expirés jamais retirés, des récompenses de staking et de prêt qui se sont accumulées."
+        en="Finalized Lido withdrawals never claimed, Liquity collateral never taken back, expired locks never withdrawn, staking and lending rewards that piled up."
+        fr="Des retraits Lido finalisés jamais réclamés, du collatéral Liquity jamais récupéré, des verrous expirés jamais retirés, des récompenses de staking et de prêt qui se sont accumulées."
       />
     ),
     guide: "rewards",
@@ -73,8 +73,8 @@ const CARDS: { group: Group; title: ReactNode; text: ReactNode; guide: string; i
     title: <T en="SOL you can reclaim" fr="Du SOL à récupérer" />,
     text: (
       <T
-        en="Solana keeps a deposit in every token account. Empty accounts and inactive stake can give that SOL back."
-        fr="Solana bloque une caution dans chaque compte de token. Les comptes vides et le stake inactif peuvent vous rendre ce SOL."
+        en="Solana keeps a deposit in every token account. Empty accounts, inactive stake and old Serum order accounts can give that SOL back."
+        fr="Solana bloque une caution dans chaque compte de token. Les comptes vides, le stake inactif et les vieux comptes d'ordres Serum peuvent vous rendre ce SOL."
       />
     ),
     guide: "reclaim",

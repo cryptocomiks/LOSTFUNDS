@@ -473,7 +473,10 @@ export class MockChain {
         return reply({ context: { slot: 1 }, value: keys.map(account) });
       }
       case "getProgramAccounts": {
-        const [program, opts] = req.params as [string, { filters?: ({ memcmp: { offset: number; bytes: string } } | { dataSize: number })[] }];
+        const [program, opts] = req.params as [
+          string,
+          { filters?: ({ memcmp: { offset: number; bytes: string } } | { dataSize: number })[]; dataSlice?: { offset: number; length: number } },
+        ];
         const accounts = (this.solanaPrograms[program] ?? []).filter((a) =>
           (opts.filters ?? []).every((f) => {
             if ("dataSize" in f) return a.data.length === f.dataSize;
@@ -481,7 +484,8 @@ export class MockChain {
             return want.every((b, i) => a.data[f.memcmp.offset + i] === b);
           }),
         );
-        return reply(accounts.map((a) => ({ pubkey: a.pubkey, account: { lamports: a.lamports ?? 0, data: [b64(a.data), "base64"] } })));
+        const slice = (d: Uint8Array) => (opts.dataSlice ? d.subarray(opts.dataSlice.offset, opts.dataSlice.offset + opts.dataSlice.length) : d);
+        return reply(accounts.map((a) => ({ pubkey: a.pubkey, account: { lamports: a.lamports ?? 0, data: [b64(slice(a.data)), "base64"] } })));
       }
       case "getTokenAccountsByOwner": {
         const [owner, { programId }] = req.params as [string, { programId: string }];

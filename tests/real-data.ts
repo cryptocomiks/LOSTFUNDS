@@ -67,3 +67,13 @@ export const XDAI_WITHDRAWAL = {
   signature: "0x2f89989a04a9a993de3fff7898464b1cb7c97021200ea38ee444e075537bad70113cd33d81cb3dffede4ce5353a9f805e45e36f3a98672f7b96c9d33cb63f6e21b",
   signer: "0xb54B5572F3C4f70fF3cc8F67C19C8cddb838FBaA",
 } as const;
+
+/**
+ * A Serum v3 open orders account on the SOL/USDC market (9wFFyRfZBsuAha4YcuxcXLKwMxJR43S7fPfQLusDBzvT),
+ * first 125 bytes as of November 2026: 2,302.828606 USDC filled and never settled, no order on the book.
+ */
+export const SERUM_OPEN_ORDERS = "7TnQ6cwnqkTj1acpdKB8jQznN1XVcEX1p5KonNo5CQVD";
+export const SERUM_OPEN_ORDERS_OWNER = "9WPkR3rn4hgoe1nxLPBDM749hahFfcnKFtiNb4oEB3mU";
+export const SERUM_OPEN_ORDERS_LAMPORTS = 23_357_760;
+export const SERUM_OPEN_ORDERS_DATA =
+  "c2VydW0FAAAAAAAAAITC+xiu1hn1RmMmU+8GAp8CqGS/OCmGcYG7IN8dcVwwfmUPiyXFO31uhgJ1VVKbGSnlhCfqcdNgYvB5iQw8CTsAAAAAAAAAAAAAAAAAAAAAPmBCiQAAAAA+YEKJAAAAAP////////////////////8=";

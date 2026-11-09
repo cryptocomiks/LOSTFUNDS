@@ -14,6 +14,7 @@ import {
   type ClusterStake,
   type TokenAccountInfo,
 } from "../src/lib/checks/reclaim.ts";
+import { checkOpenOrders, parseOpenOrders } from "../src/lib/checks/openorders.ts";
 import { formatAmount } from "../src/lib/format.ts";
 import { sourceById } from "../src/lib/sources.ts";
 import { MockChain } from "./mockchain.ts";
@@ -24,6 +25,10 @@ import {
   MARINADE_TICKET_BENEFICIARY,
   MARINADE_TICKET_DATA,
   MARINADE_TICKET_LAMPORTS,
+  SERUM_OPEN_ORDERS,
+  SERUM_OPEN_ORDERS_DATA,
+  SERUM_OPEN_ORDERS_LAMPORTS,
+  SERUM_OPEN_ORDERS_OWNER,
   STAKE_ACCOUNT,
   STAKE_ACCOUNT_DATA,
   STAKE_ACCOUNT_LAMPORTS,
@@ -490,5 +495,123 @@ describe("Reclaimable SOL: Marinade tickets", () => {
     world.solanaPrograms[MARINADE_PROGRAM] = [ticket({ amount: 3_000_000_000n, created: 900n })];
     world.solanaErrors.getMultipleAccounts = "Internal error";
     assert.equal((await checkSource(sourceById("reclaim-marinade")!, OWNER)).state, "error");
+  });
+});
+
+/* ───────────────────────── Serum / OpenBook open orders ───────────────────────── */
+
+const SERUM = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin";
+const OPENBOOK = "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX";
+const USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+const WSOL = "So11111111111111111111111111111111111111112";
+const OO_RENT = 23_357_760;
+
+/** A full 3,228-byte OpenOrders account. */
+function openOrders(p: { market: string; owner?: string; baseTotal?: bigint; quoteTotal?: bigint; orders?: boolean; flags?: bigint }) {
+  const d = new Uint8Array(3228);
+  const v = new DataView(d.buffer);
+  d.set(new TextEncoder().encode("serum"), 0);
+  v.setBigUint64(5, p.flags ?? 5n, true);
+  d.set(base58.decode(p.market), 13);
+  d.set(base58.decode(p.owner ?? OWNER), 45);
+  v.setBigUint64(85, p.baseTotal ?? 0n, true);
+  v.setBigUint64(101, p.quoteTotal ?? 0n, true);
+  d.fill(0xff, 109, 125);
+  if (p.orders) d[109] = 0xfe;
+  return { pubkey: key(), data: d, lamports: OO_RENT };
+}
+/** A market account: base mint at 53, quote mint at 85. */
+function market(base: string, quote: string): Uint8Array {
+  const d = new Uint8Array(388);
+  d.set(base58.decode(base), 53);
+  d.set(base58.decode(quote), 85);
+  return d;
+}
+function mint(decimals: number): Uint8Array {
+  const d = new Uint8Array(82);
+  d[44] = decimals;
+  return d;
+}
+
+describe("Reclaimable SOL: Serum / OpenBook open orders", () => {
+  const SOL_USDC = key();
+  const RAY_USDC = key();
+  const RAY = "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R";
+  const ODD = key();
+  before(() => {
+    world.solana[SOL_USDC] = market(WSOL, USDC);
+    world.solana[RAY_USDC] = market(RAY, USDC);
+    world.solana[WSOL] = mint(9);
+    world.solana[USDC] = mint(6);
+    world.solana[RAY] = mint(6);
+  });
+
+  test("a real Serum account with USDC never settled (mainnet data)", async () => {
+    const oo = parseOpenOrders(SERUM_OPEN_ORDERS, "Serum", SERUM_OPEN_ORDERS_LAMPORTS, b64(SERUM_OPEN_ORDERS_DATA), SERUM_OPEN_ORDERS_OWNER)!;
+    assert.equal(oo.market, "9wFFyRfZBsuAha4YcuxcXLKwMxJR43S7fPfQLusDBzvT");
+    assert.equal(oo.baseTotal, 0n);
+    assert.equal(oo.quoteTotal, 2_302_828_606n);
+    assert.equal(oo.hasOrders, false);
+    assert.equal(parseOpenOrders(SERUM_OPEN_ORDERS, "Serum", SERUM_OPEN_ORDERS_LAMPORTS, b64(SERUM_OPEN_ORDERS_DATA), OWNER), null, "someone else's account");
+  });
+
+  test("rent of every account, and unsettled tokens by mint, on both programs", async () => {
+    world.solanaPrograms[SERUM] = [
+      openOrders({ market: SOL_USDC }),
+      openOrders({ market: SOL_USDC, baseTotal: 1_500_000_000n, quoteTotal: 20_000_000n, orders: true }),
+      openOrders({ market: SOL_USDC, owner: OTHER, quoteTotal: 9_000_000n }),
+      openOrders({ market: SOL_USDC, flags: 5n | 256n }), // closed
+    ];
+    world.solanaPrograms[OPENBOOK] = [openOrders({ market: RAY_USDC, baseTotal: 7_000_000n, quoteTotal: 5_000_000n })];
+    const r = await checkOpenOrders(OWNER);
+    assert.deepEqual(world.solanaCalls, ["getProgramAccounts", "getProgramAccounts", "getMultipleAccounts", "getMultipleAccounts"]);
+    assert.equal(r.error, undefined);
+    const rent = r.findings.find((f) => f.id.endsWith(":rent"))!;
+    assert.equal(rent.networkName, "3 Serum and OpenBook open orders accounts");
+    assert.equal(rent.asset.amount, 3n * BigInt(OO_RENT));
+    assert.equal(rent.asset.symbol, "SOL");
+    assert.match(rent.note ?? "", /2 of them still hold tokens/);
+    assert.match(rent.note ?? "", /1 account still has orders on the book/);
+    const tokens = Object.fromEntries(r.findings.filter((f) => f !== rent).map((f) => [f.asset.symbol, f]));
+    assert.deepEqual(Object.keys(tokens).sort(), ["RAY", "SOL", "USDC"]);
+    assert.equal(tokens.USDC.asset.amount, 25_000_000n, "summed over both accounts");
+    assert.equal(tokens.USDC.asset.decimals, 6);
+    assert.equal(tokens.USDC.asset.priceKey, `solana:${USDC}`);
+    assert.equal(tokens.SOL.asset.amount, 1_500_000_000n);
+    assert.equal(tokens.SOL.asset.priceKey, "coingecko:solana");
+    assert.ok(r.findings.every((f) => f.status === "ready" && f.networkId === "reclaim-openorders"));
+  });
+
+  test("a mint not in the list is named by its address", async () => {
+    const MKT = key();
+    world.solana[MKT] = market(ODD, USDC);
+    world.solana[ODD] = mint(4);
+    world.solanaPrograms[SERUM] = [openOrders({ market: MKT, baseTotal: 12_345n })];
+    world.solanaPrograms[OPENBOOK] = [];
+    const r = await checkOpenOrders(OWNER);
+    const t = r.findings.find((f) => f.asset.decimals === 4)!;
+    assert.equal(t.asset.symbol, `SPL token ${ODD.slice(0, 4)}…${ODD.slice(-4)}`);
+    assert.equal(t.networkName, "Unsettled tokens on Serum");
+    assert.equal(r.findings.find((f) => f.id.endsWith(":rent"))!.networkName, "1 Serum open orders account");
+  });
+
+  test("a market that can't be read: the rent is still shown, the check reads as incomplete", async () => {
+    world.solanaPrograms[SERUM] = [openOrders({ market: key(), quoteTotal: 5_000_000n })];
+    world.solanaPrograms[OPENBOOK] = [];
+    const r = await checkOpenOrders(OWNER);
+    assert.equal(r.findings.length, 1);
+    assert.match(r.error ?? "", /could not be read/);
+  });
+
+  test("no accounts: clean, in two requests", async () => {
+    world.solanaPrograms[SERUM] = [];
+    world.solanaPrograms[OPENBOOK] = [];
+    assert.deepEqual(await checkOpenOrders(OWNER), { findings: [], completed: 0 });
+    assert.deepEqual(world.solanaCalls, ["getProgramAccounts", "getProgramAccounts"]);
+  });
+
+  test("an RPC failure fails the check instead of reading as clean", async () => {
+    world.solanaErrors.getProgramAccounts = "Internal error";
+    assert.equal((await checkSource(sourceById("reclaim-openorders")!, OWNER)).state, "error");
   });
 });
