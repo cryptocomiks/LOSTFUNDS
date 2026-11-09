@@ -11,6 +11,7 @@ import { checkDebridge } from "./checks/debridge";
 import { checkEnsDeeds, ENS_DEEDS } from "./checks/ens-deeds";
 import { checkExchange, DEPOSIT_EXCHANGES } from "./checks/exchanges";
 import { checkGnosisBridge } from "./checks/gnosis";
+import { checkHedgey, HEDGEY } from "./checks/hedgey";
 import { checkKinto, KINTO } from "./checks/kinto";
 import { checkLegacy, LEGACY_LIST } from "./checks/legacy";
 import { checkLinea } from "./checks/linea";
@@ -102,6 +103,8 @@ export const SOURCES: CheckSource[] = [
     accepts: a.accepts,
     run: (user: string) => checkAirdrops(user, [a]),
   })),
+  // Every open Hedgey claim campaign (airdrops and distributions), found on-chain.
+  { id: HEDGEY.id, name: HEDGEY.name, group: "airdrops", bridgeUrl: "app.hedgey.finance", accepts: ["evm"], run: (user) => checkHedgey(user as Address) },
   // Protocol rewards earned and never claimed, on many EVM chains.
   { id: "aave-v2", name: "Aave v2", group: "rewards", bridgeUrl: "app.aave.com", accepts: ["evm"], run: (user) => checkAaveV2(user as Address) },
   { id: "aave-v3", name: "Aave v3", group: "rewards", bridgeUrl: "app.aave.com", accepts: ["evm"], run: (user) => checkAaveV3(user as Address) },

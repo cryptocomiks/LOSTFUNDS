@@ -15,13 +15,14 @@ export const GUIDES: Guide[] = [
   {
     id: "airdrops",
     title: "Unclaimed airdrops",
-    subtitle: "Uniswap, dYdX, COW for locked GNO, Curve, Safe, 1inch, Lido, Convex, Zora, Avantis, Lombard, Re, Doppler, Pharos, Sonic, Kamino",
+    subtitle: "Uniswap, dYdX, COW for locked GNO, Curve, Safe, 1inch, Lido, Convex, Zora, Avantis, Lombard, Re, Doppler, Pharos, Sonic, Kamino, Hedgey campaigns",
     live: true,
     steps: [
       "Uniswap, September 2020: never expires, around 12.5 million UNI still unclaimed. Open the official Uniswap app with the eligible wallet; if no Claim UNI prompt shows, claim on the MerkleDistributor (0x090D4613473dEE047c3f2706764f49E0821D256e) on Etherscan, Write Contract → claim, with your index, amount and proof from Uniswap's published list (github.com/Uniswap/mrkl-drop-data-chunks).",
       "dYdX rewards (retroactive mining 2021, trading rewards until 2023): no deadline, about 5.9 million DYDX never claimed. Open dydx.community with the eligible wallet and use Claim rewards; it reads your amount and proof from dYdX's published list and claims on Ethereum.",
       "COW for locked GNO (GNO locked in 2021, on Ethereum or Gnosis Chain): fully vested since February 2026, no deadline. Open swap.cow.fi → Account with the eligible wallet, on the network where you locked, and claim in the Locked GNO vesting card.",
       "Zora, April 2025 (Base): no deadline. Open zora.co with the eligible wallet, or call claim(your address) on the claim contract (0x0000000002ba96c69b95e32caab8fc38bab8b3f8) on Basescan, from the eligible wallet.",
+      "Hedgey claim campaigns (airdrops and distributions run by many teams on Ethereum, OP Mainnet, Base and Arbitrum): open the claim page given in the result (app.hedgey.finance/claim/…) with the eligible wallet, on the network named in the result, and claim before the campaign's end date.",
       "Curve, August 2020: early-user CRV, fully vested. On the vesting contract (0x575CCD8e2D300e2377B43478339E364000318E2c) on Etherscan, Write Contract → claim, with your address. Anyone can send it for you; the CRV always goes to the eligible address.",
       "Safe, 2022: only if you redeemed your allocation back then. Open app.safe.global with the eligible wallet and claim the vested SAFE, or call claimVestedTokens on the vesting contract.",
       "1inch (Dec 2020), Lido (early stakers, Jan 2021, and 1inch LPs, Mar 2021) and Convex (May 2021): no deadline. Call claim on the project's distributor on Etherscan with your index, amount and proof, from 1inch's API (governance.1inch.io), github.com/lidofinance/airdrop-data or github.com/convex-eth/platform.",

@@ -88,6 +88,7 @@ export const NETWORK_COLORS: Record<string, string> = {
   "zora-rewards": "linear-gradient(135deg,#A1723A,#2B5DF0)",
   "sablier-streams": "linear-gradient(135deg,#FF7300,#FFB800)",
   "aerodrome-velodrome": "linear-gradient(135deg,#0433FF,#FF1100)",
+  "hedgey-claims": "linear-gradient(135deg,#1E1B4B,#7C3AED)",
   "reclaim-rent": "linear-gradient(135deg,#9945FF,#14F195)",
   "reclaim-stake": "linear-gradient(135deg,#14F195,#1A1A1A)",
   "reclaim-marinade": "linear-gradient(135deg,#308D8A,#C7F284)",

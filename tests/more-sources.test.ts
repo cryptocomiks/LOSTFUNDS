@@ -6,6 +6,7 @@ import { checkCryptoPunks, checkFomo3d } from "../src/lib/checks/oldcontracts.ts
 import { checkSablier } from "../src/lib/checks/sablier.ts";
 import { checkLiquityV2 } from "../src/lib/checks/liquity-v2.ts";
 import { checkVeDex } from "../src/lib/checks/aerodrome.ts";
+import { checkHedgey } from "../src/lib/checks/hedgey.ts";
 import { checkStarknet, LOG_MESSAGE_TO_L1, messageHash } from "../src/lib/checks/starknet.ts";
 import { checkZoraRewards } from "../src/lib/checks/zora-rewards.ts";
 import { NETWORK_COLORS } from "../src/lib/brand.ts";
@@ -363,6 +364,82 @@ describe("Starknet → Ethereum", () => {
   });
 });
 
+/* ───────────────────────── Hedgey claim campaigns ───────────────────────── */
+
+describe("Hedgey claim campaigns", () => {
+  const CAMPAIGNS = getAddress("0x8A2725a6f04816A5274dDD9FEaDd3bd0C253C1A6");
+  const TOKEN = getAddress("0x00000000000000000000000000000000000c0ffe");
+  const SPAM = getAddress("0x000000000000000000000000000000000000dead");
+  const STARTED = parseAbiItem(
+    "event CampaignStarted(bytes16 indexed id, (address manager, address token, uint256 amount, uint256 start, uint256 end, uint8 tokenLockup, bytes32 root, bool delegating) campaign, uint256 totalClaimers)",
+  );
+  const NOW = BigInt(Math.floor(Date.now() / 1000));
+  const OPEN = "0xaaaaaaaabbbbccccddddeeeeeeeeeeee";
+  const ENDED = "0x11111111222233334444555555555555";
+  const JUNK = "0x99999999888877776666555555555555";
+  const uuid = (id: string) => `${id.slice(2, 10)}-${id.slice(10, 14)}-${id.slice(14, 18)}-${id.slice(18, 22)}-${id.slice(22, 34)}`;
+  const campaigns: Record<string, [Address, bigint, bigint]> = { [OPEN]: [TOKEN, 1000n * e18, NOW + 86400n * 90n], [ENDED]: [TOKEN, 500n * e18, NOW - 86400n], [JUNK]: [SPAM, 9n * e18, NOW + 86400n] };
+  const started = (id: string) =>
+    world.addTx({
+      chainId: 1,
+      hash: keccak256(toHex(`hedgey${id}`)),
+      from: USER,
+      to: CAMPAIGNS,
+      blockNumber: 20_000_000n,
+      timestamp: 1_750_000_000,
+      logs: [
+        {
+          address: CAMPAIGNS,
+          event: STARTED,
+          args: { id, campaign: { manager: OTHER, token: campaigns[id][0], amount: campaigns[id][1], start: 0n, end: campaigns[id][2], tokenLockup: 0, root: `0x${"00".repeat(32)}`, delegating: false }, totalClaimers: 10n },
+        },
+      ],
+    });
+  before(() => {
+    for (const id of [OPEN, ENDED, JUNK]) started(id);
+    world.addContract(
+      1,
+      CAMPAIGNS,
+      parseAbi([
+        "function campaigns(bytes16) view returns (address manager, address token, uint256 amount, uint256 start, uint256 end, uint8 tokenLockup, bytes32 root, bool delegating)",
+        "function claimed(bytes16, address) view returns (bool)",
+        "function claim(bytes16 campaignId, bytes32[] proof, uint256 claimAmount)",
+      ]),
+      {
+        campaigns: ([id]) => {
+          const c = campaigns[id as string] ?? [zeroAddress, 0n, 0n];
+          return [OTHER, c[0], c[1], 0n, c[2], 0, `0x${"00".repeat(32)}`, false];
+        },
+        claimed: ([, a]) => a === REJECTED,
+        claim: () => {},
+      },
+    );
+    world.addContract(1, TOKEN, parseAbi(["function symbol() view returns (string)", "function decimals() view returns (uint8)"]), { symbol: () => "COFFE", decimals: () => 18 });
+    world.addContract(1, SPAM, parseAbi(["function symbol() view returns (string)", "function decimals() view returns (uint8)"]), { symbol: () => "SCAM", decimals: () => 18 });
+    world.prices[`ethereum:${TOKEN.toLowerCase()}`] = 1;
+    const api = "https://api.hedgey.finance/token-claims/proof";
+    for (const id of [OPEN, JUNK]) {
+      world.static[`${api}/${uuid(id)}/${USER}`] = { amount: String(25n * e18), proof: [`0x${"22".repeat(32)}`] };
+      world.static[`${api}/${uuid(id)}/${REJECTED}`] = { amount: String(25n * e18), proof: [`0x${"22".repeat(32)}`] };
+      world.static[`${api}/${uuid(id)}/${NOBODY}`] = { canClaim: false };
+    }
+  });
+
+  test("open campaigns the address can claim, priced tokens only", async () => {
+    const r = await checkHedgey(USER);
+    const eth = r.findings.filter((f) => f.id.includes(":1:"));
+    assert.equal(eth.length, 1, "the ended campaign and the unpriced token are left out");
+    assert.equal(eth[0].networkName, "Hedgey claim · COFFE · Ethereum");
+    assert.equal(eth[0].asset.amount, 25n * e18);
+    assert.equal(eth[0].txUrl, `https://app.hedgey.finance/claim/${uuid(OPEN)}`);
+  });
+
+  test("already claimed, or not in the campaign: nothing", async () => {
+    assert.deepEqual((await checkHedgey(REJECTED)).findings.filter((f) => f.id.includes(":1:")), []);
+    assert.deepEqual((await checkHedgey(NOBODY)).findings, []);
+  });
+});
+
 describe("Wiring", () => {
   test("each new source has a group, a color and runs for Ethereum addresses", () => {
     for (const [id, group] of [
@@ -373,6 +450,7 @@ describe("Wiring", () => {
       ["liquity-v2", "rewards"],
       ["aerodrome-velodrome", "rewards"],
       ["starknet", "l2"],
+      ["hedgey-claims", "airdrops"],
     ] as const) {
       const s = sourceById(id);
       assert.ok(s, id);

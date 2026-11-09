@@ -624,6 +624,15 @@
   ]
  },
  {
+  "id": "hedgey-claims",
+  "name": "Hedgey claims",
+  "group": "airdrops",
+  "bridgeUrl": "app.hedgey.finance",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
   "id": "aave-v2",
   "name": "Aave v2",
   "group": "rewards",
