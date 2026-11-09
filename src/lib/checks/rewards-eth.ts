@@ -5,6 +5,7 @@ import { CONVEX, checkConvex } from "./convex";
 import { checkEigenRewards, checkEigenWithdrawals, EIGEN_REWARDS, EIGEN_WITHDRAWALS } from "./eigenlayer";
 import { BALANCER_FEES, checkBalancerFees, checkCurveFees, CURVE_FEES } from "./feedistributors";
 import { checkLido, LIDO } from "./lido";
+import { checkLiquity, LIQUITY } from "./liquity";
 import { checkLocks, LOCKS } from "./locks";
 import { checkSafetyModule, SAFETY_MODULE } from "./safetymodule";
 import { checkStargate, STARGATE_VESTG } from "./stargate";
@@ -36,4 +37,5 @@ export const ETH_REWARD_SOURCES: CheckSource[] = [
   source(CONVEX, "convexfinance.com", checkConvex),
   source(BALANCER_FEES, "balancer.fi (veBAL)", checkBalancerFees),
   source(STARGATE_VESTG, "stargate.finance (Stake)", checkStargate),
+  source(LIQUITY, "a Liquity frontend, or Etherscan", checkLiquity),
 ];

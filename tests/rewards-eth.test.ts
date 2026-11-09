@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { before, describe, test } from "node:test";
 import { base64 } from "@scure/base";
-import { hexToBytes, parseAbi, type Address, type Hex } from "viem";
+import { getAddress, hexToBytes, parseAbi, type Address, type Hex } from "viem";
 import { checkSource, sourcesFor } from "../src/lib/checker.ts";
 import { checkConvex } from "../src/lib/checks/convex.ts";
 import { checkEigenRewards, checkEigenWithdrawals } from "../src/lib/checks/eigenlayer.ts";
 import { checkBalancerFees, checkCurveFees } from "../src/lib/checks/feedistributors.ts";
 import { checkLido } from "../src/lib/checks/lido.ts";
+import { checkLiquity } from "../src/lib/checks/liquity.ts";
 import { checkLocks } from "../src/lib/checks/locks.ts";
 import { checkSafetyModule } from "../src/lib/checks/safetymodule.ts";
 import { checkSynthetixEscrow } from "../src/lib/checks/synthetix.ts";
@@ -741,6 +742,94 @@ describe("Convex staking", () => {
   });
 });
 
+/* ───────────────────────── Liquity ───────────────────────── */
+
+describe("Liquity", () => {
+  const PROXY = getAddress("0x00000000000000000000000000000000000dd5a1");
+  const DSA = getAddress("0x00000000000000000000000000000000000d5a01");
+  const OTHER_DSA = getAddress("0x00000000000000000000000000000000000d5a02");
+  const surplus: Record<string, bigint> = { [USER]: 2n * e18, [PROXY]: 3n * e18, [DSA]: e18 / 2n, [REJECTED]: 5n * e18 };
+  const spEth: Record<string, bigint> = { [USER]: e18 / 4n };
+  const spLqty: Record<string, bigint> = { [USER]: 90n * e18 };
+  const stakeEth: Record<string, bigint> = { [OTHER_DSA]: e18 / 10n };
+  const stakeLusd: Record<string, bigint> = { [OTHER_DSA]: 3000n * e18, [REJECTED]: 50n * e18 };
+  const view = (m: Record<string, bigint>) => ([a]: readonly unknown[]) => m[a as string] ?? 0n;
+  before(() => {
+    world.addContract(1, "0x4678f0a6958e4D2Bc4F1BAF7Bc52E8F3564f3fE4", parseAbi(["function proxies(address) view returns (address)"]), {
+      proxies: ([a]) => (a === USER ? PROXY : "0x0000000000000000000000000000000000000000"),
+    });
+    // USER controls two Instadapp accounts (ids 7 → 9).
+    world.addContract(
+      1,
+      "0x4c8a1BEb8a87765788946D6B19C6C6355194AbEb",
+      parseAbi([
+        "function userLink(address) view returns (uint64 first, uint64 last, uint64 count)",
+        "function userList(address, uint64) view returns (uint64 prev, uint64 next)",
+        "function accountAddr(uint64) view returns (address)",
+      ]),
+      {
+        userLink: ([a]) => (a === USER ? [7n, 9n, 2n] : [0n, 0n, 0n]),
+        userList: ([, id]) => (id === 7n ? [0n, 9n] : [7n, 0n]),
+        accountAddr: ([id]) => (id === 7n ? DSA : OTHER_DSA),
+      },
+    );
+    world.addContract(1, "0x3D32e8b97Ed5881324241Cf03b2DA5E2EBcE5521", parseAbi(["function getCollateral(address) view returns (uint256)"]), { getCollateral: view(surplus) });
+    world.addContract(1, "0x24179CD81c9e782A4096035f7eC97fB8B783e007", parseAbi(["function claimCollateral()"]), {
+      claimCollateral: (_, { from }) => {
+        if (!surplus[from as string] || from === REJECTED) revert("CollSurplusPool: No collateral available to claim");
+      },
+    });
+    world.addContract(
+      1,
+      "0x66017D22b0f8556afDd19FC67041899Eb65a21bb",
+      parseAbi(["function getDepositorETHGain(address) view returns (uint256)", "function getDepositorLQTYGain(address) view returns (uint256)", "function withdrawFromSP(uint256)"]),
+      {
+        getDepositorETHGain: view(spEth),
+        getDepositorLQTYGain: view(spLqty),
+        withdrawFromSP: (_, { from }) => {
+          if (!spEth[from as string]) revert("StabilityPool: User must have a non-zero deposit");
+        },
+      },
+    );
+    world.addContract(
+      1,
+      "0x4f9Fbb3f1E99B56e0Fe2892e623Ed36A76Fc605d",
+      parseAbi(["function getPendingETHGain(address) view returns (uint256)", "function getPendingLUSDGain(address) view returns (uint256)", "function unstake(uint256)"]),
+      {
+        getPendingETHGain: view(stakeEth),
+        getPendingLUSDGain: view(stakeLusd),
+        unstake: (_, { from }) => {
+          if (from !== OTHER_DSA) revert("LQTYStaking: User must have a non-zero stake");
+        },
+      },
+    );
+  });
+
+  test("finds trove surplus, Stability Pool gains and staking fees, in the wallet, its DSProxy and its Instadapp accounts", async () => {
+    const r = await checkLiquity(USER);
+    const got = r.findings.map((f) => [f.networkName, f.asset.symbol, f.asset.amount, f.id.split(":").pop()]).sort();
+    assert.deepEqual(got, [
+      ["Liquity LQTY staking", "ETH", e18 / 10n, OTHER_DSA],
+      ["Liquity LQTY staking", "LUSD", 3000n * e18, OTHER_DSA],
+      ["Liquity Stability Pool", "ETH", e18 / 4n, USER],
+      ["Liquity Stability Pool", "LQTY", 90n * e18, USER],
+      ["Liquity: collateral left after your trove closed", "ETH", e18 / 2n, DSA],
+      ["Liquity: collateral left after your trove closed", "ETH", 2n * e18, USER],
+      ["Liquity: collateral left after your trove closed", "ETH", 3n * e18, PROXY],
+    ].sort());
+    const proxied = r.findings.find((f) => f.id.endsWith(PROXY))!;
+    assert.match(proxied.note ?? "", /through your DSProxy/);
+    assert.match(proxied.claimAt ?? "", /DeFi Saver/);
+    assert.equal(r.findings.find((f) => f.id.endsWith(DSA))!.claimAt, "instadapp.io");
+    assert.ok(r.findings.every((f) => f.status === "ready" && f.timestamp === 0));
+  });
+
+  test("nothing without positions; hidden when the claim would be rejected", async () => {
+    assert.deepEqual(await checkLiquity(NOBODY), { findings: [], completed: 0 });
+    assert.deepEqual((await checkLiquity(REJECTED)).findings, []);
+  });
+});
+
 /* ───────────────────────── Wiring ───────────────────────── */
 
 const CHECKS: Record<string, (user: Address) => Promise<{ findings: unknown[]; error?: string }>> = {
@@ -753,6 +842,7 @@ const CHECKS: Record<string, (user: Address) => Promise<{ findings: unknown[]; e
   "synthetix-escrow": checkSynthetixEscrow,
   "convex-staking": checkConvex,
   "balancer-fees": checkBalancerFees,
+  liquity: checkLiquity,
 };
 const IDS = Object.keys(CHECKS);
 
