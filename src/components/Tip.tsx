@@ -5,22 +5,23 @@ import { Reveal } from "./Reveal";
 import { Section } from "./Section";
 
 export function Tip() {
-  const { evm, solana } = SITE.tips;
-  if (!evm.address && !solana.address) return null;
+  const { evm, solana, bitcoin } = SITE.tips;
+  if (!evm.address && !solana.address && !bitcoin.address) return null;
   const rows = [
     evm.address && { chain: "Ethereum, Base, Arbitrum and any EVM chain", address: evm.address, label: evm.label },
     solana.address && { chain: "Solana", address: solana.address, label: "" },
+    bitcoin.address && { chain: "Bitcoin", address: bitcoin.address, label: "" },
   ].filter(Boolean) as { chain: string; address: string; label: string }[];
 
   return (
     <Section
       id="tip"
-      eyebrow={<T en="Support" fr="Soutenir" />}
-      title={<T en="Found something? Leave a tip." fr="Vous avez retrouvé quelque chose ? Laissez un pourboire." />}
+      eyebrow={<T en="Support the project" fr="Soutenir le projet" />}
+      title={<T en="☕ Buy me a coffee" fr="☕ Offrez-moi un café" />}
       intro={
         <T
-          en="This checker is free, and claiming always sends 100% of the funds to your own wallet. We never take a cut. If it helped you recover funds, a tip is appreciated, but it's entirely up to you."
-          fr="Cet outil est gratuit, et une réclamation envoie toujours 100 % des fonds sur votre wallet. Nous ne prenons aucune commission. S'il vous a aidé, un pourboire fait plaisir, mais c'est entièrement libre."
+          en="This checker is free, and claiming always sends 100% of the funds to your own wallet. We never take a cut. Keeping it running and adding new sources takes time, so if it helped you, a coffee in crypto is greatly appreciated. Entirely up to you."
+          fr="Cet outil est gratuit, et une réclamation envoie toujours 100 % des fonds sur votre wallet. Nous ne prenons aucune commission. Le maintenir et ajouter de nouvelles sources prend du temps : s'il vous a aidé, un café en crypto fait vraiment plaisir. Entièrement libre."
         />
       }
     >

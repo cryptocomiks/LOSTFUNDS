@@ -6,7 +6,7 @@ import { T } from "@/lib/i18n";
 import { Logo, XLogo } from "./icons";
 import { LangToggle } from "./LangToggle";
 
-const hasTips = Boolean(SITE.tips.evm.address || SITE.tips.solana.address);
+const hasTips = Boolean(SITE.tips.evm.address || SITE.tips.solana.address || SITE.tips.bitcoin.address);
 
 /** The page's sections, in order. */
 const LINKS: { id: string; en: string; fr: string }[] = [
@@ -99,6 +99,21 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-0.5">
+          {hasTips && (
+            <a
+              href="#tip"
+              onClick={() => setOpen(false)}
+              className="mr-1 inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#FFDD00] px-3 py-1.5 text-[13px] font-semibold text-[#1d1d1f] shadow-soft transition hover:brightness-95 active:scale-[0.97]"
+            >
+              <span aria-hidden>☕</span>
+              <span className="hidden sm:inline">
+                <T en="Buy me a coffee" fr="Offrez-moi un café" />
+              </span>
+              <span className="sm:hidden">
+                <T en="Support" fr="Soutenir" />
+              </span>
+            </a>
+          )}
           {SITE.twitter && (
             <a href={SITE.twitter} target="_blank" rel="noopener noreferrer" className={link(false)} aria-label="X (Twitter)">
               <XLogo width={15} height={15} />
