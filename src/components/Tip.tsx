@@ -1,6 +1,7 @@
 import { SITE } from "@/config/site";
 import { T } from "@/lib/i18n";
 import { CopyButton } from "./CopyButton";
+import { QrCode } from "./QrCode";
 import { Reveal } from "./Reveal";
 import { Section } from "./Section";
 
@@ -29,10 +30,13 @@ export function Tip() {
         {rows.map((r, i) => (
           <Reveal key={r.address} delay={i * 80}>
             <div className="flex flex-col gap-4 rounded-3xl border border-line bg-surface p-6 shadow-soft sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="text-[15px] font-semibold">{r.chain}</p>
-                <p className="mt-2 font-mono text-[14px] break-all text-text-2">{r.address}</p>
-                {r.label && <p className="mt-1 text-[13px] text-text-3">{r.label}</p>}
+              <div className="flex min-w-0 items-center gap-5">
+                <QrCode value={r.address} label={`QR code: ${r.chain} ${r.address}`} />
+                <div className="min-w-0">
+                  <p className="text-[15px] font-semibold">{r.chain}</p>
+                  <p className="mt-2 font-mono text-[14px] break-all text-text-2">{r.address}</p>
+                  {r.label && <p className="mt-1 text-[13px] text-text-3">{r.label}</p>}
+                </div>
               </div>
               <CopyButton value={r.address} />
             </div>
