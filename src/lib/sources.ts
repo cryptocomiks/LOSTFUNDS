@@ -15,6 +15,7 @@ import { checkKinto, KINTO } from "./checks/kinto";
 import { checkLegacy, LEGACY_LIST } from "./checks/legacy";
 import { checkLinea } from "./checks/linea";
 import { checkMerkl } from "./checks/merkl";
+import { checkCryptoPunks, checkFomo3d, CRYPTOPUNKS, FOMO3D } from "./checks/oldcontracts";
 import { checkOpenOrders, OPEN_ORDERS } from "./checks/openorders";
 import { checkOpStack } from "./checks/opstack";
 import { checkPolygon, POLYGON } from "./checks/polygon";
@@ -144,6 +145,8 @@ SOURCES.push(
   },
   { id: SCD.id, name: SCD.name, group: "legacy", bridgeUrl: "Etherscan (SCD Tub, or your DSProxy)", accepts: ["evm"], run: (user) => checkScd(user as Address) },
   { id: KINTO.id, name: KINTO.name, group: "legacy", bridgeUrl: "Etherscan (KintoLeftOver → acceptAndClaim)", accepts: ["evm"], run: (user) => checkKinto(user as Address) },
+  { id: CRYPTOPUNKS.id, name: CRYPTOPUNKS.name, group: "legacy", bridgeUrl: "Etherscan (CryptoPunksMarket)", accepts: ["evm"], run: (user) => checkCryptoPunks(user as Address) },
+  { id: FOMO3D.id, name: FOMO3D.name, group: "legacy", bridgeUrl: "Etherscan (FoMo3D → withdraw)", accepts: ["evm"], run: (user) => checkFomo3d(user as Address) },
 );
 
 export const sourceById = (id: string) => SOURCES.find((s) => s.id === id);

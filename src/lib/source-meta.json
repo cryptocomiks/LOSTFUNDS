@@ -750,6 +750,24 @@
   ]
  },
  {
+  "id": "zora-rewards",
+  "name": "Zora protocol rewards",
+  "group": "rewards",
+  "bridgeUrl": "zora.co (profile → rewards)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "sablier-streams",
+  "name": "Sablier streams",
+  "group": "rewards",
+  "bridgeUrl": "app.sablier.com",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
   "id": "reclaim-rent",
   "name": "Empty token accounts",
   "group": "reclaim",
@@ -943,6 +961,24 @@
   "name": "Kinto (shut down)",
   "group": "legacy",
   "bridgeUrl": "Etherscan (KintoLeftOver → acceptAndClaim)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "cryptopunks-market",
+  "name": "CryptoPunks market",
+  "group": "legacy",
+  "bridgeUrl": "Etherscan (CryptoPunksMarket)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "fomo3d",
+  "name": "FoMo3D",
+  "group": "legacy",
+  "bridgeUrl": "Etherscan (FoMo3D → withdraw)",
   "accepts": [
    "evm"
   ]

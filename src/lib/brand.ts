@@ -84,6 +84,8 @@ export const NETWORK_COLORS: Record<string, string> = {
   "stargate-vestg": "linear-gradient(135deg,#A6F3FF,#1A1A2E)",
   liquity: "linear-gradient(135deg,#2EB6EA,#745DDF)",
   "apecoin-staking": "linear-gradient(135deg,#0054FA,#0A1E5E)",
+  "zora-rewards": "linear-gradient(135deg,#A1723A,#2B5DF0)",
+  "sablier-streams": "linear-gradient(135deg,#FF7300,#FFB800)",
   "reclaim-rent": "linear-gradient(135deg,#9945FF,#14F195)",
   "reclaim-stake": "linear-gradient(135deg,#14F195,#1A1A1A)",
   "reclaim-marinade": "linear-gradient(135deg,#308D8A,#C7F284)",
@@ -107,4 +109,6 @@ export const NETWORK_COLORS: Record<string, string> = {
   "polygon-staking": "#6C00F6",
   scd: "linear-gradient(135deg,#F4B731,#1AAB9B)",
   kinto: "linear-gradient(135deg,#7D52F4,#16133B)",
+  "cryptopunks-market": "linear-gradient(135deg,#638596,#E8C76F)",
+  fomo3d: "linear-gradient(135deg,#7A0F0F,#F5B700)",
 };

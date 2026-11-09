@@ -53,7 +53,7 @@ export const GUIDES: Guide[] = [
   {
     id: "rewards",
     title: "Unclaimed rewards & withdrawals",
-    subtitle: "Lido, expired locks, Curve and Balancer fees, EigenLayer, Aave, Synthetix, Convex, Stargate, Liquity, ApeCoin",
+    subtitle: "Lido, expired locks, Curve and Balancer fees, EigenLayer, Aave, Synthetix, Convex, Stargate, Liquity, ApeCoin, Zora, Sablier",
     live: true,
     steps: [
       "Lido withdrawals: open stake.lido.fi/withdrawals/claim with the wallet that holds the withdrawal request (an unstETH NFT), select the requests that are ready and click Claim. A request still pending becomes claimable once Lido finalizes it, usually within 1 to 5 days. The ETH is never sent automatically.",
@@ -69,6 +69,8 @@ export const GUIDES: Guide[] = [
       "Stargate veSTG revenue share: if you held veSTG on August 10, 2025, when LayerZero bought Stargate, you are owed a share of half of Stargate's revenue for the six months that followed, in USDC (USDT on BNB Chain), with no deadline. Claim it on stargate.finance (Stake) with the wallet that held veSTG, on the chain named in the result, or call claimUsdc() (no arguments) on the distributor 0x1E68BE052a9a9ff04714582831457a9B319Bcafe, the same address on Ethereum, Arbitrum, BNB Chain, Polygon, OP Mainnet, Avalanche and Fantom.",
       "Liquity: when a Liquity trove is redeemed against, or liquidated in Recovery Mode, the collateral above its debt is set aside for its owner and never sent: call claimCollateral() (no arguments) on Liquity's BorrowerOperations (0x24179CD81c9e782A4096035f7eC97fB8B783e007) on Etherscan, from the address named in the result. If the trove was opened through a DSProxy (DeFi Saver and similar apps) or an Instadapp account, claim it from that app. ETH and LQTY earned in the Stability Pool are paid by withdrawFromSP(0) on 0x66017D22b0f8556afDd19FC67041899Eb65a21bb, ETH and LUSD fees from LQTY staking by unstake(0) on 0x4f9Fbb3f1E99B56e0Fe2892e623Ed36A76Fc605d.",
       "ApeCoin staking: ApeCoin's original staking contract on Ethereum (0x5954aB967Bc958940b7EB73ee84797Dc8a2AFbb9) stopped paying rewards in November 2024 (APE pool) and April 2025 (BAYC, MAYC and BAKC pools), when staking moved to ApeChain. APE left there earns nothing. On Etherscan, Write Contract from the staking wallet: withdrawSelfApeCoin(amount) and claimSelfApeCoin() for the APE pool; withdrawSelfBAYC / withdrawSelfMAYC with your token IDs and amounts, claimSelfBAYC / claimSelfMAYC with your token IDs for the ape pools; withdrawBAKC and claimSelfBAKC with the ape each dog is paired with. The amounts are in the result. NFT stakes belong to whoever holds the NFT today.",
+      "Zora rewards: every mint of a Zora NFT or coin you created, or of a mint link you shared, credits you ETH in Zora's ProtocolRewards contract (0x7777777F279eba3d3Ad8F4E708545291A6fDBA8B, the same on Zora, Base, OP Mainnet, Arbitrum and Ethereum). It is never sent: withdraw it on zora.co from your profile, or call withdraw(your address, amount) on the contract with the block explorer of the chain named in the result.",
+      "Sablier streams: tokens vested to you through Sablier (vesting, payroll, team or investor allocations) stay in the stream until you withdraw them. Open app.sablier.com with the wallet that holds the stream (the link in the result opens it), and click Withdraw.",
       "STG still locked in veSTG: every veSTG lock was unlocked when LayerZero bought Stargate. Call withdraw() (no arguments) on the veSTG contract of the chain named in the result, from the wallet that locked, and the STG comes back. STG converts into ZRO at a fixed rate (1 STG = 0.08634 ZRO) at stargate.finance until December 15, 2026.",
     ],
     note: "Every claim is an ordinary transaction from your own wallet, and the funds always go to your address. Nobody legitimate will ask for your seed phrase, or to \"approve\" tokens so you can receive them.",
@@ -124,7 +126,7 @@ export const GUIDES: Guide[] = [
   {
     id: "legacy-deposits",
     title: "Old exchanges, ENS deposits and staking",
-    subtitle: "EtherDelta, IDEX v1, Token.Store, SingularX, Switcheo, ENS auction deeds, Polygon staking, Maker SCD vaults, Kinto",
+    subtitle: "EtherDelta, IDEX v1, Token.Store, SingularX, Switcheo, ENS auction deeds, Polygon staking, Maker SCD vaults, Kinto, CryptoPunks, FoMo3D",
     live: true,
     steps: [
       "EtherDelta and ForkDelta (2016–2022), Token.Store and SingularX: what you left on these exchanges is still in their contracts, and you can withdraw it at any time, alone. For EtherDelta's main contract, ForkDelta's withdrawal page (forkdelta.app/shutdown/withdraw) lists your balances. Or use Etherscan: open the contract shown in the result, Write Contract, connect your wallet and call withdraw(amount) for ETH or withdrawToken(token, amount) for a token, with the amount given in the result.",
@@ -134,6 +136,8 @@ export const GUIDES: Guide[] = [
       "Polygon staking: rewards, and unstaked POL whose waiting period is over, are claimed at staking.polygon.technology with the wallet that staked. POL still delegated to a validator that stopped validating earns nothing: unstake it there, wait 80 checkpoints (about a day), then claim it.",
       "Maker Single-Collateral Dai vaults (CDPs, shut down in 2020): if the vault still has debt, anyone can settle it with bite(cup) on the Tub (0x448a5065aeBB8E423F0896E6c5D525C040f59af3). Then the owner withdraws the rest: from a vault opened through Maker's CDP Portal, call execute on your DSProxy with the target and data given in the result (the ETH comes straight to your wallet); from a vault owned by your wallet itself, call free on the Tub, approve the Tub to spend that PETH, call exit, and unwrap the WETH.",
       "Kinto (shut down in September 2025): balances of at least $50 left on Kinto were converted to USDC and wait in the KintoLeftOver contract on Ethereum (0x47A56a558892De88367108183Df913852617e77C), with no deadline. On Etherscan, Write Contract → acceptAndClaim() (no arguments), from the wallet named in the result: the USDC is sent to it in the same transaction.",
+      "CryptoPunks market (2017): ETH from punks you sold, and from your offers that were outbid, waits in the market contract (0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB). On Etherscan, Write Contract → withdraw() from the wallet named in the result. A bid left open for years keeps its ETH locked too: withdrawBidForPunk(punk number) sends it back.",
+      "FoMo3D (2018): winnings, key dividends and referral rewards stay in each player's vault. On Etherscan, open the game named in the result (FoMo3D: 0xA62142888ABa8370742bE823c1782D17A0389Da1, FoMo3D Quick: 0x4e8ecF79AdE5e2C49B9e30D795517A81e0Bf00B8), Write Contract → withdraw() from the wallet that played: the whole vault is sent to it.",
     ],
     note: "Each of these is an ordinary Ethereum transaction sent from your own wallet. Nobody can withdraw for you, and you never need to share a key or sign a message for it. Check the contract address on Etherscan before sending anything.",
     manual: [

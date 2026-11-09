@@ -1,6 +1,8 @@
 import type { Address } from "viem";
 import type { CheckSource } from "../sources";
 import { APECOIN_STAKING, checkApeCoinStaking } from "./apecoin";
+import { checkZoraRewards, ZORA_REWARDS } from "./zora-rewards";
+import { checkSablier, SABLIER } from "./sablier";
 import type { CheckOutput, FindingSource } from "./common";
 import { CONVEX, checkConvex } from "./convex";
 import { checkEigenRewards, checkEigenWithdrawals, EIGEN_REWARDS, EIGEN_WITHDRAWALS } from "./eigenlayer";
@@ -40,4 +42,6 @@ export const ETH_REWARD_SOURCES: CheckSource[] = [
   source(STARGATE_VESTG, "stargate.finance (Stake)", checkStargate),
   source(LIQUITY, "a Liquity frontend, or Etherscan", checkLiquity),
   source(APECOIN_STAKING, "Etherscan (ApeCoinStaking)", checkApeCoinStaking),
+  source(ZORA_REWARDS, "zora.co (profile → rewards)", checkZoraRewards),
+  source(SABLIER, "app.sablier.com", checkSablier),
 ];

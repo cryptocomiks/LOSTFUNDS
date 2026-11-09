@@ -61,8 +61,8 @@ const CARDS: { group: Group; title: ReactNode; text: ReactNode; guide: string; i
     title: <T en="Old contracts & migrations" fr="Anciens contrats et migrations" />,
     text: (
       <T
-        en="Deposits forgotten in old contracts, and old tokens that are only worth something once migrated or redeemed."
-        fr="Des dépôts oubliés dans d'anciens contrats, et de vieux tokens qui ne valent quelque chose qu'une fois migrés ou échangés."
+        en="Deposits forgotten in old contracts (EtherDelta, CryptoPunks, FoMo3D…), and old tokens that are only worth something once migrated or redeemed."
+        fr="Des dépôts oubliés dans d'anciens contrats (EtherDelta, CryptoPunks, FoMo3D…), et de vieux tokens qui ne valent quelque chose qu'une fois migrés ou échangés."
       />
     ),
     guide: "legacy",
