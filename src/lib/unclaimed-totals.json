@@ -1,0 +1,271 @@
+{
+ "measuredAt": 1794306758,
+ "totalUsd": 296869040,
+ "sources": [
+  {
+   "id": "the-dao",
+   "usd": 171864527,
+   "parts": [
+    {
+     "symbol": "ETH",
+     "amount": 82132.37,
+     "usd": 171864527
+    }
+   ]
+  },
+  {
+   "id": "old-exchanges",
+   "usd": 69053399,
+   "parts": [
+    {
+     "symbol": "ETH",
+     "amount": 32999.94,
+     "usd": 69053399
+    }
+   ]
+  },
+  {
+   "id": "digixdao",
+   "usd": 24268475,
+   "parts": [
+    {
+     "symbol": "ETH",
+     "amount": 11597.67,
+     "usd": 24268475
+    }
+   ]
+  },
+  {
+   "id": "apecoin",
+   "usd": 15224716,
+   "parts": [
+    {
+     "symbol": "APE",
+     "amount": 149261022.47,
+     "usd": 15224716
+    }
+   ]
+  },
+  {
+   "id": "zksync-lite",
+   "usd": 5630237,
+   "parts": [
+    {
+     "symbol": "ETH",
+     "amount": 2191.54,
+     "usd": 4585863
+    },
+    {
+     "symbol": "USDC",
+     "amount": 607339.76,
+     "usd": 607187
+    },
+    {
+     "symbol": "USDT",
+     "amount": 237231.7,
+     "usd": 236930
+    },
+    {
+     "symbol": "DAI",
+     "amount": 163954.11,
+     "usd": 163943
+    },
+    {
+     "symbol": "WBTC",
+     "amount": 0.49,
+     "usd": 36314
+    }
+   ]
+  },
+  {
+   "id": "liquity",
+   "usd": 4693609,
+   "parts": [
+    {
+     "symbol": "ETH",
+     "amount": 2200.5,
+     "usd": 4604616
+    },
+    {
+     "symbol": "wstETH",
+     "amount": 28.78,
+     "usd": 75158
+    },
+    {
+     "symbol": "WETH",
+     "amount": 5.26,
+     "usd": 10993
+    },
+    {
+     "symbol": "rETH",
+     "amount": 1.16,
+     "usd": 2842
+    }
+   ]
+  },
+  {
+   "id": "stargate",
+   "usd": 1751811,
+   "parts": [
+    {
+     "symbol": "STG",
+     "amount": 13883550.39,
+     "usd": 1751811
+    }
+   ]
+  },
+  {
+   "id": "uniswap",
+   "usd": 1513645,
+   "parts": [
+    {
+     "symbol": "UNI",
+     "amount": 216765.09,
+     "usd": 1513645
+    }
+   ]
+  },
+  {
+   "id": "aerodrome",
+   "usd": 849550,
+   "count": 14269,
+   "parts": [
+    {
+     "symbol": "AERO",
+     "amount": 1523030.98,
+     "usd": 849550
+    }
+   ]
+  },
+  {
+   "id": "solana-buffers",
+   "usd": 630130,
+   "count": 3314,
+   "parts": [
+    {
+     "symbol": "SOL",
+     "amount": 7399.37,
+     "usd": 630130
+    }
+   ]
+  },
+  {
+   "id": "ens-deeds",
+   "usd": 392046,
+   "count": 10257,
+   "parts": [
+    {
+     "symbol": "ETH",
+     "amount": 187.35,
+     "usd": 392046
+    }
+   ]
+  },
+  {
+   "id": "velodrome",
+   "usd": 331385,
+   "count": 3482,
+   "parts": [
+    {
+     "symbol": "VELO",
+     "amount": 13345094.77,
+     "usd": 331385
+    }
+   ]
+  },
+  {
+   "id": "starknet",
+   "usd": 268706,
+   "count": 16429,
+   "parts": [
+    {
+     "symbol": "ETH",
+     "amount": 125.64,
+     "usd": 262905
+    },
+    {
+     "symbol": "DAI",
+     "amount": 3869.36,
+     "usd": 3869
+    },
+    {
+     "symbol": "USDC",
+     "amount": 709.78,
+     "usd": 710
+    },
+    {
+     "symbol": "USDT",
+     "amount": 614.25,
+     "usd": 613
+    },
+    {
+     "symbol": "STRK",
+     "amount": 7438.26,
+     "usd": 287
+    },
+    {
+     "symbol": "LUSD",
+     "amount": 178.4,
+     "usd": 182
+    },
+    {
+     "symbol": "rETH",
+     "amount": 0.02,
+     "usd": 49
+    },
+    {
+     "symbol": "LBTC",
+     "amount": 0,
+     "usd": 33
+    },
+    {
+     "symbol": "enzoBTC",
+     "amount": 0,
+     "usd": 19
+    },
+    {
+     "symbol": "WBTC",
+     "amount": 0,
+     "usd": 17
+    },
+    {
+     "symbol": "wstETH",
+     "amount": 0,
+     "usd": 11
+    },
+    {
+     "symbol": "LIT",
+     "amount": 2.79,
+     "usd": 9
+    },
+    {
+     "symbol": "tBTC",
+     "amount": 0,
+     "usd": 2
+    }
+   ]
+  },
+  {
+   "id": "zora-rewards",
+   "usd": 239428,
+   "parts": [
+    {
+     "symbol": "ETH",
+     "amount": 114.42,
+     "usd": 239428
+    }
+   ]
+  },
+  {
+   "id": "kinto",
+   "usd": 157376,
+   "parts": [
+    {
+     "symbol": "USDC",
+     "amount": 157415.48,
+     "usd": 157376
+    }
+   ]
+  }
+ ]
+}

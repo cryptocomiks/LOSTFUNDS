@@ -81,6 +81,12 @@ npm run build      # static export in out/ (IPFS / ENS / any static host)
 npx tsx tests/screenshots.ts shots   # screenshots of out/ with mocked chain data
 ```
 
+## The unclaimed totals on the home page
+
+`NODE_USE_ENV_PROXY=1 npx tsx scripts/measure-unclaimed.ts` reads, on-chain, what is still waiting to be claimed in the sources whose total can be read exactly (a contract that only holds what it owes its users, or a list the site ships), prices it with DefiLlama and writes `src/lib/unclaimed-totals.json` with the date. The home page shows that file (`src/components/Unclaimed.tsx`, labels in `src/lib/unclaimed.ts`). Run it again to refresh the figures; a source that can't be read is left out, and the file isn't written if fewer than 10 sources answered. Not counted, because their contracts also hold money that isn't forgotten: the CryptoPunks market (open bids), FoMo3D (the running pot), Lido's withdrawal queue, bridges.
+
+`scripts/starknet-withdrawals.ts` rebuilds the Starknet snapshot the same way (`public/legacy/starknet`).
+
 ## Many visitors at once
 
 There is no server: the page is static files on a CDN, and each visitor's browser queries the public nodes and APIs itself, so rate limits apply per visitor (per IP), not to the site as a whole. To keep each check light:

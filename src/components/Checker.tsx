@@ -10,6 +10,8 @@ import { formatAmount, formatDate, formatUsd, shortAddress } from "@/lib/format"
 import { GROUPS, type Group } from "@/lib/groups";
 import { sourceMetaById as sourceById, sourcesMetaFor as sourcesFor, type SourceMeta } from "@/lib/sourceMeta";
 import type { Finding, NetworkResult, WithdrawalStatus } from "@/lib/types";
+import { UNCLAIMED } from "@/lib/unclaimed";
+import { CountUp } from "./CountUp";
 import { ShareResult } from "./ShareResult";
 import {
   Alert,
@@ -469,7 +471,24 @@ export function Checker() {
             />
           </p>
 
-          <div className="animate-fade-up mx-auto mt-10 max-w-[680px]" style={{ animationDelay: "180ms" }}>
+          {/* What is out there, measured on-chain: the details are in the section below. Not on phones, where the address field must stay on the first screen. */}
+          <a
+            href="#unclaimed"
+            className="animate-fade-up group mx-auto mt-7 hidden flex-wrap sm:inline-flex items-baseline justify-center gap-x-2 gap-y-1 rounded-2xl px-3 py-1 text-[15px] text-text-2 transition hover:text-text"
+            style={{ animationDelay: "150ms" }}
+          >
+            <span className="text-gradient text-[22px] font-semibold tracking-tight sm:text-[26px]">
+              <CountUp value={UNCLAIMED.totalUsd} kind="usd" duration={2200} />
+            </span>
+            <span>
+              <T en="unclaimed, measured on-chain" fr="non réclamés, mesurés on-chain" />
+              <span aria-hidden className="ml-1 inline-block transition-transform group-hover:translate-y-0.5">
+                ↓
+              </span>
+            </span>
+          </a>
+
+          <div className="animate-fade-up mx-auto mt-8 max-w-[680px]" style={{ animationDelay: "180ms" }}>
             <p className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-line bg-surface/70 px-4 py-2 text-[13px] text-text-2 backdrop-blur">
               <Shield width={15} height={15} className="shrink-0 text-green" />
               <T

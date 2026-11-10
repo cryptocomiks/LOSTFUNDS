@@ -47,6 +47,13 @@ const QUESTIONS: { q: [string, string]; a: [string, string] }[] = [
     ],
   },
   {
+    q: ["Where do the unclaimed totals come from?", "D'où viennent les montants non réclamés affichés ?"],
+    a: [
+      "From the blockchains themselves. For each source in the list, we read what its contract still holds for its users (a claim contract, a refund pool, an old exchange's deposits…) and convert it at the day's market price. The date is shown with the figure. Only sources whose total can be read exactly are counted, so the real total is higher, and nothing in it is an estimate.",
+      "Des blockchains elles-mêmes. Pour chaque source de la liste, on lit ce que son contrat détient encore pour ses utilisateurs (un contrat de réclamation, un fonds de remboursement, les dépôts d'un ancien exchange…) et on le convertit au prix du marché du jour. La date est affichée avec le chiffre. Seules les sources dont le total se lit exactement sont comptées : le vrai total est plus élevé, et rien n'y est estimé.",
+    ],
+  },
+  {
     q: ["Is everything covered?", "Est-ce que tout est couvert ?"],
     a: [
       "No tool can see everything. We only show what we can verify on-chain right now. For bridges and apps we don't check automatically yet, the guides below explain how to look yourself.",
