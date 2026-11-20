@@ -297,7 +297,7 @@ async function checkTx(
       status = now() - timestamp < 7 * DAY ? "recent" : "waiting";
       if (status === "waiting") {
         notes.push("Its batch hasn't been executed on Ethereum yet. It becomes claimable once it is.");
-        notesFr.push("Son batch n'a pas encore été exécuté sur Ethereum. Il deviendra réclamable une fois que ce sera fait.");
+        notesFr.push("Son batch n'a pas encore été exécuté sur Ethereum. Le retrait deviendra réclamable dès que ce sera fait.");
       }
     } else if (state.status === "rejected") {
       status = "manual";

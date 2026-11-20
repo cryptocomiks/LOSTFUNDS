@@ -126,8 +126,8 @@ async function simulateExit(payload: Hex, from: Address): Promise<ExitState> {
     if (/EXIT_DISABLED/.test(text)) return { kind: "disabled" };
     // No answer from Ethereum (as opposed to a revert): fail the check instead of guessing.
     if (!/revert/i.test(text)) throw e;
-    const short = (e as { shortMessage?: string }).shortMessage;
-    return { kind: "unknown", why: short ?? "simulation failed", whyFr: short ?? "la simulation a échoué" };
+    const reason = (e as { shortMessage?: string }).shortMessage;
+    return { kind: "unknown", why: reason ?? "simulation failed", whyFr: reason ?? "la simulation a échoué" };
   }
 }
 

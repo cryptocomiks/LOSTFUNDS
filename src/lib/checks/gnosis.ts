@@ -284,7 +284,7 @@ export async function checkGnosisBridge(user: Address): Promise<CheckOutput> {
       note =
         "Never claimed on Ethereum. Claim it soon in the Gnosis bridge app: once the bridge validators who signed it are replaced, it can no longer be claimed without help.";
       noteFr =
-        "Jamais réclamé sur Ethereum. Réclamez-le vite dans l'app du bridge Gnosis : une fois les validateurs du bridge qui l'ont signé remplacés, il ne pourra plus être réclamé sans aide.";
+        "Jamais réclamé sur Ethereum. Réclamez-le vite dans l'app du bridge Gnosis : quand les validateurs du bridge qui l'ont signé auront été remplacés, il ne pourra plus être réclamé sans aide.";
     } else if (p.state === "signing") {
       if (age < DAY) {
         status = "recent";

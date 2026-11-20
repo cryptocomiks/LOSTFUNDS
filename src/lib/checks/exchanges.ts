@@ -205,7 +205,7 @@ export async function checkExchange(ex: DepositExchange, user: Address): Promise
             : `This ${h.symbol} was left on ${ex.name} and never withdrawn. The contract lets you withdraw it at any time, no app needed.`;
       const introFr =
         ex.kind === "idex"
-          ? `IDEX v1 n'est plus exploité, mais ces ${h.symbol} sont toujours dans son contrat, et le contrat vous laisse les retirer sans IDEX.`
+          ? `IDEX v1 n'est plus en service, mais ces ${h.symbol} sont toujours dans son contrat, et le contrat vous laisse les retirer sans IDEX.`
           : ex.kind === "switcheo"
             ? `Ces ${h.symbol} sont restés sur le contrat Ethereum de Switcheo. Sa sortie de secours vous laisse les retirer sans Switcheo, en deux transactions.`
             : `Ces ${h.symbol} sont restés sur ${ex.name} et n'ont jamais été retirés. Le contrat vous laisse les retirer à tout moment, sans aucune app.`;

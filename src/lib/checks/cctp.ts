@@ -836,7 +836,7 @@ async function settleOne(b: Burn): Promise<Finding | "minted"> {
       b,
       "manual",
       `${attested} Its attestation expired: ask Circle for a new one (re-attest the message), then mint it with the app you used.`,
-      `${attestedFr} Leur attestation a expiré : demandez-en une nouvelle à Circle (réattester le message), puis mintez-les avec l'app que vous avez utilisée.`,
+      `${attestedFr} Leur attestation a expiré : demandez-en une nouvelle à Circle (en faisant réattester le message), puis mintez-les avec l'app que vous avez utilisée.`,
     );
   if (sim === "paused")
     return finding(
