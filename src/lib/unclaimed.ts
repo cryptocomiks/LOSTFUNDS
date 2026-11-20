@@ -14,21 +14,25 @@ export interface UnclaimedSource {
 export const UNCLAIMED = totals as { measuredAt: number; totalUsd: number; sources: UnclaimedSource[] };
 
 /** What each measured source is, in both languages. `{n}` is the source's count. */
-export const UNCLAIMED_LABELS: Record<string, { name: string; en: string; fr: string }> = {
+export const UNCLAIMED_LABELS: Record<string, { name: string; nameFr?: string; en: string; fr: string }> = {
   "the-dao": { name: "The DAO (2016)", en: "ETH that DAO token holders never took back", fr: "ETH que les détenteurs de tokens DAO n'ont jamais repris" },
   "old-exchanges": { name: "EtherDelta, IDEX v1 & co.", en: "ETH deposits left in old exchange contracts", fr: "Dépôts d'ETH restés dans les contrats d'anciens exchanges" },
   digixdao: { name: "DigixDAO", en: "ETH refund that DGD holders never collected", fr: "Remboursement en ETH jamais récupéré par les détenteurs de DGD" },
-  apecoin: { name: "ApeCoin staking", en: "APE still staked where rewards have ended", fr: "APE toujours stakés là où les récompenses sont terminées" },
+  apecoin: { name: "ApeCoin staking", nameFr: "Staking ApeCoin", en: "APE still staked where rewards have ended", fr: "APE toujours stakés là où les récompenses sont terminées" },
   blast: { name: "Blast", en: "Balances and withdrawals left when the network shut down", fr: "Soldes et retraits laissés à l'arrêt du réseau" },
   "zksync-lite": { name: "zkSync Lite", en: "Balances left when the network shut down", fr: "Soldes laissés à l'arrêt du réseau" },
   liquity: { name: "Liquity", en: "Collateral set aside for closed loans", fr: "Collatéral mis de côté pour des prêts fermés" },
   stargate: { name: "Stargate", en: "STG left in locks that are all unlocked", fr: "STG restés dans des verrous tous débloqués" },
-  uniswap: { name: "Uniswap airdrop (2020)", en: "UNI left in the claim contract", fr: "UNI restés dans le contrat de réclamation" },
+  uniswap: { name: "Uniswap airdrop (2020)", nameFr: "Airdrop Uniswap (2020)", en: "UNI left in the claim contract", fr: "UNI restés dans le contrat de réclamation" },
   aerodrome: { name: "Aerodrome", en: "{n} expired locks never withdrawn", fr: "{n} verrous expirés jamais retirés" },
   velodrome: { name: "Velodrome", en: "{n} expired locks never withdrawn", fr: "{n} verrous expirés jamais retirés" },
-  "solana-buffers": { name: "Solana program buffers", en: "SOL left by {n} unfinished deploys", fr: "SOL laissés par {n} déploiements inachevés" },
-  "ens-deeds": { name: "ENS auctions (2017-2019)", en: "ETH locked in {n} auction deeds", fr: "ETH bloqués dans {n} actes d'enchères" },
+  "solana-buffers": { name: "Solana program buffers", nameFr: "Buffers de programmes Solana", en: "SOL left by {n} unfinished deploys", fr: "SOL laissés par {n} déploiements inachevés" },
+  "ens-deeds": { name: "ENS auctions (2017-2019)", nameFr: "Enchères ENS (2017-2019)", en: "ETH locked in {n} auction deeds", fr: "ETH bloqués dans {n} actes d'enchères" },
   starknet: { name: "Starknet", en: "{n} withdrawals never finalized on Ethereum", fr: "{n} retraits jamais finalisés sur Ethereum" },
   "zora-rewards": { name: "Zora", en: "Creator and referral rewards never withdrawn", fr: "Récompenses de créateurs et de parrainage jamais retirées" },
+  "meth-withdrawals": { name: "Mantle mETH", en: "{n} finalized withdrawals never claimed", fr: "{n} retraits finalisés jamais réclamés" },
+  "stader-withdrawals": { name: "Stader", en: "{n} finalized withdrawals never claimed", fr: "{n} retraits finalisés jamais réclamés" },
+  "frax-redemptions": { name: "Frax", en: "{n} redemption tickets ready and never used", fr: "{n} tickets de remboursement prêts et jamais utilisés" },
+  "uniswap-2020-farms": { name: "Uniswap farms (2020)", nameFr: "Fermes Uniswap (2020)", en: "Liquidity and UNI still staked in farms that ended in 2020", fr: "Liquidité et UNI toujours stakés dans des fermes terminées en 2020" },
   kinto: { name: "Kinto", en: "USDC left for the users of the closed network", fr: "USDC laissés aux utilisateurs du réseau fermé" },
 };

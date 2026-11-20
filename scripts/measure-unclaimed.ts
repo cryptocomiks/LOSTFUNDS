@@ -15,6 +15,8 @@ import { base58 } from "@scure/base";
 import { erc20Abi, formatUnits, multicall3Abi, parseAbi, zeroAddress, type Address, type Hex, type PublicClient } from "viem";
 import { l1BulkClient, l1Client, l2Client } from "../src/lib/clients.ts";
 import { BLAST_RECOVERY } from "../src/lib/checks/blast.ts";
+import { bulkRead } from "../src/lib/checks/bulk.ts";
+import { UNI_FARM_LIST } from "../src/lib/checks/old-farms.ts";
 import { DEPOSIT_EXCHANGES } from "../src/lib/checks/exchanges.ts";
 import { LIQUITY_V2_BRANCHES } from "../src/lib/checks/liquity-v2.ts";
 import { LEGACY_BRIDGE_TOKENS, type StoredMessage } from "../src/lib/checks/starknet.ts";
@@ -216,6 +218,78 @@ const SOURCES: Record<string, () => Promise<{ parts: Part[]; count?: number }>> 
   },
   // DigixDAO's refund contract (2020): its ETH is only paid to the remaining DGD holders.
   digixdao: async () => ({ parts: [eth(await ethOf("0x23Ea10CC1e6EBdB499D24E45369A35f43627062f"))] }),
+  // Liquid staking withdrawals that are finalized and were never claimed: every request, read one by one.
+  "meth-withdrawals": async () => {
+    const manager: Address = "0x38fDF7b489316e03eD8754ad339cb5c4483FDcf9";
+    const abi = parseAbi([
+      "function nextRequestId() view returns (uint256)",
+      "function requestByID(uint256) view returns ((uint64 blockNumber, address requester, uint128 id, uint128 mETHLocked, uint128 ethRequested, uint128 cumulativeETHRequested))",
+      "function requestInfo(uint256) view returns (bool isFinalized, uint256 claimableAmount)",
+    ]);
+    const next = Number(await l1.readContract({ address: manager, abi, functionName: "nextRequestId" }));
+    const ids = Array.from({ length: next }, (_, i) => BigInt(i));
+    const requests = (await bulkRead(ids.map((id) => ({ address: manager, abi, functionName: "requestByID", args: [id] })))) as { requester: Address }[];
+    // A claimed request is deleted (its requester reads as the zero address).
+    const open = ids.filter((_, i) => requests[i].requester !== zeroAddress);
+    const info = (await bulkRead(open.map((id) => ({ address: manager, abi, functionName: "requestInfo", args: [id] })))) as (readonly [boolean, bigint])[];
+    const ready = info.filter(([finalized, claimable]) => finalized && claimable > 0n);
+    return { parts: [eth(ready.reduce((s, [, claimable]) => s + claimable, 0n))], count: ready.length };
+  },
+  "stader-withdrawals": async () => {
+    const manager: Address = "0x9F0491B32DBce587c50c4C43AB303b06478193A7";
+    const abi = parseAbi([
+      "function nextRequestIdToFinalize() view returns (uint256)",
+      "function userWithdrawRequests(uint256) view returns (address owner, uint256 ethXAmount, uint256 ethExpected, uint256 ethFinalized, uint256 requestBlock)",
+    ]);
+    const next = Number(await l1.readContract({ address: manager, abi, functionName: "nextRequestIdToFinalize" }));
+    const requests = (await bulkRead(Array.from({ length: next }, (_, i) => ({ address: manager, abi, functionName: "userWithdrawRequests", args: [BigInt(i)] })))) as (readonly [Address, bigint, bigint, bigint, bigint])[];
+    // A claimed request is deleted too.
+    const ready = requests.filter(([owner, , , finalized]) => owner !== zeroAddress && finalized > 0n);
+    return { parts: [eth(ready.reduce((s, r) => s + r[3], 0n))], count: ready.length };
+  },
+  // Frax redemption tickets past their maturity and never redeemed.
+  "frax-redemptions": async () => {
+    const queue: Address = "0x82bA8da44Cd5261762e629dd5c605b17715727bd";
+    const abi = parseAbi([
+      "function redemptionQueueState() view returns (uint64 nextNftId, uint64 queueLengthSecs, uint64 redemptionFee, uint64 earlyExitFee)",
+      "function nftInformation(uint256) view returns (bool hasBeenRedeemed, uint64 maturity, uint120 amount, uint64 earlyExitFee)",
+    ]);
+    const [next] = await l1.readContract({ address: queue, abi, functionName: "redemptionQueueState" });
+    const info = (await bulkRead(Array.from({ length: Number(next) }, (_, i) => ({ address: queue, abi, functionName: "nftInformation", args: [BigInt(i)] })))) as (readonly [boolean, bigint, bigint, bigint])[];
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    const ready = info.filter(([redeemed, maturity, amount]) => !redeemed && amount > 0n && maturity <= now);
+    return { parts: [eth(ready.reduce((s, t) => s + t[2], 0n))], count: ready.length };
+  },
+  // Uniswap's 2020 farms ended on November 17, 2020: the pool tokens they hold are still staked (counted as
+  // the ETH and tokens they stand for in their pool), and the UNI they hold was never claimed.
+  "uniswap-2020-farms": async () => {
+    const uni: Address = "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984";
+    const pairAbi = parseAbi([
+      "function getReserves() view returns (uint112, uint112, uint32)",
+      "function token0() view returns (address)",
+      "function token1() view returns (address)",
+      "function totalSupply() view returns (uint256)",
+    ]);
+    const known = Object.entries(TOKENS) as [keyof typeof TOKENS, readonly [Address, number]][];
+    const parts: Part[] = [];
+    for (const f of UNI_FARM_LIST) {
+      const [staked, rewards, supply, reserves, token0, token1] = await Promise.all([
+        balanceOf(f.lp, f.farm),
+        balanceOf(uni, f.farm),
+        l1.readContract({ address: f.lp, abi: pairAbi, functionName: "totalSupply" }),
+        l1.readContract({ address: f.lp, abi: pairAbi, functionName: "getReserves" }),
+        l1.readContract({ address: f.lp, abi: pairAbi, functionName: "token0" }),
+        l1.readContract({ address: f.lp, abi: pairAbi, functionName: "token1" }),
+      ]);
+      [token0, token1].forEach((t, i) => {
+        const [symbol, [address, decimals]] = known.find(([, [a]]) => a.toLowerCase() === t.toLowerCase())!;
+        const amount = ((i === 0 ? reserves[0] : reserves[1]) * staked) / supply;
+        parts.push(symbol === "WETH" ? eth(amount) : token(symbol, amount, decimals, address));
+      });
+      parts.push(token("UNI", rewards, 18, uni));
+    }
+    return { parts };
+  },
   // USDC left for Kinto's former users.
   kinto: async () => ({ parts: await held(["USDC"], "0x47A56a558892De88367108183Df913852617e77C") }),
 };

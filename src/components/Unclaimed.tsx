@@ -46,7 +46,7 @@ export function Unclaimed() {
             return (
               <Reveal key={s.id} delay={(i % 2) * 80} className={`border-t border-line py-5 ${i >= MOBILE_ROWS ? "hidden md:block" : ""}`}>
                 <div className="flex items-baseline justify-between gap-4">
-                  <h3 className="text-[17px] font-semibold tracking-tight">{label.name}</h3>
+                  <h3 className="text-[17px] font-semibold tracking-tight">{label.nameFr ? <T en={label.name} fr={label.nameFr} /> : label.name}</h3>
                   <p className="shrink-0 text-[17px] font-semibold">
                     <CountUp value={s.usd} kind="usd" />
                   </p>

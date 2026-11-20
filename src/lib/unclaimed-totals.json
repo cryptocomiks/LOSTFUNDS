@@ -1,203 +1,275 @@
 {
- "measuredAt": 1795173576,
- "totalUsd": 271893180,
+ "measuredAt": 1795192844,
+ "totalUsd": 264192342,
  "sources": [
   {
    "id": "the-dao",
-   "usd": 143506669,
+   "usd": 134758546,
    "parts": [
     {
      "symbol": "ETH",
      "amount": 82131.89,
-     "usd": 143506669
+     "usd": 134758546
     }
    ]
   },
   {
    "id": "old-exchanges",
-   "usd": 57650188,
+   "usd": 54135793,
    "parts": [
     {
      "symbol": "ETH",
-     "amount": 32994.42,
-     "usd": 57650188
+     "amount": 32994.38,
+     "usd": 54135793
     }
    ]
   },
   {
    "id": "blast",
-   "usd": 25387430,
+   "usd": 24384939,
    "parts": [
     {
      "symbol": "ETH",
-     "amount": 9398.3,
-     "usd": 16421376
+     "amount": 9397.39,
+     "usd": 15418840
     },
     {
      "symbol": "DAI",
-     "amount": 8965421.17,
-     "usd": 8966054
+     "amount": 8964579.46,
+     "usd": 8966099
     }
    ]
   },
   {
    "id": "digixdao",
-   "usd": 20260888,
+   "usd": 19025790,
    "parts": [
     {
      "symbol": "ETH",
      "amount": 11595.73,
-     "usd": 20260888
+     "usd": 19025790
     }
    ]
   },
   {
    "id": "apecoin",
-   "usd": 11751416,
+   "usd": 10913313,
    "parts": [
     {
      "symbol": "APE",
      "amount": 149642739.91,
-     "usd": 11751416
+     "usd": 10913313
+    }
+   ]
+  },
+  {
+   "id": "uniswap-2020-farms",
+   "usd": 4911770,
+   "parts": [
+    {
+     "symbol": "ETH",
+     "amount": 1491.07,
+     "usd": 2446492
+    },
+    {
+     "symbol": "USDC",
+     "amount": 1770024.5,
+     "usd": 1769872
+    },
+    {
+     "symbol": "DAI",
+     "amount": 285266.74,
+     "usd": 285315
+    },
+    {
+     "symbol": "USDT",
+     "amount": 248130.45,
+     "usd": 247858
+    },
+    {
+     "symbol": "WBTC",
+     "amount": 2.44,
+     "usd": 145007
+    },
+    {
+     "symbol": "UNI",
+     "amount": 3858.45,
+     "usd": 17226
     }
    ]
   },
   {
    "id": "zksync-lite",
-   "usd": 4545823,
+   "usd": 4324493,
    "parts": [
     {
      "symbol": "ETH",
-     "amount": 2065.02,
-     "usd": 3608151
+     "amount": 2064.86,
+     "usd": 3387934
     },
     {
      "symbol": "USDC",
-     "amount": 555651.82,
-     "usd": 555579
+     "amount": 555533.43,
+     "usd": 555486
     },
     {
      "symbol": "USDT",
-     "amount": 210284.51,
-     "usd": 210072
+     "amount": 210252.31,
+     "usd": 210021
     },
     {
      "symbol": "DAI",
-     "amount": 146213.11,
-     "usd": 146223
+     "amount": 146211.39,
+     "usd": 146236
     },
     {
      "symbol": "WBTC",
      "amount": 0.42,
-     "usd": 25798
+     "usd": 24816
     }
    ]
   },
   {
    "id": "liquity",
-   "usd": 3911091,
+   "usd": 3672457,
    "parts": [
     {
      "symbol": "ETH",
      "amount": 2195.24,
-     "usd": 3835674
+     "usd": 3601852
     },
     {
      "symbol": "wstETH",
      "amount": 28.78,
-     "usd": 63022
+     "usd": 58949
     },
     {
      "symbol": "WETH",
      "amount": 5.73,
-     "usd": 10021
+     "usd": 9424
     },
     {
      "symbol": "rETH",
      "amount": 1.16,
-     "usd": 2374
+     "usd": 2232
+    }
+   ]
+  },
+  {
+   "id": "meth-withdrawals",
+   "usd": 1872215,
+   "count": 339,
+   "parts": [
+    {
+     "symbol": "ETH",
+     "amount": 1141.07,
+     "usd": 1872215
     }
    ]
   },
   {
    "id": "stargate",
-   "usd": 1485762,
+   "usd": 1421857,
    "parts": [
     {
      "symbol": "STG",
-     "amount": 13779791.55,
-     "usd": 1485762
+     "amount": 13768599.86,
+     "usd": 1421857
+    }
+   ]
+  },
+  {
+   "id": "stader-withdrawals",
+   "usd": 1326942,
+   "count": 669,
+   "parts": [
+    {
+     "symbol": "ETH",
+     "amount": 808.74,
+     "usd": 1326942
     }
    ]
   },
   {
    "id": "uniswap",
-   "usd": 1003264,
+   "usd": 932526,
    "parts": [
     {
      "symbol": "UNI",
      "amount": 208882.76,
-     "usd": 1003264
+     "usd": 932526
     }
    ]
   },
   {
    "id": "aerodrome",
-   "usd": 701855,
-   "count": 12742,
+   "usd": 656252,
+   "count": 12740,
    "parts": [
     {
      "symbol": "AERO",
-     "amount": 1673805.85,
-     "usd": 701855
+     "amount": 1673795.74,
+     "usd": 656252
     }
    ]
   },
   {
    "id": "solana-buffers",
-   "usd": 535211,
-   "count": 3326,
+   "usd": 514840,
+   "count": 3327,
    "parts": [
     {
      "symbol": "SOL",
-     "amount": 7439.15,
-     "usd": 535211
+     "amount": 7439.37,
+     "usd": 514840
     }
    ]
   },
   {
    "id": "ens-deeds",
-   "usd": 327325,
+   "usd": 307371,
    "count": 10255,
    "parts": [
     {
      "symbol": "ETH",
      "amount": 187.33,
-     "usd": 327325
+     "usd": 307371
     }
    ]
   },
   {
    "id": "velodrome",
-   "usd": 252989,
-   "count": 3476,
+   "usd": 245287,
+   "count": 3475,
    "parts": [
     {
      "symbol": "VELO",
-     "amount": 13228750.83,
-     "usd": 252989
+     "amount": 13216531.71,
+     "usd": 245287
+    }
+   ]
+  },
+  {
+   "id": "frax-redemptions",
+   "usd": 240358,
+   "count": 125,
+   "parts": [
+    {
+     "symbol": "ETH",
+     "amount": 146.49,
+     "usd": 240358
     }
    ]
   },
   {
    "id": "starknet",
-   "usd": 225247,
+   "usd": 211858,
    "count": 16429,
    "parts": [
     {
      "symbol": "ETH",
      "amount": 125.64,
-     "usd": 219527
+     "usd": 206145
     },
     {
      "symbol": "DAI",
@@ -217,7 +289,7 @@
     {
      "symbol": "STRK",
      "amount": 7438.26,
-     "usd": 231
+     "usd": 223
     },
     {
      "symbol": "LUSD",
@@ -227,17 +299,17 @@
     {
      "symbol": "rETH",
      "amount": 0.02,
-     "usd": 41
+     "usd": 38
     },
     {
      "symbol": "LBTC",
      "amount": 0,
-     "usd": 27
+     "usd": 26
     },
     {
      "symbol": "enzoBTC",
      "amount": 0,
-     "usd": 16
+     "usd": 15
     },
     {
      "symbol": "WBTC",
@@ -247,7 +319,12 @@
     {
      "symbol": "wstETH",
      "amount": 0,
-     "usd": 10
+     "usd": 9
+    },
+    {
+     "symbol": "NSTR",
+     "amount": 1818.17,
+     "usd": 7
     },
     {
      "symbol": "LIT",
@@ -263,23 +340,23 @@
   },
   {
    "id": "zora-rewards",
-   "usd": 199767,
+   "usd": 187589,
    "parts": [
     {
      "symbol": "ETH",
      "amount": 114.33,
-     "usd": 199767
+     "usd": 187589
     }
    ]
   },
   {
    "id": "kinto",
-   "usd": 148255,
+   "usd": 148146,
    "parts": [
     {
      "symbol": "USDC",
-     "amount": 148274.04,
-     "usd": 148255
+     "amount": 148158.3,
+     "usd": 148146
     }
    ]
   }
