@@ -745,7 +745,7 @@ export const AIRDROP_LIST: Airdrop[] = [
     decimals: 18,
     claimAt: "dydx.community (Claim rewards), from the eligible wallet",
     date: 1631059200, // Sep 8, 2021 (retroactive mining rewards; trading rewards until 2023)
-    note: "dYdX's retroactive and trading rewards (2021–2023) have no deadline, and this address never claimed all of its DYDX.",
+    note: "dYdX's retroactive and trading rewards (2021-2023) have no deadline, and this address never claimed all of its DYDX.",
     fr: {
       label: "Récompenses dYdX",
       note: "Les récompenses rétroactives et de trading de dYdX (2021-2023) n'ont pas de date limite, et cette adresse n'a jamais réclamé tous ses DYDX.",

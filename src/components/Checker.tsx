@@ -197,7 +197,7 @@ function FindingRow({ f, index, lang }: { f: Finding; index: number; lang: Lang 
       {claimAt && (
         <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px] text-text-3">
           {fr ? "Où réclamer :" : "Where to claim:"}
-          <code className="rounded-md bg-fill px-1.5 py-0.5 font-mono text-[12px] break-all text-text-2">{claimAt}</code>
+          <code className="rounded-md bg-fill px-1.5 py-0.5 font-mono text-[12px] [overflow-wrap:anywhere] text-text-2">{claimAt}</code>
           <span className="hidden sm:inline">{fr ? "(tapez-le vous-même)" : "(type it yourself)"}</span>
         </div>
       )}

@@ -9,7 +9,7 @@ import { LEGACY_GUIDE } from "./exchanges";
 import { wouldSucceed } from "./simulate";
 
 /**
- * ETH locked in the deeds of ENS's first .eth registrar (the 2017–2019 auctions). Each name won at
+ * ETH locked in the deeds of ENS's first .eth registrar (the 2017-2019 auctions). Each name won at
  * auction has a Deed contract holding the price paid (or, if the auction was never finalized, the
  * whole bid). Since ENS moved .eth to its permanent registrar in May 2019, the old registrar lets a
  * deed's owner call releaseDeed(labelhash) at any time: the deed sends 100% of its ETH to its owner.
@@ -124,7 +124,7 @@ export async function checkEnsDeeds(user: Address): Promise<CheckOutput> {
       linkLabel: "Open the registrar",
       timestamp: e.registered,
       dateLabel: "Registered",
-      note: `This ETH paid for a .eth name in ENS's 2017–2019 auctions is still locked in the name's deed. Since 2019 the deed's owner can take it all back at any time, without affecting the name: on Etherscan, call releaseDeed on the old registrar with hash ${e.hash}.${wallet}`,
+      note: `This ETH paid for a .eth name in ENS's 2017-2019 auctions is still locked in the name's deed. Since 2019 the deed's owner can take it all back at any time, without affecting the name: on Etherscan, call releaseDeed on the old registrar with hash ${e.hash}.${wallet}`,
       claimAt: `Etherscan → Write Contract → releaseDeed, on ${REGISTRAR}`,
       minUsd: MIN_USD,
       fr: {
@@ -149,7 +149,7 @@ export async function checkEnsDeeds(user: Address): Promise<CheckOutput> {
         txUrl: `https://etherscan.io/address/${REGISTRAR}#writeContract`,
         linkLabel: "Open the registrar",
         timestamp: 0,
-        note: `${rest.length} more deeds from the 2017–2019 auctions are owned by this address, holding ${Number(formatUnits(total, 18)).toLocaleString("en-US", { maximumFractionDigits: 4 })} ETH in all. Release each one with releaseDeed on the old registrar, with the name's hash: the keccak256 of its label (of "vitalik" for vitalik.eth).${wallet}`,
+        note: `${rest.length} more deeds from the 2017-2019 auctions are owned by this address, holding ${Number(formatUnits(total, 18)).toLocaleString("en-US", { maximumFractionDigits: 4 })} ETH in all. Release each one with releaseDeed on the old registrar, with the name's hash: the keccak256 of its label (of "vitalik" for vitalik.eth).${wallet}`,
         claimAt: `Etherscan → Write Contract → releaseDeed, on ${REGISTRAR}`,
         minUsd: MIN_USD,
         fr: {
