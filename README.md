@@ -5,10 +5,6 @@ unclaimed airdrops, rewards and old deposits. Free, read-only, no wallet connect
 Everything runs in the visitor's browser: there is no server to overload, and each visitor's
 requests go straight to public blockchain nodes and the projects' own public APIs.
 
-Several wallets can be checked in one go: up to 10 addresses or ENS names pasted together (spaces, commas
-or new lines, `src/lib/inputs.ts`) run one after the other, with a total for all of them and each
-wallet's details behind its chip. A shared link keeps them all (`?address=a,b,c`).
-
 ## What it checks (live, on-chain)
 
 | Network | How |

@@ -6,7 +6,6 @@ import { checkEthena } from "../src/lib/checks/ethena.ts";
 import { checkNftMarkets } from "../src/lib/checks/nft-markets.ts";
 import { checkUniFarms, UNI_FARM_LIST } from "../src/lib/checks/old-farms.ts";
 import { checkFrax, checkKelp, checkMeth, checkStader, checkSwell } from "../src/lib/checks/staking-withdrawals.ts";
-import { MAX_WALLETS, splitInputs } from "../src/lib/inputs.ts";
 import { SOURCE_FR } from "../src/lib/sourceFr.ts";
 import { sourceById } from "../src/lib/sources.ts";
 import { MockChain, revert } from "./mockchain.ts";
@@ -418,22 +417,5 @@ describe("The new checks are listed like the others", () => {
     }
     assert.equal(sourceById("uniswap-2020-farms")?.group, "legacy");
     assert.ok(NETWORK_COLORS["uniswap-2020-farms"]);
-  });
-});
-
-/* ───────────────────────── Several addresses at once ───────────────────────── */
-
-describe("Several addresses in one input", () => {
-  test("split on spaces, commas, semicolons and new lines", () => {
-    assert.deepEqual(splitInputs(` ${USER}, vitalik.eth;\n${OTHER}\r\n\tB8tZrAXiEW8u6ibE8whwgbML1wzMzHXnQtJZd4BQezyK `), [USER, "vitalik.eth", OTHER, "B8tZrAXiEW8u6ibE8whwgbML1wzMzHXnQtJZd4BQezyK"]);
-    assert.deepEqual(splitInputs("vitalik.eth"), ["vitalik.eth"]);
-    assert.deepEqual(splitInputs("  \n "), []);
-  });
-
-  test("the same address or name twice is kept once, whatever its case (Solana addresses keep theirs)", () => {
-    const mixed = "0xAbCdEf0000000000000000000000000000000001";
-    assert.deepEqual(splitInputs(`${mixed} ${mixed.toLowerCase()} Vitalik.eth vitalik.eth`), [mixed, "Vitalik.eth"]);
-    assert.deepEqual(splitInputs("AbcDef1 abcdef1"), ["AbcDef1", "abcdef1"]);
-    assert.ok(MAX_WALLETS >= 5);
   });
 });
