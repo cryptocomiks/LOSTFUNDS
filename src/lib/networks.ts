@@ -119,7 +119,7 @@ const OP_STACK: Network[] = [
     id: "base",
     name: "Base",
     chain: base,
-    rpcs: ["https://mainnet.base.org", "https://base-rpc.publicnode.com", "https://base.drpc.org", "https://1rpc.io/base"],
+    rpcs: ["https://mainnet.base.org", "https://base-rpc.publicnode.com", "https://base.drpc.org"],
     blockscout: "https://base.blockscout.com",
     llama: "base",
     explorer: "https://basescan.org",
@@ -208,17 +208,6 @@ const OP_STACK: Network[] = [
     llama: "wc",
     explorer: "https://worldscan.org",
     bridgeUrl: "the official World Chain bridge",
-  },
-  {
-    id: "blast",
-    name: "Blast",
-    chain: blast,
-    rpcs: ["https://rpc.blast.io", "https://blast-rpc.publicnode.com", "https://blast.drpc.org"],
-    api: "https://api.routescan.io/v2/network/mainnet/evm/81457/etherscan", // Blast has no Blockscout explorer
-    llama: "blast",
-    explorer: "https://blastscan.io",
-    bridgeUrl: "blast.io",
-    extraBridges: ["0x4300000000000000000000000000000000000005" as Address], // L2BlastBridge
   },
   {
     id: "celo",
@@ -389,17 +378,6 @@ const OP_STACK: Network[] = [
     bridgeUrl: "the official RISE bridge",
   },
   {
-    id: "derive",
-    name: "Derive",
-    chain: withL1(lyra, { portal: "0x85eA9c11cf3D4786027F7FD08F4406b15777e5f8", disputeGameFactory: "0x87DAFf495b5F6c4f79CEeAAF85f1Ef3df3B30d21" }),
-    rpcs: ["https://rpc.derive.xyz", "https://rpc.lyra.finance"],
-    blockscout: "https://explorer.derive.xyz",
-    logsRpcs: ["https://rpc.derive.xyz"],
-    llama: "derive",
-    explorer: "https://explorer.derive.xyz",
-    bridgeUrl: "the official Derive bridge",
-  },
-  {
     id: "funki",
     name: "Funki",
     chain: withL1(funkiMainnet, { portal: "0x5C9C7f98eD153a2deAA981eB5C97B31744AccF22", disputeGameFactory: "0xc371fD8C4AB7F585BDCA7aA19c2A680a70920c98" }),
@@ -554,7 +532,7 @@ export const NETWORKS: Network[] = [
     name: "Arbitrum One",
     family: "arbitrum",
     chain: arbitrum,
-    rpcs: ["https://arb1.arbitrum.io/rpc", "https://arbitrum-one-rpc.publicnode.com", "https://arbitrum.drpc.org", "https://1rpc.io/arb"],
+    rpcs: ["https://arb1.arbitrum.io/rpc", "https://arbitrum-one-rpc.publicnode.com", "https://arbitrum.drpc.org"],
     blockscout: "https://arbitrum.blockscout.com",
     logsRpcs: ["https://arb1.arbitrum.io/rpc"],
     llama: "arbitrum",

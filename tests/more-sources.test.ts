@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { before, describe, test } from "node:test";
-import { getAddress, keccak256, parseAbi, parseAbiItem, toHex, zeroAddress, type Address, type Hex } from "viem";
+import { concat, getAddress, hexToBytes, keccak256, parseAbi, parseAbiItem, toHex, zeroAddress, type Address, type Hex } from "viem";
 import { checkSource } from "../src/lib/checker.ts";
 import { checkCryptoPunks, checkFomo3d } from "../src/lib/checks/oldcontracts.ts";
 import { checkSablier } from "../src/lib/checks/sablier.ts";
 import { checkLiquityV2 } from "../src/lib/checks/liquity-v2.ts";
 import { checkVeDex } from "../src/lib/checks/aerodrome.ts";
 import { checkHedgey } from "../src/lib/checks/hedgey.ts";
+import { blastLeaf, checkBlast, chunkOf, slotOf } from "../src/lib/checks/blast.ts";
 import { checkStarknet, LOG_MESSAGE_TO_L1, messageHash } from "../src/lib/checks/starknet.ts";
 import { checkZoraRewards } from "../src/lib/checks/zora-rewards.ts";
 import { NETWORK_COLORS } from "../src/lib/brand.ts";
@@ -440,6 +441,92 @@ describe("Hedgey claim campaigns", () => {
   });
 });
 
+/* ───────────────────────── Blast (shut down) ───────────────────────── */
+
+describe("Blast recovery", () => {
+  const BALANCES = getAddress("0x9D31771458B421C7EA8A06CB8D12663E91617869");
+  const WITHDRAWALS = getAddress("0x23eA8c6ACEb5673BBd712137cE2Aa33db36CB513");
+  const DATA = "https://blast.io/claims";
+  const REDEEMER = getAddress("0x00000000000000000000000000000000000beef1");
+  // Eight accounts: a complete tree stored as a heap (node 0 is the root, leaves are nodes 7 to 14), cut at depth 1.
+  const accounts: [Address, bigint, bigint, Address[]][] = [
+    [USER, 3n * e18, 250n * e18, []],
+    [REJECTED, e18, 0n, []],
+    [OTHER, 2n * e18, 0n, [REDEEMER]],
+    ...Array.from({ length: 5 }, (_, i): [Address, bigint, bigint, Address[]] => [getAddress(`0x${"0".repeat(39)}${i + 1}`), BigInt(i + 1), 0n, []]),
+  ];
+  const pair = (a: Hex, b: Hex) => keccak256(concat(a < b ? [a, b] : [b, a]));
+  const nodes: Hex[] = new Array(15);
+  accounts.forEach((a, i) => (nodes[7 + i] = blastLeaf(...a)));
+  for (let n = 6; n >= 0; n--) nodes[n] = pair(nodes[2 * n + 1], nodes[2 * n + 2]);
+  /** A chunk file: the shared top levels (nodes 0 to 2), then the chunk's subtree, level by level. */
+  const chunk = (ids: number[]) => hexToBytes(concat(ids.map((n) => nodes[n])));
+  const claimed = new Set<string>();
+  const claims: unknown[][] = [];
+
+  before(() => {
+    world.static[`${DATA}/contract-1/manifest.json`] = { version: 1, shardPrefixLength: 3, chunkDepth: 1, trees: [{ root: nodes[0], leaves: 8 }] };
+    world.static[`${DATA}/contract-2/manifest.json`] = { version: 1, shardPrefixLength: 3, chunkDepth: 1, trees: [{ root: nodes[0], leaves: 8 }] };
+    const entry = (i: number) => [String(accounts[i][1]), String(accounts[i][2]), 0, 7 + i, ...(accounts[i][3].length ? [accounts[i][3]] : [])];
+    world.static[`${DATA}/contract-1/shards/111.json`] = { [USER.toLowerCase()]: entry(0) };
+    world.static[`${DATA}/contract-1/shards/555.json`] = { [REJECTED.toLowerCase()]: entry(1) };
+    world.static[`${DATA}/contract-1/shards/333.json`] = { [OTHER.toLowerCase()]: entry(2) };
+    world.static[`${DATA}/contract-1/trees/0/0.bin`] = chunk([0, 1, 2, 3, 4, 7, 8, 9, 10]);
+    world.static[`${DATA}/contract-1/trees/0/1.bin`] = chunk([0, 1, 2, 5, 6, 11, 12, 13, 14]);
+    const abi = parseAbi([
+      "function claimed(address) view returns (bool)",
+      "function claim(address user, uint256 ethAmount, uint256 usdAmount, address[] _redeemers, bytes32[] proof, bytes32 root)",
+    ]);
+    world.addContract(1, BALANCES, abi, {
+      claimed: ([a]) => claimed.has(a as string),
+      claim: (args, { from }) => {
+        if (from === REJECTED) revert("ETHTransferFailed");
+        // The contract's own check: the proof must lead from the leaf to the root.
+        const [user, eth, usd, redeemers, proof, root] = args as [Address, bigint, bigint, Address[], Hex[], Hex];
+        if (proof.reduce(pair, blastLeaf(user, eth, usd, redeemers)) !== root || root !== nodes[0]) revert("InvalidProof");
+        claims.push(args as unknown[]);
+      },
+    });
+    world.addContract(1, WITHDRAWALS, abi, { claimed: () => false, claim: () => {} });
+  });
+
+  test("the layout of Blast's proof chunks", () => {
+    assert.deepEqual([7, 10, 11, 14].map((n) => chunkOf(n, 1)), [0, 0, 1, 1]);
+    assert.deepEqual([0, 2, 3, 4, 7, 10].map((n) => slotOf(n, 0, 1, 15)), [0, 2, 3, 4, 5, 8]);
+    assert.deepEqual([5, 6, 11, 14].map((n) => slotOf(n, 1, 1, 15)), [3, 4, 5, 8]);
+    assert.throws(() => slotOf(11, 0, 1, 15), /not in chunk/);
+  });
+
+  test("ETH and DAI of the list, once the proof matches the root and the claim simulates", async () => {
+    const r = await checkBlast(USER);
+    assert.deepEqual(r.findings.map((f) => [f.networkName, f.asset.symbol, f.asset.amount]).sort(), [
+      ["Blast: balance left at the shutdown", "DAI", 250n * e18],
+      ["Blast: balance left at the shutdown", "ETH", 3n * e18],
+    ]);
+    assert.equal(claims.length, 1, "the contract accepted the proof");
+    // An account with approved redeemers hashes them into its leaf.
+    assert.equal((await checkBlast(OTHER)).findings[0].asset.amount, 2n * e18);
+  });
+
+  test("not in the list, already claimed, a rejected claim, tampered data", async () => {
+    assert.deepEqual(await checkBlast(NOBODY), { findings: [], completed: 0 });
+    assert.deepEqual((await checkBlast(REJECTED)).findings, []);
+    claimed.add(USER);
+    try {
+      assert.deepEqual(await checkBlast(USER), { findings: [], completed: 1 });
+    } finally {
+      claimed.delete(USER);
+    }
+    const saved = world.static[`${DATA}/contract-1/shards/111.json`];
+    world.static[`${DATA}/contract-1/shards/111.json`] = { [USER.toLowerCase()]: [String(30n * e18), "0", 0, 7] };
+    try {
+      await assert.rejects(checkBlast(USER), /doesn't match the list's root/);
+    } finally {
+      world.static[`${DATA}/contract-1/shards/111.json`] = saved;
+    }
+  });
+});
+
 describe("Wiring", () => {
   test("each new source has a group, a color and runs for Ethereum addresses", () => {
     for (const [id, group] of [
@@ -451,6 +538,7 @@ describe("Wiring", () => {
       ["aerodrome-velodrome", "rewards"],
       ["starknet", "l2"],
       ["hedgey-claims", "airdrops"],
+      ["blast", "l2"],
     ] as const) {
       const s = sourceById(id);
       assert.ok(s, id);

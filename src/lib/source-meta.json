@@ -81,15 +81,6 @@
   ]
  },
  {
-  "id": "blast",
-  "name": "Blast",
-  "group": "l2",
-  "bridgeUrl": "blast.io",
-  "accepts": [
-   "evm"
-  ]
- },
- {
   "id": "celo",
   "name": "Celo",
   "group": "l2",
@@ -229,15 +220,6 @@
   "name": "RISE",
   "group": "l2",
   "bridgeUrl": "the official RISE bridge",
-  "accepts": [
-   "evm"
-  ]
- },
- {
-  "id": "derive",
-  "name": "Derive",
-  "group": "l2",
-  "bridgeUrl": "the official Derive bridge",
   "accepts": [
    "evm"
   ]
@@ -400,6 +382,15 @@
   "name": "zkSync Lite",
   "group": "l2",
   "bridgeUrl": "lite.zksync.io",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "blast",
+  "name": "Blast (shut down)",
+  "group": "l2",
+  "bridgeUrl": "blast.io",
   "accepts": [
    "evm"
   ]
@@ -585,7 +576,8 @@
   "bridgeUrl": "claim.lombard.finance, before October 29, 2026",
   "accepts": [
    "evm"
-  ]
+  ],
+  "ends": 1793232000
  },
  {
   "id": "airdrop-re-2026",
@@ -594,7 +586,8 @@
   "bridgeUrl": "app.hedgey.finance/claim/431f05ff-38d0-4f86-a306-65d8d511d3c0, before July 1, 2027",
   "accepts": [
    "evm"
-  ]
+  ],
+  "ends": 1814461200
  },
  {
   "id": "airdrop-doppler-2026",
@@ -603,7 +596,8 @@
   "bridgeUrl": "app.doppler.finance/airdrop, on Base, before November 28, 2026",
   "accepts": [
    "evm"
-  ]
+  ],
+  "ends": 1795867200
  },
  {
   "id": "airdrop-pharos-2026",
@@ -612,7 +606,8 @@
   "bridgeUrl": "claim.pharos.xyz, on Pharos mainnet, before October 25, 2026, 11:00 UTC",
   "accepts": [
    "evm"
-  ]
+  ],
+  "ends": 1792926000
  },
  {
   "id": "airdrop-kamino-s3",
@@ -804,6 +799,24 @@
   ]
  },
  {
+  "id": "uniswap-v3-fees",
+  "name": "Uniswap v3 fees",
+  "group": "rewards",
+  "bridgeUrl": "app.uniswap.org (your positions)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "livepeer",
+  "name": "Livepeer",
+  "group": "rewards",
+  "bridgeUrl": "explorer.livepeer.org",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
   "id": "reclaim-rent",
   "name": "Empty token accounts",
   "group": "reclaim",
@@ -912,6 +925,15 @@
   ]
  },
  {
+  "id": "legacy-rpl-v1",
+  "name": "Rocket Pool (RPL v1)",
+  "group": "legacy",
+  "bridgeUrl": "stake.rocketpool.net (Swap RPL v1), or swapTokens on the RPL contract on Etherscan",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
   "id": "legacy-weth-old",
   "name": "Old wrapped ETH",
   "group": "legacy",
@@ -1015,6 +1037,15 @@
   "name": "FoMo3D",
   "group": "legacy",
   "bridgeUrl": "Etherscan (FoMo3D → withdraw)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "safes",
+  "name": "Forgotten Safes",
+  "group": "legacy",
+  "bridgeUrl": "app.safe.global",
   "accepts": [
    "evm"
   ]

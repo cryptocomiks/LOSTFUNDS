@@ -31,6 +31,8 @@ const GNT_AGENT: Address = "0xBFAd98d76598961827bA832108c21445aa4FEE9A";
 const GLM: Address = "0x7DD9c5Cba05E151C895FDe1CF355C9A1D5DA6429";
 const KNCL: Address = "0xdd974D5C2e2928deA5F71b9825b8b646686BD200";
 const KNC: Address = "0xdeFA4e8a7bcBA345F687a2f1456F5Edd9CE97202";
+const RPL_V1: Address = "0xB4EFd85c19999D84251304bDA99E90B92300Bd93";
+const RPL: Address = "0xD33526068D116cE69F19A9ee46F0bd304F21A51f";
 const W_ETH_2016: Address = "0xECF8F87f810EcF450940c9f60066b4a7a501d6A7";
 const WETH_0X_2017: Address = "0x2956356cD2a2bf3202F771F50D3D14A367b48070";
 const ETH_BANCOR_2017: Address = "0xD76b5c2A23ef78368d8E34288B5b65D616B746aE";
@@ -93,6 +95,7 @@ before(() => {
     fns: { migrationAgent: () => flags.gntAgent, migrate: () => undefined }, // migrate burns the caller's own GNT: no approval
   });
   token(KNCL, { [HOLDER]: parseEther("500000"), [DUST]: parseEther("10"), [CLOSED]: parseEther("1000") });
+  token(RPL_V1, { [HOLDER]: parseEther("31927.12212") }); // a real unswapped balance (November 2026)
   const unwraps = { sigs: ["function withdraw(uint256)"], fns: { withdraw: () => undefined } };
   token(W_ETH_2016, { [HOLDER]: parseEther("328.017") }, unwraps);
   token(WETH_0X_2017, { [HOLDER]: parseEther("19.7511") }, unwraps);
@@ -143,12 +146,14 @@ before(() => {
     oldKNC: () => flags.kncOld,
     mintWithOldKnc: pulls(KNCL, KNC),
   });
+  world.addContract(1, RPL, abi(["function swapTokens(uint256)"]), { swapTokens: pulls(RPL_V1, RPL) });
 
   world.prices["coingecko:ethereum"] = 2684.56;
   world.prices[`ethereum:${WETH.toLowerCase()}`] = 2684.56;
   world.prices[`ethereum:${MKR.toLowerCase()}`] = 1816.67;
   world.prices[`ethereum:${GLM.toLowerCase()}`] = 0.1247;
   world.prices[`ethereum:${KNC.toLowerCase()}`] = 0.1355;
+  world.prices[`ethereum:${RPL.toLowerCase()}`] = 1.16;
 });
 
 const byKey = (findings: Finding[]) => Object.fromEntries(findings.map((f) => [f.id.split(":").pop()!, f]));
@@ -159,7 +164,7 @@ describe("Old tokens & token migrations", () => {
     const r = await checkLegacy(HOLDER);
     assert.equal(r.error, undefined);
     const f = byKey(r.findings);
-    assert.deepEqual(Object.keys(f).sort(), ["dao", "dgd", "eth-bancor-2017", "extrabalance", "gnt", "kncl", "mkr-2016", "peth", "sai", "w-eth-2016", "weth-0x-2017"]);
+    assert.deepEqual(Object.keys(f).sort(), ["dao", "dgd", "eth-bancor-2017", "extrabalance", "gnt", "kncl", "mkr-2016", "peth", "rpl-v1", "sai", "w-eth-2016", "weth-0x-2017"]);
 
     // 100 DAO = 1 ETH: the balance (16 decimals) is paid in wei.
     assert.deepEqual([f.dao.asset.symbol, f.dao.asset.amount], ["ETH", parseEther("1122.29")]);
@@ -172,6 +177,7 @@ describe("Old tokens & token migrations", () => {
     assert.deepEqual([f["mkr-2016"].asset.symbol, f["mkr-2016"].asset.token, f["mkr-2016"].asset.amount], ["MKR", MKR, parseEther("1563.619176")]);
     assert.deepEqual([f.gnt.asset.symbol, f.gnt.asset.token, f.gnt.asset.amount], ["GLM", GLM, parseEther("25358009.11637327")]);
     assert.deepEqual([f.kncl.asset.symbol, f.kncl.asset.token, f.kncl.asset.amount], ["KNC", KNC, parseEther("500000")]);
+    assert.deepEqual([f["rpl-v1"].asset.symbol, f["rpl-v1"].asset.token, f["rpl-v1"].asset.amount], ["RPL", RPL, parseEther("31927.12212")]);
     assert.equal(f["w-eth-2016"].asset.amount, parseEther("328.017"));
     assert.equal(f["weth-0x-2017"].asset.amount, parseEther("19.7511"));
     assert.equal(f["eth-bancor-2017"].asset.amount, parseEther("9.97670383984015"));
@@ -277,7 +283,7 @@ describe("Old tokens & token migrations", () => {
   test("each entry is its own line in the checker, for Ethereum addresses only", () => {
     assert.deepEqual(
       legacySources().map((s) => s.id),
-      ["legacy-thedao", "legacy-sai", "legacy-mkr-2016", "legacy-dgd", "legacy-gnt", "legacy-kncl", "legacy-weth-old"],
+      ["legacy-thedao", "legacy-sai", "legacy-mkr-2016", "legacy-dgd", "legacy-gnt", "legacy-kncl", "legacy-rpl-v1", "legacy-weth-old"],
     );
     assert.equal(sourcesFor("solana").filter((s) => s.group === "legacy").length, 0);
   });

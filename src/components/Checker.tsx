@@ -703,8 +703,8 @@ export function Checker() {
               )}
               <p className="mt-4 px-1 text-[13px] leading-relaxed text-text-3">
                 {fr
-                  ? "Certaines apps (Starknet, LayerZero, Synapse…) ne peuvent pas encore être vérifiées automatiquement. Si vous en avez utilisé une, suivez son guide plus bas."
-                  : "Some apps (Starknet, LayerZero, Synapse…) can't be checked automatically yet. If you used one, follow its guide below."}
+                  ? "Certaines apps (LayerZero, Synapse, Sui…) ne peuvent pas encore être vérifiées automatiquement. Si vous en avez utilisé une, suivez son guide plus bas."
+                  : "Some apps (LayerZero, Synapse, Sui…) can't be checked automatically yet. If you used one, follow its guide below."}
               </p>
             </div>
 

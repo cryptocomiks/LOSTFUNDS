@@ -88,6 +88,8 @@ const STATIC_HOSTS = new Set([
   "api.hedgey.finance",
   "sidecar-rpc.eigenlayer.xyz",
   "wq-api.lido.fi",
+  "blast.io",
+  "api.safe.global",
 ]);
 
 /** Multicall3 lives elsewhere on a few chains (ZK Stack): the chain's own address, from viem. */
@@ -527,6 +529,7 @@ export class MockChain {
 
     // Static files and simple JSON APIs, served by URL.
     const hit = this.static[url.href];
+    if (hit instanceof Uint8Array) return new Response(hit as BodyInit, { headers: { "content-type": "application/octet-stream" } });
     if (hit !== undefined) return typeof hit === "string" ? new Response(hit) : json(hit);
     if (NOT_LISTED[url.host]) return NOT_LISTED[url.host]();
     if (STATIC_HOSTS.has(url.host)) return new Response('{"error":"not found"}', { status: 404 });

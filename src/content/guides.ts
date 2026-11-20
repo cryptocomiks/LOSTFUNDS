@@ -54,7 +54,7 @@ export const GUIDES: Guide[] = [
   {
     id: "rewards",
     title: "Unclaimed rewards & withdrawals",
-    subtitle: "Lido, expired locks, Curve and Balancer fees, EigenLayer, Aave, Synthetix, Convex, Stargate, Liquity, ApeCoin, Zora, Sablier, Aerodrome, Velodrome",
+    subtitle: "Lido, expired locks, Curve and Balancer fees, EigenLayer, Aave, Synthetix, Convex, Stargate, Liquity, ApeCoin, Zora, Sablier, Aerodrome, Velodrome, Uniswap v3 fees, Livepeer",
     live: true,
     steps: [
       "Lido withdrawals: open stake.lido.fi/withdrawals/claim with the wallet that holds the withdrawal request (an unstETH NFT), select the requests that are ready and click Claim. A request still pending becomes claimable once Lido finalizes it, usually within 1 to 5 days. The ETH is never sent automatically.",
@@ -71,6 +71,8 @@ export const GUIDES: Guide[] = [
       "Liquity: when a Liquity trove is redeemed against, or liquidated in Recovery Mode, the collateral above its debt is set aside for its owner and never sent: call claimCollateral() (no arguments) on Liquity's BorrowerOperations (0x24179CD81c9e782A4096035f7eC97fB8B783e007) on Etherscan, from the address named in the result. If the trove was opened through a DSProxy (DeFi Saver and similar apps) or an Instadapp account, claim it from that app. ETH and LQTY earned in the Stability Pool are paid by withdrawFromSP(0) on 0x66017D22b0f8556afDd19FC67041899Eb65a21bb, ETH and LUSD fees from LQTY staking by unstake(0) on 0x4f9Fbb3f1E99B56e0Fe2892e623Ed36A76Fc605d.",
       "Liquity v2 (BOLD): when a v2 trove is liquidated, the collateral above its debt is set aside for its owner in the branch's CollSurplusPool, on the current deployment and on the first one (wound down when Liquity relaunched in 2025). Call claimCollateral() (no arguments) on the BorrowerOperations named in the result, from the address named in the result.",
       "Aerodrome and Velodrome: an expired veAERO / veVELO lock gives nothing back by itself. Open aerodrome.finance/dash (Base) or velodrome.finance/dash (OP Mainnet) with the wallet holding the veNFT, reset its votes if it still has some, then withdraw. Rebases are claimed from the same page.",
+      "Uniswap v3 fees: the fees your liquidity earns are not added to your position or sent to you, they wait until you collect them. And when you remove liquidity, the tokens stay in the position until collected too. Open app.uniswap.org with the wallet that holds the position (the link in the result opens it), on the network named in the result, and click Collect fees. Collecting doesn't touch the liquidity that is still in the position.",
+      "Livepeer (Arbitrum): unstaking LPT takes two steps. After the waiting period (7 rounds, about a week), the LPT must be withdrawn by hand. Open explorer.livepeer.org with the staking wallet, go to your account and click Withdraw on each pending withdrawal; ETH fees are withdrawn from the same page.",
       "ApeCoin staking: ApeCoin's original staking contract on Ethereum (0x5954aB967Bc958940b7EB73ee84797Dc8a2AFbb9) stopped paying rewards in November 2024 (APE pool) and April 2025 (BAYC, MAYC and BAKC pools), when staking moved to ApeChain. APE left there earns nothing. On Etherscan, Write Contract from the staking wallet: withdrawSelfApeCoin(amount) and claimSelfApeCoin() for the APE pool; withdrawSelfBAYC / withdrawSelfMAYC with your token IDs and amounts, claimSelfBAYC / claimSelfMAYC with your token IDs for the ape pools; withdrawBAKC and claimSelfBAKC with the ape each dog is paired with. The amounts are in the result. NFT stakes belong to whoever holds the NFT today.",
       "Zora rewards: every mint of a Zora NFT or coin you created, or of a mint link you shared, credits you ETH in Zora's ProtocolRewards contract (0x7777777F279eba3d3Ad8F4E708545291A6fDBA8B, the same on Zora, Base, OP Mainnet, Arbitrum and Ethereum). It is never sent: withdraw it on zora.co from your profile, or call withdraw(your address, amount) on the contract with the block explorer of the chain named in the result.",
       "Sablier streams: tokens vested to you through Sablier (vesting, payroll, team or investor allocations) stay in the stream until you withdraw them. Open app.sablier.com with the wallet that holds the stream (the link in the result opens it), and click Withdraw.",
@@ -107,7 +109,7 @@ export const GUIDES: Guide[] = [
   {
     id: "legacy",
     title: "Old tokens & token migrations",
-    subtitle: "The DAO, Maker SAI & PETH, 2016 MKR, DigixDAO, Golem GNT, Kyber KNCL, old wrapped ETH",
+    subtitle: "The DAO, Maker SAI & PETH, 2016 MKR, DigixDAO, Golem GNT, Kyber KNCL, Rocket Pool RPL v1, old wrapped ETH",
     live: true,
     steps: [
       "None of these old tokens has a real market any more, but each one's official contract still pays out, with no deadline. You send the transactions yourself, from the wallet that holds the tokens, on Etherscan (Write Contract, connected to that wallet). Amounts are in the token's smallest unit: copy your exact balance from Read Contract → balanceOf.",
@@ -118,6 +120,7 @@ export const GUIDES: Guide[] = [
       "DigixDAO (DGD): approve DigixDAO's Acid contract (0x23Ea10CC1e6EBdB499D24E45369A35f43627062f) on the DGD token, then call burn() on Acid: it takes your whole DGD balance and sends 0.193 ETH per DGD.",
       "Golem (GNT → GLM, 1:1): use migrate.golem.network, or call migrate(your balance) on the GNT contract (0xa74476443119A942dE498590Fe1f2454d7D4aC0d). No approval needed.",
       "Kyber (KNCL → KNC, 1:1): use Migrate on kyberswap.com/kyberdao/stake-knc, or approve the KNC contract (0xdeFA4e8a7bcBA345F687a2f1456F5Edd9CE97202) on KNCL, then call mintWithOldKnc(your balance) on it.",
+      "Rocket Pool RPL v1 (0xB4EFd85c19999D84251304bDA99E90B92300Bd93), replaced in October 2021: swap it 1:1 at stake.rocketpool.net, or on Etherscan approve the RPL contract (0xD33526068D116cE69F19A9ee46F0bd304F21A51f) to spend your RPL v1, then call swapTokens(amount) on it.",
       "Old wrapped ETH from before today's WETH (W-ETH 0xECF8F87f810EcF450940c9f60066b4a7a501d6A7, 0x's 2017 WETH 0x2956356cD2a2bf3202F771F50D3D14A367b48070, Bancor's 2017 ETH token 0xD76b5c2A23ef78368d8E34288B5b65D616B746aE): call withdraw(your balance) on the token contract. The ETH comes back 1:1.",
     ],
     note: "Approve only the contract named here, for your exact balance, and never on a site you reached from a DM or an ad. Not listed because the official route has closed or the old token still trades at full value: LEND → AAVE (closed May 2026), REP v1 (Augur forked in 2026), Aragon ANT (redemption ended November 2024), AGIX → FET, MATIC → POL, MKR → SKY, OCEAN, RNDR.",
@@ -129,7 +132,7 @@ export const GUIDES: Guide[] = [
   {
     id: "legacy-deposits",
     title: "Old exchanges, ENS deposits and staking",
-    subtitle: "EtherDelta, IDEX v1, Token.Store, SingularX, Switcheo, ENS auction deeds, Polygon staking, Maker SCD vaults, Kinto, CryptoPunks, FoMo3D",
+    subtitle: "EtherDelta, IDEX v1, Token.Store, SingularX, Switcheo, ENS auction deeds, Polygon staking, Maker SCD vaults, Kinto, CryptoPunks, FoMo3D, forgotten Safes",
     live: true,
     steps: [
       "EtherDelta and ForkDelta (2016–2022), Token.Store and SingularX: what you left on these exchanges is still in their contracts, and you can withdraw it at any time, alone. For EtherDelta's main contract, ForkDelta's withdrawal page (forkdelta.app/shutdown/withdraw) lists your balances. Or use Etherscan: open the contract shown in the result, Write Contract, connect your wallet and call withdraw(amount) for ETH or withdrawToken(token, amount) for a token, with the amount given in the result.",
@@ -141,6 +144,7 @@ export const GUIDES: Guide[] = [
       "Kinto (shut down in September 2025): balances of at least $50 left on Kinto were converted to USDC and wait in the KintoLeftOver contract on Ethereum (0x47A56a558892De88367108183Df913852617e77C), with no deadline. On Etherscan, Write Contract → acceptAndClaim() (no arguments), from the wallet named in the result: the USDC is sent to it in the same transaction.",
       "CryptoPunks market (2017): ETH from punks you sold, and from your offers that were outbid, waits in the market contract (0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB). On Etherscan, Write Contract → withdraw() from the wallet named in the result. A bid left open for years keeps its ETH locked too: withdrawBidForPunk(punk number) sends it back.",
       "FoMo3D (2018): winnings, key dividends and referral rewards stay in each player's vault. On Etherscan, open the game named in the result (FoMo3D: 0xA62142888ABa8370742bE823c1782D17A0389Da1, FoMo3D Quick: 0x4e8ecF79AdE5e2C49B9e30D795517A81e0Bf00B8), Write Contract → withdraw() from the wallet that played: the whole vault is sent to it.",
+      "Forgotten Safes: a Safe (formerly Gnosis Safe) is its own address, so what it holds never shows in the wallet of its owner. The check lists the Safes you control alone (one signature needed) that haven't sent anything for a year and still hold funds. Open app.safe.global, connect the owner wallet on the network named in the result: the Safe appears under your accounts, and you can send its funds anywhere. Shared Safes (two signatures or more) are not listed.",
     ],
     note: "Each of these is an ordinary Ethereum transaction sent from your own wallet. Nobody can withdraw for you, and you never need to share a key or sign a message for it. Check the contract address on Etherscan before sending anything.",
     manual: [
@@ -151,7 +155,7 @@ export const GUIDES: Guide[] = [
   {
     id: "opstack",
     title: "OP Stack chains",
-    subtitle: "Base, OP Mainnet, Mantle, World Chain, Blast, Celo, Unichain, Ink, Manta Pacific, Boba…",
+    subtitle: "Base, OP Mainnet, Mantle, World Chain, Celo, Unichain, Ink, Manta Pacific, Boba…",
     live: true,
     steps: [
       "Open the chain's official bridge (most OP Stack chains use Superbridge) and connect the wallet that made the withdrawal.",
@@ -216,6 +220,19 @@ export const GUIDES: Guide[] = [
       "On Ethereum, call finalizeDeposit on the L1Nullifier (0xD7f9f54194C633F36CCD5F3da84ad4a1c38cB2cB) with the chain id, the batch number, the proof's id, the L2 contract that sent the message (0x…800A for ETH or the gas token), the index in the batch, the message and the proof.",
       "An AI assistant with Ethereum tooling can prepare this transaction as unsigned data for you to review and sign in your own wallet. Never give anyone your private key.",
     ],
+  },
+  {
+    id: "blast",
+    title: "Blast (shut down)",
+    subtitle: "Balances and unfinished withdrawals left when Blast stopped on November 4, 2026, claimed on Ethereum",
+    live: true,
+    steps: [
+      "Blast stopped on November 4, 2026. The ETH, WETH and USDB each address still had there, and the withdrawals to Ethereum that were never finished, are paid on Ethereum by two official recovery contracts (0x9D31771458B421C7EA8A06CB8D12663E91617869 for balances, 0x23eA8c6ACEb5673BBd712137cE2Aa33db36CB513 for unfinished withdrawals): ETH for ETH and WETH, DAI for USDB.",
+      "Open blast.io (type it yourself), enter the address that held funds on Blast and connect that wallet on Ethereum. The page shows what it can claim and sends the claim: one transaction per contract.",
+      "A Safe or another smart wallet that existed on Blast claims through one of its owners: enter the Safe's address on blast.io and follow \"Claim with a Safe\".",
+      "Blast Mobile users: the Blast Mobile address doesn't exist on Ethereum. Import the app's seed phrase into a wallet such as MetaMask or Rabby (only ever type a seed phrase into your wallet app, never into a website), connect it on blast.io, and the balance appears.",
+    ],
+    note: "Other tokens that only lived on Blast (BLAST, protocol tokens, NFTs) are not part of these claims. Since the shutdown, many fake \"Blast claim\" sites circulate: only blast.io is the official page, and it never asks for a seed phrase.",
   },
   {
     id: "zksync-lite",

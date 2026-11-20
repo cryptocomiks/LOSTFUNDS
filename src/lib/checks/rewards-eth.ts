@@ -4,6 +4,8 @@ import { APECOIN_STAKING, checkApeCoinStaking } from "./apecoin";
 import { checkZoraRewards, ZORA_REWARDS } from "./zora-rewards";
 import { checkSablier, SABLIER } from "./sablier";
 import { checkVeDex, VE_DEX } from "./aerodrome";
+import { checkUniswapV3, UNISWAP_V3 } from "./uniswap-v3";
+import { checkLivepeer, LIVEPEER } from "./livepeer";
 import type { CheckOutput, FindingSource } from "./common";
 import { CONVEX, checkConvex } from "./convex";
 import { checkEigenRewards, checkEigenWithdrawals, EIGEN_REWARDS, EIGEN_WITHDRAWALS } from "./eigenlayer";
@@ -48,4 +50,6 @@ export const ETH_REWARD_SOURCES: CheckSource[] = [
   source(ZORA_REWARDS, "zora.co (profile → rewards)", checkZoraRewards),
   source(SABLIER, "app.sablier.com", checkSablier),
   source(VE_DEX, "aerodrome.finance / velodrome.finance (Dash)", checkVeDex),
+  source(UNISWAP_V3, "app.uniswap.org (your positions)", checkUniswapV3),
+  source(LIVEPEER, "explorer.livepeer.org", checkLivepeer),
 ];

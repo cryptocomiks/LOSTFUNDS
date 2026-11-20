@@ -72,11 +72,14 @@ let queued = new Map<string, ((p: number | undefined) => void)[]>();
 let flushTimer: ReturnType<typeof setTimeout> | undefined;
 const PRICE_BATCH = 80; // keys per request (keeps the URL short)
 
-async function fetchPrices(keys: string[]): Promise<Record<string, { price: number }>> {
+/** Below this DefiLlama confidence (0 to 1), a price is treated as unknown. */
+const MIN_PRICE_CONFIDENCE = 0.5;
+
+async function fetchPrices(keys: string[]): Promise<Record<string, { price: number; confidence?: number }>> {
   for (let attempt = 0; ; attempt++) {
     try {
       const res = await fetch(`https://coins.llama.fi/prices/current/${keys.join(",")}`, { signal: AbortSignal.timeout(10_000) });
-      if (res.ok) return ((await res.json()) as { coins: Record<string, { price: number }> }).coins ?? {};
+      if (res.ok) return ((await res.json()) as { coins: Record<string, { price: number; confidence?: number }> }).coins ?? {};
       if (res.status !== 429 && res.status < 500) throw new Error(`HTTP ${res.status}`);
     } catch (e) {
       if (attempt >= 2 || (e as Error).message.startsWith("HTTP")) throw e;
@@ -96,7 +99,7 @@ function flushPrices() {
     fetchPrices(chunk).then(
       (coins) =>
         chunk.forEach((k) => {
-          const price = coins[k]?.price;
+          const price = (coins[k]?.confidence ?? 1) >= MIN_PRICE_CONFIDENCE ? coins[k]?.price : undefined;
           if (!price) prices.delete(k); // only real prices are remembered: a missing one may appear later
           batch.get(k)!.forEach((resolve) => resolve(price));
         }),

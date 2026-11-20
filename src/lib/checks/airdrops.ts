@@ -41,6 +41,8 @@ export interface Airdrop {
   decimals: number;
   /** Where to claim, shown as text. */
   claimAt: string;
+  /** Unix seconds when the claim period ends: from then on the airdrop is no longer listed or checked. */
+  ends?: number;
   /** Unix seconds of the airdrop, shown as the "Airdropped" date. */
   date: number;
   note: string;
@@ -739,6 +741,7 @@ export const AIRDROP_LIST: Airdrop[] = [
   },
   {
     id: "lombard-2026",
+    ends: BARD_CLAIM_END,
     accepts: ["evm"],
     name: "Lombard (BARD)",
     label: "Lombard BARD airdrop",
@@ -753,6 +756,7 @@ export const AIRDROP_LIST: Airdrop[] = [
   },
   {
     id: "re-2026",
+    ends: 1814461200, // Jul 1, 2027, 17:00 UTC
     accepts: ["evm"],
     name: "Re Protocol (RE)",
     label: "Re Protocol airdrop",
@@ -767,6 +771,7 @@ export const AIRDROP_LIST: Airdrop[] = [
   },
   {
     id: "doppler-2026",
+    ends: DOPPLER_DEADLINE,
     accepts: ["evm"],
     name: "Doppler Finance (XDP)",
     label: "Doppler Finance XDP airdrop",
@@ -781,6 +786,7 @@ export const AIRDROP_LIST: Airdrop[] = [
   },
   {
     id: "pharos-2026",
+    ends: PHAROS_END,
     accepts: ["evm"],
     name: "Pharos (PROS)",
     label: "Pharos PROS airdrop",

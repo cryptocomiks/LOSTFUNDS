@@ -6,7 +6,7 @@
 import { writeFileSync } from "node:fs";
 import { SOURCES } from "../src/lib/sources.ts";
 
-export const sourceMeta = () => SOURCES.map(({ id, name, group, bridgeUrl, accepts }) => ({ id, name, group, bridgeUrl, accepts }));
+export const sourceMeta = () => SOURCES.map(({ id, name, group, bridgeUrl, accepts, ends }) => ({ id, name, group, bridgeUrl, accepts, ...(ends && { ends }) }));
 
 if (process.argv[1]?.endsWith("gen-source-meta.ts")) {
   writeFileSync(new URL("../src/lib/source-meta.json", import.meta.url), JSON.stringify(sourceMeta(), null, 1) + "\n");

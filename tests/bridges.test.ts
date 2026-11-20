@@ -9,6 +9,7 @@ import { checkWormhole, decodeNttVaa, decodeTransferVaa } from "../src/lib/check
 import { associatedTokenAddress, findProgramAddress, hexBytes, u16be, u64be } from "../src/lib/solana.ts";
 import { base58 } from "@scure/base";
 import { sourcesFor } from "../src/lib/checker.ts";
+import { isOpen, SOURCES } from "../src/lib/sources.ts";
 import { MockChain, revert } from "./mockchain.ts";
 import {
   CCTP_V1_USED_NONCES_499201,
@@ -918,8 +919,17 @@ describe("Wallet kinds", () => {
       ["wormhole", "debridge", "cctp", "airdrop-kamino-s3", "reclaim-rent", "reclaim-stake", "reclaim-marinade", "reclaim-openorders", "pumpfun-creator-fees", "reclaim-buffers"],
     );
   });
-  test("an Ethereum address runs everything", () => {
-    assert.equal(sourcesFor("evm").length, 106);
+  test("an Ethereum address runs everything that is still open", () => {
+    const evm = SOURCES.filter((s) => s.accepts.includes("evm"));
+    assert.equal(evm.length, 109);
+    // Airdrops past their deadline are no longer listed or run.
+    const ended = evm.filter((s) => s.ends && s.ends <= Date.now() / 1000);
+    assert.deepEqual(
+      sourcesFor("evm").map((s) => s.id),
+      evm.filter((s) => !ended.includes(s)).map((s) => s.id),
+    );
+    assert.ok(ended.every((s) => s.group === "airdrops"));
+    assert.ok(isOpen({ ends: 2_000_000_000 }, 1_999_999_999) && !isOpen({ ends: 2_000_000_000 }, 2_000_000_000) && isOpen({}));
   });
 });
 

@@ -3,7 +3,7 @@ import { normalize } from "viem/ens";
 import { l1Client } from "./clients";
 import { isSolanaAddress } from "./solana";
 import type { Network } from "./networks";
-import { SOURCES, sourceById, type CheckSource } from "./sources";
+import { isOpen, SOURCES, sourceById, type CheckSource } from "./sources";
 import { addPrices } from "./tokens";
 import type { NetworkResult } from "./types";
 
@@ -77,7 +77,7 @@ export async function checkSource(src: CheckSource, user: string): Promise<Netwo
 export const checkNetwork = (net: Network, user: Address) => checkSource(sourceById(net.id)!, user);
 
 /** The checks that apply to this kind of wallet. */
-export const sourcesFor = (kind: WalletKind) => SOURCES.filter((s) => s.accepts.includes(kind));
+export const sourcesFor = (kind: WalletKind) => SOURCES.filter((s) => s.accepts.includes(kind) && isOpen(s));
 
 /**
  * How many checks run at once. Each check fans out to its own sources, so this caps a visitor's

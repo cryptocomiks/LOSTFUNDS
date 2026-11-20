@@ -3,6 +3,7 @@ import { checkAaveV2, checkAaveV3 } from "./checks/aave-incentives";
 import { neverActive } from "./checks/activity";
 import { AIRDROP_LIST, checkAirdrops } from "./checks/airdrops";
 import { checkArbitrum } from "./checks/arbitrum";
+import { BLAST, checkBlast } from "./checks/blast";
 import { checkCctp, checkCctpFromSolana } from "./checks/cctp";
 import { BUFFERS, checkBuffers } from "./checks/buffers";
 import { checkCeler } from "./checks/celer";
@@ -24,6 +25,7 @@ import { checkPumpFees, PUMP_FEES } from "./checks/pumpfun";
 import { ETH_REWARD_SOURCES } from "./checks/rewards-eth";
 import { checkInactiveStake, checkMarinadeTickets, checkTokenRent, MARINADE, RENT, STAKE } from "./checks/reclaim";
 import { checkPolygonStaking, POLYGON_STAKING } from "./checks/polygon-staking";
+import { checkSafes, SAFES } from "./checks/safes";
 import { checkScd, SCD } from "./checks/scd";
 import { checkScroll } from "./checks/scroll";
 import { checkStarknet, STARKNET } from "./checks/starknet";
@@ -44,6 +46,8 @@ export interface CheckSource {
   bridgeUrl: string;
   /** Wallet kinds this check works with. */
   accepts: ("evm" | "solana")[];
+  /** Unix seconds after which the check has nothing left to find (an airdrop's deadline): it is no longer listed or run. */
+  ends?: number;
   /** `user` is a checksummed EVM address or a base58 Solana address, per `accepts`. */
   run: (user: string) => Promise<CheckOutput>;
 }
@@ -74,6 +78,8 @@ export const SOURCES: CheckSource[] = [
   { id: POLYGON.id, name: POLYGON.name, group: "l2", bridgeUrl: "portal.polygon.technology", accepts: ["evm"], run: (user) => checkPolygon(user as Address) },
   // zkSync Lite was shut down: what was left in it is claimed on Ethereum (see checks/zksync-lite.ts).
   { id: ZKSYNC_LITE.id, name: ZKSYNC_LITE.name, group: "l2", bridgeUrl: "lite.zksync.io", accepts: ["evm"], run: (user) => checkZkSyncLite(user as Address) },
+  // Blast was shut down too: balances and unfinished withdrawals are paid by recovery contracts on Ethereum (see checks/blast.ts).
+  { id: BLAST.id, name: BLAST.name, group: "l2", bridgeUrl: "blast.io", accepts: ["evm"], run: (user) => checkBlast(user as Address) },
   // Starknet → Ethereum: messages never consumed on L1 (snapshot + live search, see checks/starknet.ts).
   { id: STARKNET.id, name: STARKNET.name, group: "l2", bridgeUrl: "starkgate.starknet.io", accepts: ["evm"], run: (user) => checkStarknet(user as Address) },
   { id: "wormhole", name: "Wormhole", group: "solana", bridgeUrl: "portalbridge.com", accepts: ["evm", "solana"], run: checkWormhole },
@@ -101,6 +107,7 @@ export const SOURCES: CheckSource[] = [
     group: "airdrops" as const,
     bridgeUrl: a.claimAt,
     accepts: a.accepts,
+    ...(a.ends && { ends: a.ends }),
     run: (user: string) => checkAirdrops(user, [a]),
   })),
   // Every open Hedgey claim campaign (airdrops and distributions), found on-chain.
@@ -153,6 +160,10 @@ SOURCES.push(
   { id: KINTO.id, name: KINTO.name, group: "legacy", bridgeUrl: "Etherscan (KintoLeftOver → acceptAndClaim)", accepts: ["evm"], run: (user) => checkKinto(user as Address) },
   { id: CRYPTOPUNKS.id, name: CRYPTOPUNKS.name, group: "legacy", bridgeUrl: "Etherscan (CryptoPunksMarket)", accepts: ["evm"], run: (user) => checkCryptoPunks(user as Address) },
   { id: FOMO3D.id, name: FOMO3D.name, group: "legacy", bridgeUrl: "Etherscan (FoMo3D → withdraw)", accepts: ["evm"], run: (user) => checkFomo3d(user as Address) },
+  { id: SAFES.id, name: SAFES.name, group: "legacy", bridgeUrl: "app.safe.global", accepts: ["evm"], run: (user) => checkSafes(user as Address) },
 );
+
+/** Still worth running: not past its end date. */
+export const isOpen = (s: { ends?: number }, at = Date.now() / 1000) => !s.ends || s.ends > at;
 
 export const sourceById = (id: string) => SOURCES.find((s) => s.id === id);

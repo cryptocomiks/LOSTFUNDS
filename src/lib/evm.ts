@@ -81,6 +81,8 @@ const DEAD_RPCS = new Set([
   "https://api.blockeden.xyz/metis/67nCBdZQSH9z3YqDDjdm", // paid plan only
   "https://metis-mainnet.public.blastapi.io", // Blast API shut down
   "https://fantom-rpc.publicnode.com", // 404
+  "https://blast-rpc.publicnode.com", // Blast shut down in November 2026: "unsupported platform"
+  "https://blast.drpc.org", // paid plan only
 ]);
 
 const def = (chain: Chain, name: string, llama: string, nativePrice: string, rpcs: string[]): EvmChain => ({
@@ -144,7 +146,7 @@ EVM_CHAINS.push(
   def(xrplevm, "XRPL EVM", "xrplevm", "coingecko:ripple", ["https://rpc.xrplevm.org"]),
   def(zeroGMainnet, "0G", "0g", "coingecko:zero-gravity", ["https://evmrpc.0g.ai", drpc("0g")]),
   def(scroll, "Scroll", "scroll", "coingecko:ethereum", [pn("scroll-rpc"), "https://rpc.scroll.io", drpc("scroll")]),
-  def(blast, "Blast", "blast", "coingecko:ethereum", [pn("blast-rpc"), "https://rpc.blast.io", drpc("blast")]),
+  def(blast, "Blast", "blast", "coingecko:ethereum", ["https://blast.api.pocket.network", "https://rpc.blast.io"]), // shut down in November 2026: kept for old transfers
   def(xLayer, "X Layer", "xlayer", "coingecko:okb", ["https://rpc.xlayer.tech", "https://xlayerrpc.okx.com", drpc("xlayer")]),
   def(aurora, "Aurora", "aurora", "coingecko:ethereum", ["https://mainnet.aurora.dev", drpc("aurora")]),
   def(karura, "Karura", "karura", "coingecko:karura", ["https://eth-rpc-karura.aca-api.network"]),

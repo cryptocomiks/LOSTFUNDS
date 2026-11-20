@@ -26,7 +26,6 @@ export const NETWORK_COLORS: Record<string, string> = {
   cyber: "linear-gradient(135deg,#1a1a1a,#D8FF4C)",
   orderly: "#6D38F5",
   rise: "linear-gradient(135deg,#1a1a1a,#7B61FF)",
-  derive: "#25FAAF",
   funki: "#FF3E9A",
   nillion: "#1A1AFF",
   towns: "linear-gradient(135deg,#FF6A3D,#A23BFF)",
@@ -88,6 +87,8 @@ export const NETWORK_COLORS: Record<string, string> = {
   "zora-rewards": "linear-gradient(135deg,#A1723A,#2B5DF0)",
   "sablier-streams": "linear-gradient(135deg,#FF7300,#FFB800)",
   "aerodrome-velodrome": "linear-gradient(135deg,#0433FF,#FF1100)",
+  "uniswap-v3-fees": "linear-gradient(135deg,#FF007A,#7B2FF7)",
+  livepeer: "linear-gradient(135deg,#00EB88,#131418)",
   "hedgey-claims": "linear-gradient(135deg,#1E1B4B,#7C3AED)",
   "reclaim-rent": "linear-gradient(135deg,#9945FF,#14F195)",
   "reclaim-stake": "linear-gradient(135deg,#14F195,#1A1A1A)",
@@ -114,5 +115,6 @@ export const NETWORK_COLORS: Record<string, string> = {
   kinto: "linear-gradient(135deg,#7D52F4,#16133B)",
   starknet: "linear-gradient(135deg,#EC796B,#29296E)",
   "cryptopunks-market": "linear-gradient(135deg,#638596,#E8C76F)",
+  safes: "linear-gradient(135deg,#12FF80,#121312)",
   fomo3d: "linear-gradient(135deg,#7A0F0F,#F5B700)",
 };
