@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SITE } from "@/config/site";
-import { T } from "@/lib/i18n";
+import { T, useLang, type Lang } from "@/lib/i18n";
 import { Reveal } from "./Reveal";
 
 const SoundOn = () => (
@@ -18,10 +18,17 @@ const SoundOff = () => (
   </svg>
 );
 
-/** 15-second product film. Plays muted while on screen; the button turns the sound on. */
+/**
+ * 15-second product film, in the visitor's language (film/ renders both versions). Nothing is
+ * downloaded but the poster until it comes on screen; it then plays muted, and the button turns
+ * the sound on.
+ */
 export function ShowReel() {
+  const lang = useLang();
   const ref = useRef<HTMLVideoElement>(null);
-  const [muted, setMuted] = useState(true);
+  /** The language whose film has its sound on: switching language loads the other film, muted again. */
+  const [soundOn, setSoundOn] = useState<Lang | null>(null);
+  const muted = soundOn !== lang;
 
   useEffect(() => {
     const v = ref.current;
@@ -35,18 +42,17 @@ export function ShowReel() {
     );
     io.observe(v);
     return () => io.disconnect();
-  }, []);
+  }, [lang]);
 
   const toggleSound = () => {
     const v = ref.current;
     if (!v) return;
-    const next = !muted;
-    v.muted = next;
-    if (!next) {
+    v.muted = !muted;
+    if (muted) {
       v.currentTime = 0; // start from the top so the sound design lines up
       v.play().catch(() => {});
     }
-    setMuted(next);
+    setSoundOn(muted ? lang : null);
   };
 
   return (
@@ -61,21 +67,26 @@ export function ShowReel() {
         <Reveal delay={120}>
           <div className="relative mx-auto mt-10 overflow-hidden rounded-[28px] border border-line bg-black shadow-float sm:mt-14">
             <video
+              key={lang}
               ref={ref}
               className="block aspect-video w-full"
-              src="/video/fundscheckers-film.mp4"
-              poster="/video/fundscheckers-film-poster.jpg"
+              src={`/video/fundscheckers-film-${lang}.mp4`}
+              poster={`/video/fundscheckers-film-${lang}.jpg`}
               muted
               loop
               playsInline
-              preload="metadata"
-              aria-label={`${SITE.name}: a 15-second film showing how the checker finds unclaimed bridge withdrawals`}
+              preload="none"
+              aria-label={
+                lang === "fr"
+                  ? `${SITE.name} : un film de 15 secondes qui montre comment le site retrouve la crypto jamais réclamée (retraits, airdrops, staking, récompenses)`
+                  : `${SITE.name}: a 15-second film showing how the checker finds crypto that was never claimed (withdrawals, airdrops, staking, rewards)`
+              }
             />
             <button
               type="button"
               onClick={toggleSound}
               className="absolute right-4 bottom-4 flex items-center gap-2 rounded-full bg-black/55 px-4 py-2 text-[13px] font-medium text-white backdrop-blur-md transition hover:bg-black/70 active:scale-[0.97]"
-              aria-label={muted ? "Turn sound on" : "Mute"}
+              aria-label={muted ? (lang === "fr" ? "Activer le son" : "Turn sound on") : lang === "fr" ? "Couper le son" : "Mute"}
             >
               {muted ? <SoundOff /> : <SoundOn />}
               {muted ? <T en="Sound on" fr="Son" /> : <T en="Mute" fr="Couper" />}

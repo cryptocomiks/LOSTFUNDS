@@ -15,11 +15,64 @@
 <body>
 <canvas id="c" width="1920" height="1080"></canvas>
 <script>
-/* ═════════════════════════════ lostfunds — 15s showreel ═════════════════════════════
-   Everything is a pure function of t (seconds), so every frame renders deterministically. */
+/* ═════════════════════════════ FundsCheckers: 15s showreel ═════════════════════════════
+   Everything is a pure function of t (seconds), so every frame renders deterministically.
+   reel.html?lang=fr renders the French version. */
 const W = 1920, H = 1080, CX = W / 2, CY = H / 2;
 const cv = document.getElementById("c");
 const g = cv.getContext("2d");
+
+/* ───── what the film says, in both languages ───── */
+const FR = new URLSearchParams(location.search).get("lang") === "fr";
+/** The count the film runs to. A round floor, not the exact number of the day (122 when this was made): it stays true as checks come and go. */
+const CHECKS = 100;
+const TXT = FR
+  ? {
+      problemA: "Chaque jour, de la crypto",
+      problemB: "est oubliée.",
+      neverPre: "Une partie n'est ",
+      neverHot: "jamais réclamée.",
+      nodes: ["Layer 2", "Airdrops", "Vieux contrats", "Staking et récompenses", "Bridges", "Solana"],
+      stuck: { 1: "400 UNI", 3: "2,86 ETH", 4: "1 147 USDC" },
+      caption: "Retraits, airdrops, récompenses. Jamais réclamés.",
+      placeholder: "Collez une adresse Ethereum ou Solana",
+      button: "Vérifier",
+      counterPre: "Plus de ",
+      counterPlus: "",
+      counter: "vérifications, en direct on-chain",
+      found: "1 chose à réclamer",
+      done: "Données en direct, à l'instant",
+      money: (n) => `${String(n).replace(/\B(?=(\d{3})+$)/g, " ")} $`,
+      detail: "2,86 ETH  ·  Kelp  ·  Retrait de staking jamais réclamé",
+      badge: "À réclamer",
+      outro: "Retrouvez ce que vous avez oublié.",
+      outroGrad: [4, 5],
+      promise: "Gratuit  ·  Lecture seule  ·  Sans connexion de wallet",
+    }
+  : {
+      problemA: "Every day, crypto gets",
+      problemB: "left behind.",
+      neverPre: "Some of it is ",
+      neverHot: "never claimed.",
+      nodes: ["Layer 2s", "Airdrops", "Old contracts", "Staking & rewards", "Bridges", "Solana"],
+      stuck: { 1: "400 UNI", 3: "2.86 ETH", 4: "1,147 USDC" },
+      caption: "Withdrawals, airdrops, rewards. Never claimed.",
+      placeholder: "Paste an Ethereum or Solana address",
+      button: "Check",
+      counterPre: "",
+      counterPlus: "+",
+      counter: "checks, live on-chain",
+      found: "1 thing to claim",
+      done: "Live data, just now",
+      money: (n) => `$${n.toLocaleString("en-US")}`,
+      detail: "2.86 ETH  ·  Kelp  ·  Staking withdrawal never claimed",
+      badge: "Ready to claim",
+      outro: "Find what you left behind.",
+      outroGrad: [3, 4],
+      promise: "Free  ·  Read-only  ·  No wallet connection",
+    };
+/** The find of the film: a real case met while testing (a staking withdrawal never claimed), at that day's price. */
+const FOUND_USD = 4687;
 
 /* ───── math ───── */
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
@@ -84,9 +137,9 @@ function grainPass(t) {
 }
 function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
 
-/* ───── logo ───── */
-const ARC = new Path2D("M10.5 18.5a6 6 0 1 0 1.2-6.9");
-const HOOK = new Path2D("M10.5 8.5v4h4");
+/* ───── logo: the site's icon (public/icon.svg), drawn stroke by stroke ───── */
+const LENS = new Path2D(); LENS.arc(14.2, 14.2, 6.7, Math.PI / 4, Math.PI / 4 + Math.PI * 2);
+const TICK = new Path2D("M11.3 14.4l2.1 2.1 3.9-4.1");
 function logo(x, y, size, t0, t, rot = 0) {
   const k = P(t, t0, t0 + 0.7);
   const s = size * E.outBack(k);
@@ -97,7 +150,7 @@ function logo(x, y, size, t0, t, rot = 0) {
   const gl = g.createRadialGradient(0, 0, 0, 0, 0, s * 1.3);
   gl.addColorStop(0, "rgba(123,97,255,0.35)"); gl.addColorStop(1, "rgba(123,97,255,0)");
   g.fillStyle = gl; g.fillRect(-s * 1.5, -s * 1.5, s * 3, s * 3);
-  rr(-s / 2, -s / 2, s, s, 9 * u);
+  rr(-s / 2, -s / 2, s, s, 8 * u);
   const spin = t * 0.6;
   const gr = g.createLinearGradient(Math.cos(spin) * -s / 2, Math.sin(spin) * -s / 2, Math.cos(spin) * s / 2, Math.sin(spin) * s / 2);
   gr.addColorStop(0, C.blue); gr.addColorStop(0.55, C.violet); gr.addColorStop(1, C.pink);
@@ -107,20 +160,31 @@ function logo(x, y, size, t0, t, rot = 0) {
   gloss.addColorStop(0, "rgba(255,255,255,0.22)"); gloss.addColorStop(0.5, "rgba(255,255,255,0)");
   g.fillStyle = gloss; g.fill();
   g.translate(-s / 2, -s / 2); g.scale(u, u);
-  g.strokeStyle = "#fff"; g.lineWidth = 2.4; g.lineCap = "round"; g.lineJoin = "round";
-  const d = E.inOutCubic(P(t, t0 + 0.25, t0 + 0.95));
-  g.setLineDash([34, 60]); g.lineDashOffset = 34 * (1 - d); g.stroke(ARC);
-  const d2 = E.outCubic(P(t, t0 + 0.7, t0 + 1.0));
-  g.setLineDash([9, 20]); g.lineDashOffset = 9 * (1 - d2); g.stroke(HOOK);
-  g.setLineDash([]);
-  const dot = E.outBack(P(t, t0 + 0.85, t0 + 1.15));
-  if (dot > 0) { g.beginPath(); g.arc(16.5, 16, 1.9 * dot, 0, Math.PI * 2); g.fillStyle = "#fff"; g.fill(); }
+  g.strokeStyle = "#fff"; g.lineCap = "round"; g.lineJoin = "round";
+  // the lens, then its handle, then the check mark inside
+  const lens = E.inOutCubic(P(t, t0 + 0.25, t0 + 0.9));
+  if (lens > 0) { g.lineWidth = 2.6; g.setLineDash([43, 60]); g.lineDashOffset = 43 * (1 - lens); g.stroke(LENS); g.setLineDash([]); }
+  const handle = E.outCubic(P(t, t0 + 0.7, t0 + 1.0));
+  if (handle > 0) { g.lineWidth = 3.2; g.beginPath(); g.moveTo(19.2, 19.2); g.lineTo(19.2 + 4.4 * handle, 19.2 + 4.4 * handle); g.stroke(); }
+  const tick = E.outCubic(P(t, t0 + 0.9, t0 + 1.25));
+  if (tick > 0) { g.lineWidth = 2.5; g.setLineDash([9, 20]); g.lineDashOffset = 9 * (1 - tick); g.stroke(TICK); g.setLineDash([]); }
   g.restore();
 }
 
 /* ───── text helpers ───── */
+function widthOf(str, weight, size, spacing) {
+  g.font = font(weight, size); g.letterSpacing = `${spacing * size}px`;
+  const w = g.measureText(str).width;
+  g.letterSpacing = "0px";
+  return w;
+}
+/** The largest size up to `size` at which every string fits in `max` pixels (French runs longer than English). */
+function fit(strs, weight, size, max, spacing = -0.035) {
+  const widest = Math.max(...strs.map((s) => widthOf(s, weight, size, spacing)));
+  return widest > max ? Math.floor((size * max) / widest) : size;
+}
 function letters(str, x, y, t0, t, opts = {}) {
-  const { size = 120, weight = 700, fill = C.text, stagger = 0.035, dur = 0.55, align = "left", rise = 60, spacing = -0.03, blur = true } = opts;
+  const { size = 120, weight = 700, fill = C.text, stagger = 0.035, dur = 0.55, align = "left", rise = 60, spacing = -0.03 } = opts;
   g.font = font(weight, size); g.letterSpacing = `${spacing * size}px`;
   const total = g.measureText(str).width;
   let cx = align === "center" ? x - total / 2 : x;
@@ -166,6 +230,7 @@ function words(str, x, y, t0, t, opts = {}) {
 }
 
 /* ═════════════════════ SCENE 1 · Ignition (0 → 2.4) ═════════════════════ */
+const NAME = "FundsCheckers";
 const dust = Array.from({ length: 220 }, (_, i) => { const r = rng(100 + i); return { a: r() * Math.PI * 2, d: 400 + r() * 900, s: 1 + r() * 2.5, sp: 0.6 + r() * 0.8, hue: r() }; });
 function scene1(t) {
   const conv = P(t, 0, 1.0);
@@ -186,17 +251,19 @@ function scene1(t) {
     gr.addColorStop(0, `rgba(255,255,255,${0.55 * fl})`); gr.addColorStop(1, "rgba(255,255,255,0)");
     g.fillStyle = gr; g.fillRect(0, 0, W, H);
   }
-  // logo slides left as the wordmark arrives
+  // the icon slides left as the name arrives: together they end up centered
+  const ICON = 190, GAP = 36, SIZE = 150;
+  const nameW = widthOf(NAME, 700, SIZE, -0.03);
   const slide = E.inOutQuint(P(t, 1.05, 1.65));
   const zoom = E.inExpo(P(t, 2.0, 2.4));
   g.save();
   g.translate(CX, CY); g.scale(1 + zoom * 7, 1 + zoom * 7); g.translate(-CX, -CY);
   g.globalAlpha = 1 - E.inCubic(P(t, 2.15, 2.4));
-  const lx = CX - 250 * slide;
-  logo(lx, CY, 190, 0.45, t, -0.6);
-  if (t > 1.2) {
+  const lx = CX - ((GAP + nameW) / 2) * slide;
+  logo(lx, CY, ICON, 0.45, t, -0.6);
+  if (t > 1.15) {
     g.textBaseline = "middle";
-    letters("lostfunds", lx + 130, CY + 4, 1.25, t, { size: 150, weight: 700, stagger: 0.045, dur: 0.6, rise: 70 });
+    letters(NAME, lx + ICON / 2 + GAP, CY + 4, 1.2, t, { size: SIZE, weight: 700, stagger: 0.032, dur: 0.5, rise: 70 });
     g.textBaseline = "alphabetic";
   }
   g.restore();
@@ -205,14 +272,15 @@ function scene1(t) {
 /* ═════════════════════ SCENE 2 · The problem (2.4 → 5.2) ═════════════════════ */
 function scene2(t) {
   const out = E.inCubic(P(t, 4.95, 5.2));
+  const SIZE = fit([TXT.problemA, TXT.problemB, TXT.neverPre + TXT.neverHot], 700, 104, 1560);
   g.save(); g.globalAlpha = 1 - out; g.translate(0, -80 * out);
   // line 1
   const up = E.inOutCubic(P(t, 3.45, 3.9));
   g.save(); g.translate(0, -260 * up); g.globalAlpha *= 1 - up * 0.85;
-  words("Every day, crypto crosses", CX, CY - 20, 2.45, t, { size: 104 });
-  words("bridges.", CX, CY + 110, 2.85, t, { size: 104, gradWords: [0] });
+  words(TXT.problemA, CX, CY - 20, 2.45, t, { size: SIZE });
+  words(TXT.problemB, CX, CY + 110, 2.85, t, { size: SIZE, gradWords: [0, 1] });
   g.restore();
-  // the bridge: a line that breaks
+  // a transfer on its way: a line that breaks
   const draw = E.outCubic(P(t, 2.9, 3.6));
   const brk = E.inOutCubic(P(t, 3.95, 4.5));
   const y = CY + 230 - 40 * up;
@@ -235,19 +303,20 @@ function scene2(t) {
   g.restore();
   // line 2
   if (t > 3.75) {
-    words("Some of it never arrives.", CX, CY + 40, 3.8, t, { size: 104, gradWords: [] });
-    // "never arrives" tint to orange
+    const full = TXT.neverPre + TXT.neverHot;
+    words(full, CX, CY + 40, 3.8, t, { size: SIZE, gradWords: [] });
+    // the last words turn orange
     const tint = P(t, 4.3, 4.8);
     if (tint > 0) {
-      g.font = font(700, 104); g.letterSpacing = `${-0.035 * 104}px`;
-      const full = g.measureText("Some of it never arrives.").width;
-      const pre = g.measureText("Some of it ").width;
-      const rest = g.measureText("never arrives.").width;
+      g.font = font(700, SIZE); g.letterSpacing = `${-0.035 * SIZE}px`;
+      const fullW = g.measureText(full).width;
+      const pre = g.measureText(TXT.neverPre).width;
+      const rest = g.measureText(TXT.neverHot).width;
       g.save(); g.globalAlpha *= tint; g.fillStyle = C.orange;
-      g.fillText("never arrives.", CX - full / 2 + pre, CY + 40); g.restore();
+      g.fillText(TXT.neverHot, CX - fullW / 2 + pre, CY + 40); g.restore();
       // underline scribble
       g.strokeStyle = hexA(C.orange, 0.9); g.lineWidth = 5; g.beginPath();
-      const sx = CX - full / 2 + pre, k = E.outCubic(P(t, 4.45, 4.85));
+      const sx = CX - fullW / 2 + pre, k = E.outCubic(P(t, 4.45, 4.85));
       g.moveTo(sx, CY + 68); g.lineTo(sx + rest * k, CY + 64); g.stroke();
       g.letterSpacing = "0px";
     }
@@ -255,12 +324,15 @@ function scene2(t) {
   g.restore();
 }
 
-/* ═════════════════════ SCENE 3 · The network (5.2 → 8.0) ═════════════════════ */
-const NODES = [
-  { name: "Base", col: "#0052FF" }, { name: "Arbitrum", col: "#28A0F0" }, { name: "OP", col: "#FF0420" },
-  { name: "Solana", col: "#14F195" }, { name: "Linea", col: "#61DFFF" }, { name: "Scroll", col: "#EBC28E" },
+/* ═════════════════════ SCENE 3 · Where it waits (5.2 → 8.0) ═════════════════════ */
+// The six kinds of places the site checks, around the wallet their money should come back to.
+const NODE_COL = ["#3B82F6", "#FF4FA3", "#EBC28E", "#A78BFA", "#61DFFF", "#14F195"];
+const NODES = TXT.nodes.map((name, i) => ({ name, col: NODE_COL[i] }));
+const STUCK = TXT.stuck;
+const WALLET = [
+  new Path2D("M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"),
+  new Path2D("M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"),
 ];
-const STUCK = { 1: "10,000 FOX", 3: "1,147 USDC", 4: "0.14 ETH" };
 function scene3(t) {
   const lt = t - 5.2;
   const inK = E.outExpo(P(t, 5.2, 5.9));
@@ -309,7 +381,7 @@ function scene3(t) {
       }
     }
   });
-  // ethereum core
+  // the wallet at the center
   const ek = E.outBack(P(t, 5.25, 5.85));
   g.save(); g.translate(CX, CY + 20); g.scale(ek, ek);
   const halo = g.createRadialGradient(0, 0, 0, 0, 0, 170);
@@ -317,10 +389,9 @@ function scene3(t) {
   g.fillStyle = halo; g.fillRect(-180, -180, 360, 360);
   g.beginPath(); g.arc(0, 0, 70, 0, Math.PI * 2); g.fillStyle = "rgba(20,20,28,0.95)"; g.fill();
   g.strokeStyle = brandGrad(-70, -70, 70, 70); g.lineWidth = 3; g.stroke();
-  // ETH diamond
-  g.fillStyle = "#fff";
-  g.beginPath(); g.moveTo(0, -40); g.lineTo(24, 2); g.lineTo(0, 15); g.lineTo(-24, 2); g.closePath(); g.globalAlpha *= 0.95; g.fill();
-  g.beginPath(); g.moveTo(0, 21); g.lineTo(24, 8); g.lineTo(0, 42); g.lineTo(-24, 8); g.closePath(); g.globalAlpha *= 0.7; g.fill();
+  g.scale(3.1, 3.1); g.translate(-12, -12);
+  g.strokeStyle = "#fff"; g.lineWidth = 1.9; g.lineCap = "round"; g.lineJoin = "round";
+  for (const p of WALLET) g.stroke(p);
   g.restore();
   g.globalAlpha = 1 - out;
   // nodes
@@ -353,16 +424,18 @@ function scene3(t) {
   g.globalAlpha = (1 - out) * E.outCubic(P(t, 6.9, 7.3));
   g.textAlign = "center";
   g.font = font(600, 40); g.letterSpacing = "-1px"; g.fillStyle = C.text2;
-  g.fillText("Withdrawals started. Never finished.", CX, H - 90);
+  g.fillText(TXT.caption, CX, H - 90);
   g.letterSpacing = "0px"; g.textAlign = "left";
   g.restore();
 }
 
 /* ═════════════════════ SCENE 4 · The product (8.0 → 11.2) ═════════════════════ */
-const ADDR = "0x3D5FE39342e661776bb5273521F52E99B624288c";
-const CHIPS = ["Base", "OP Mainnet", "Zora", "Mode", "Unichain", "Ink", "Soneium", "Arbitrum One", "Arbitrum Nova", "Scroll", "Linea", "Wormhole", "deBridge", "Circle CCTP", "Uniswap (UNI)"];
-const CHIP_COL = ["#0052FF", "#FF0420", "#A1723A", "#DFFE00", "#F50DB4", "#7132F5", "#dddddd", "#28A0F0", "#EF8220", "#EBC28E", "#61DFFF", "#9a9a9a", "#FBFF3A", "#2775CA", "#FF007A"];
-const HIT = 11; // Wormhole
+// A made-up address: the film never shows a real person's wallet.
+const ADDR = "0x4F2a9cE1b7D03e58A6c1F09d3B72e84A5c6D1e90";
+// Fifteen of the checks, from every group; the count under them says there are many more.
+const CHIPS = ["Base", "Arbitrum", "Starknet", "zkSync", "Wormhole", "Uniswap", "Lido", "EigenLayer", "Aave", "Curve", "The DAO", "Kelp", "Stader", "Safe", "Solana"];
+const CHIP_COL = ["#0052FF", "#28A0F0", "#EC796B", "#8C8DFC", "#dddddd", "#FF007A", "#00A3FF", "#7C6CF2", "#B6509E", "#F5D130", "#E0503A", "#19C5B5", "#07D48F", "#12FF80", "#9945FF"];
+const HIT = 11; // Kelp
 function checkGlyph(x, y, s, k, col) {
   g.strokeStyle = col; g.lineWidth = 3; g.lineCap = "round"; g.lineJoin = "round";
   g.beginPath(); g.arc(x, y, s, 0, Math.PI * 2); g.globalAlpha *= 1; g.stroke();
@@ -376,7 +449,7 @@ function scene4(t) {
   g.save(); g.globalAlpha = 1 - out;
   // pill
   const pw = lerp(90, 1340, inK), ph = 108;
-  const py = lerp(CY - 54, 250, E.inOutQuint(P(t, 9.35, 9.85)));
+  const py = lerp(CY - 54, 210, E.inOutQuint(P(t, 9.35, 9.85)));
   const px = CX - pw / 2;
   g.save();
   g.shadowColor = "rgba(0,0,0,0.6)"; g.shadowBlur = 60; g.shadowOffsetY = 20;
@@ -395,7 +468,7 @@ function scene4(t) {
     g.font = font(500, 33); g.letterSpacing = "0.3px";
     const typed = ADDR.slice(0, n);
     g.fillStyle = n ? C.text : C.text3;
-    g.fillText(n ? typed : "Paste an Ethereum or Solana address", px + 110, py + 66);
+    g.fillText(n ? typed : TXT.placeholder, px + 110, py + 66);
     if (Math.floor(t * 2.4) % 2 === 0 || (t > 8.4 && t < 9.15)) { const cw = g.measureText(typed).width; g.fillStyle = C.blue; g.fillRect(px + 110 + cw + 4, py + 32, 3, 46); }
     g.letterSpacing = "0px"; g.restore();
     // button
@@ -403,7 +476,7 @@ function scene4(t) {
     const bw = 190, bh = 80, bx = px + pw - bw - 14, by = py + 14;
     g.save(); g.translate(bx + bw / 2, by + bh / 2); g.scale(1 - press * 0.07, 1 - press * 0.07);
     rr(-bw / 2, -bh / 2, bw, bh, bh / 2); g.fillStyle = C.blue; g.fill();
-    g.font = font(600, 34); g.fillStyle = "#fff"; g.textAlign = "center"; g.fillText("Check", 0, 12); g.textAlign = "left";
+    g.font = font(600, 34); g.fillStyle = "#fff"; g.textAlign = "center"; g.fillText(TXT.button, 0, 12); g.textAlign = "left";
     g.restore();
     g.restore();
     // ripple
@@ -412,7 +485,7 @@ function scene4(t) {
   }
   // chips grid
   const cols = 5, cw = 318, ch = 76, gap = 18;
-  const gx = CX - (cols * cw + (cols - 1) * gap) / 2, gy = 430;
+  const gx = CX - (cols * cw + (cols - 1) * gap) / 2, gy = 390;
   CHIPS.forEach((name, i) => {
     const r = Math.floor(i / cols), c = i % cols;
     const t0 = 9.55 + i * 0.045;
@@ -440,6 +513,32 @@ function scene4(t) {
     }
     g.restore();
   });
+  // "more than 100 checks": the count runs under the grid
+  const ck = E.outCubic(P(t, 9.6, 10.0));
+  if (ck > 0) {
+    // it gets there a moment before the scene ends, so the line can be read
+    const reach = P(t, 9.55, 10.4);
+    const num = String(Math.round(CHECKS * E.inOutCubic(reach)));
+    const plus = E.outBack(P(t, 10.36, 10.6)); // the "+" lands once the count is in
+    const label = " " + TXT.counter;
+    const big = () => { g.font = font(800, 76); g.letterSpacing = "-2.5px"; };
+    const small = () => { g.font = font(500, 42); g.letterSpacing = "-0.6px"; };
+    // widths at their widest, so the line doesn't shift while it counts
+    big();
+    const numW = g.measureText(String(CHECKS)).width, plusW = TXT.counterPlus ? g.measureText(TXT.counterPlus).width + 2 : 0;
+    small();
+    const preW = g.measureText(TXT.counterPre).width, labelW = g.measureText(label).width;
+    const x0 = CX - (preW + numW + plusW + labelW) / 2, y0 = 800 + 24 * (1 - ck);
+    g.save(); g.globalAlpha *= ck;
+    g.fillStyle = C.text2;
+    g.fillText(TXT.counterPre, x0, y0);
+    g.fillText(label, x0 + preW + numW + plusW, y0);
+    big(); g.fillStyle = brandGrad(x0 + preW, 0, x0 + preW + numW + plusW, 0);
+    g.textAlign = "right"; g.fillText(num, x0 + preW + numW, y0 + 2); g.textAlign = "left";
+    if (plusW && plus > 0) { g.globalAlpha *= clamp(plus); g.fillText(TXT.counterPlus, x0 + preW + numW + 2, y0 + 2 + 14 * (1 - plus)); }
+    g.letterSpacing = "0px";
+    g.restore();
+  }
   g.restore();
 }
 
@@ -469,24 +568,25 @@ function scene5(t) {
   // top gradient hairline
   g.save(); rr(-cw / 2, -chh / 2, cw, chh, 44); g.clip(); g.fillStyle = brandGrad(-cw / 2, 0, cw / 2, 0); g.fillRect(-cw / 2, -chh / 2, cw, 4); g.restore();
   const L = -cw / 2 + 70;
-  g.font = font(500, 30); g.fillStyle = C.orange; g.fillText("1 unclaimed transfer found", L, -chh / 2 + 88);
+  g.font = font(500, 30); g.fillStyle = C.orange; g.fillText(TXT.found, L, -chh / 2 + 88);
   // counter
   const cnt = E.outExpo(P(t, 11.45, 12.45));
-  const val = Math.round(1147 * cnt);
   g.font = font(800, 150); g.letterSpacing = "-6px"; g.fillStyle = C.text;
-  g.fillText("$" + val.toLocaleString("en-US"), L - 6, -chh / 2 + 250); g.letterSpacing = "0px";
+  g.fillText(TXT.money(Math.round(FOUND_USD * cnt)), L - 6, -chh / 2 + 250); g.letterSpacing = "0px";
   g.font = font(500, 32); g.fillStyle = C.text2;
-  g.fillText("1,147.42 USDC  ·  Wormhole  ·  Solana → Ethereum", L, -chh / 2 + 318);
+  g.fillText(TXT.detail, L, -chh / 2 + 318);
   // badge
   const bk = E.outBack(P(t, 12.15, 12.55));
   if (bk > 0) {
-    g.save(); g.translate(L + 150, -chh / 2 + 395); g.scale(bk, bk);
-    rr(-150, -34, 300, 68, 34); g.fillStyle = hexA(C.green, 0.18); g.fill();
-    g.font = font(600, 30); g.fillStyle = C.green; g.textAlign = "center"; g.fillText("Ready to claim", 0, 11); g.textAlign = "left";
+    g.font = font(600, 30);
+    const bw = g.measureText(TXT.badge).width + 84;
+    g.save(); g.translate(L + bw / 2, -chh / 2 + 395); g.scale(bk, bk);
+    rr(-bw / 2, -34, bw, 68, 34); g.fillStyle = hexA(C.green, 0.18); g.fill();
+    g.fillStyle = C.green; g.textAlign = "center"; g.fillText(TXT.badge, 0, 11); g.textAlign = "left";
     g.restore();
   }
-  // mini dot + chain label top-right
-  g.font = font(500, 28); g.fillStyle = C.text3; g.textAlign = "right"; g.fillText("Since Nov 2022", cw / 2 - 70, -chh / 2 + 88); g.textAlign = "left";
+  // when it was read, top-right
+  g.font = font(500, 28); g.fillStyle = C.text3; g.textAlign = "right"; g.fillText(TXT.done, cw / 2 - 70, -chh / 2 + 88); g.textAlign = "left";
   g.restore();
 }
 
@@ -497,13 +597,13 @@ function scene6(t) {
   g.save(); g.globalAlpha = 1 - fade;
   logo(CX, CY - 170, 150, 13.15, t, 0.4);
   g.textAlign = "left";
-  words("Find what you left behind.", CX, CY + 60, 13.45, t, { size: 96, gradWords: [3, 4] });
+  words(TXT.outro, CX, CY + 60, 13.45, t, { size: fit([TXT.outro], 700, 96, 1560), gradWords: TXT.outroGrad });
   g.globalAlpha = (1 - fade) * E.outCubic(P(t, 13.95, 14.35));
   g.textAlign = "center";
   g.font = font(500, 32); g.fillStyle = C.text2;
-  g.fillText("Free  ·  Read-only  ·  No wallet connection", CX, CY + 150);
+  g.fillText(TXT.promise, CX, CY + 150);
   g.font = font(600, 36); g.fillStyle = C.text; g.letterSpacing = "0.5px";
-  g.fillText("lostfunds.vercel.app", CX, CY + 250);
+  g.fillText("fundscheckers.com", CX, CY + 250);
   g.letterSpacing = "0px"; g.textAlign = "left";
   g.restore();
   // light sweep across the frame

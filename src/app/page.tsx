@@ -19,10 +19,10 @@ export default function Home() {
       <main>
         <Checker />
         <Stats />
+        <ShowReel />
         <Unclaimed />
         <Categories />
         <HowItWorks />
-        <ShowReel />
         <Compare />
         <Guides />
         <Faq />
