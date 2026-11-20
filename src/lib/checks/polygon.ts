@@ -110,7 +110,7 @@ async function exitPayloads(burnTx: Hex): Promise<Hex[] | "waiting" | { error: s
   }
 }
 
-type ExitState = { kind: "claimed" } | { kind: "ready" } | { kind: "disabled" } | { kind: "unknown"; why: string };
+type ExitState = { kind: "claimed" } | { kind: "ready" } | { kind: "disabled" } | { kind: "unknown"; why: string; whyFr: string };
 
 async function simulateExit(payload: Hex, from: Address): Promise<ExitState> {
   try {
@@ -126,7 +126,8 @@ async function simulateExit(payload: Hex, from: Address): Promise<ExitState> {
     if (/EXIT_DISABLED/.test(text)) return { kind: "disabled" };
     // No answer from Ethereum (as opposed to a revert): fail the check instead of guessing.
     if (!/revert/i.test(text)) throw e;
-    return { kind: "unknown", why: (e as { shortMessage?: string }).shortMessage ?? "simulation failed" };
+    const short = (e as { shortMessage?: string }).shortMessage;
+    return { kind: "unknown", why: short ?? "simulation failed", whyFr: short ?? "la simulation a échoué" };
   }
 }
 
@@ -175,9 +176,18 @@ export async function checkPolygon(user: Address): Promise<CheckOutput> {
     if (isAddressEqual(root, ROOT_ETH)) return ethAsset(amount);
     return tokenAsset([l1Client(), polygonRpc() as never], root, amount, "ethereum");
   };
-  const add = async (txHash: Hex, key: string, child: string, amount: bigint, timestamp: number, status: "ready" | "recent" | "manual", note: string) =>
+  const add = async (txHash: Hex, key: string, child: string, amount: bigint, timestamp: number, status: "ready" | "recent" | "manual", note: string, noteFr: string) =>
     out.findings.push(
-      makeFinding(POLYGON, { key, label: "Polygon PoS → Ethereum", status, asset: await asset(child, amount), txHash, timestamp, note }),
+      makeFinding(POLYGON, {
+        key,
+        label: "Polygon PoS → Ethereum",
+        status,
+        asset: await asset(child, amount),
+        txHash,
+        timestamp,
+        note,
+        fr: { label: "Polygon PoS → Ethereum", note: noteFr },
+      }),
     );
 
   await mapLimit([...txs], 3, async ([txHash, mine]) => {
@@ -195,6 +205,9 @@ export async function checkPolygon(user: Address): Promise<CheckOutput> {
           payloads === "waiting"
             ? "Waiting for the next Polygon checkpoint on Ethereum (usually under 3 hours)."
             : `Couldn't build its exit proof (${payloads.error}). Check it in the Polygon Portal.`,
+          payloads === "waiting"
+            ? "En attente du prochain checkpoint de Polygon sur Ethereum (en général moins de 3 heures)."
+            : `Impossible de construire sa preuve de sortie (${payloads.error}). Vérifiez-le dans le Polygon Portal.`,
         );
       return;
     }
@@ -215,6 +228,9 @@ export async function checkPolygon(user: Address): Promise<CheckOutput> {
         state.kind === "ready"
           ? "Burned on Polygon but never exited on Ethereum. Claim it in the Polygon Portal."
           : `Couldn't confirm its status automatically (${state.why}). Check it in the Polygon Portal.`,
+        state.kind === "ready"
+          ? "Brûlé sur Polygon mais jamais sorti sur Ethereum. Réclamez-le dans le Polygon Portal."
+          : `Impossible de confirmer son statut automatiquement (${state.whyFr}). Vérifiez-le dans le Polygon Portal.`,
       );
     }
   });

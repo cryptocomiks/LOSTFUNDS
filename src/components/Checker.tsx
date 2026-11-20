@@ -91,8 +91,8 @@ const GROUP_HELP: Record<Group, [string, string]> = {
     "Des récompenses, frais et retraits qu'une app garde pour vous jusqu'à ce que vous veniez les chercher : staking, prêt, pools de liquidité, vesting, verrous expirés.",
   ],
   legacy: [
-    "Deposits left in apps from 2016–2021, old tokens that are only worth something once swapped for their new version, and Safes you may have forgotten.",
-    "Des dépôts restés dans des apps de 2016–2021, de vieux tokens qui ne valent quelque chose qu'une fois échangés contre leur nouvelle version, et des Safes que vous avez peut-être oubliés.",
+    "Deposits left in apps from 2016 to 2021, old tokens that are only worth something once swapped for their new version, and Safes you may have forgotten.",
+    "Des dépôts restés dans des apps de 2016 à 2021, de vieux tokens qui ne valent quelque chose qu'une fois échangés contre leur nouvelle version, et des Safes que vous avez peut-être oubliés.",
   ],
   reclaim: [
     "SOL locked as a deposit in Solana accounts you no longer use, and fees owed to you. Closing the accounts gives the SOL back.",

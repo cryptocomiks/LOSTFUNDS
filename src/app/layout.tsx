@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     type: "website",
     url: SITE.url,
     siteName: SITE.name,
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: `${SITE.name} — Is money still waiting for you?` }],
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: `${SITE.name}: is money still waiting for you?` }],
   },
   twitter: { card: "summary_large_image", title: SITE.title, description: SITE.description, images: ["/og.png"] },
 };

@@ -19,9 +19,19 @@ import { DUST_ETHEREUM, dryRun, ETHERSCAN } from "./claims";
 
 export const BLAST: FindingSource = { id: "blast", name: "Blast (shut down)", guideId: "blast", explorer: ETHERSCAN };
 
-export const BLAST_RECOVERY: { id: string; address: Address; what: string }[] = [
-  { id: "contract-1", address: "0x9D31771458B421C7EA8A06CB8D12663E91617869", what: "the balance this address had on Blast" },
-  { id: "contract-2", address: "0x23eA8c6ACEb5673BBd712137cE2Aa33db36CB513", what: "withdrawals from Blast to Ethereum that were never finished" },
+export const BLAST_RECOVERY: { id: string; address: Address; what: string; whatFr: string }[] = [
+  {
+    id: "contract-1",
+    address: "0x9D31771458B421C7EA8A06CB8D12663E91617869",
+    what: "the balance this address had on Blast",
+    whatFr: "le solde que cette adresse avait sur Blast",
+  },
+  {
+    id: "contract-2",
+    address: "0x23eA8c6ACEb5673BBd712137cE2Aa33db36CB513",
+    what: "withdrawals from Blast to Ethereum that were never finished",
+    whatFr: "les retraits de Blast vers Ethereum jamais terminés",
+  },
 ];
 const DATA = "https://blast.io/claims";
 const DAI: Address = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
@@ -122,7 +132,7 @@ export async function checkBlast(user: Address): Promise<CheckOutput> {
       const { proof, root } = await proofOf(base, manifest, user, entry);
       const data = encodeFunctionData({ abi, functionName: "claim", args: [user, BigInt(eth), BigInt(usd), redeemers, proof, root] });
       if ((await dryRun(c, { from: user, to: contract.address, data })) === null) return;
-      const finding = (key: string, asset: Finding["asset"], paid: string): Finding =>
+      const finding = (key: string, asset: Finding["asset"], paid: string, paidFr: string): Finding =>
         makeFinding(BLAST, {
           key: `${contract.id}:${key}`,
           label: contract.id === "contract-2" ? "Blast: unfinished withdrawals" : "Blast: balance left at the shutdown",
@@ -135,9 +145,16 @@ export async function checkBlast(user: Address): Promise<CheckOutput> {
           claimAt: "blast.io (type it yourself), on Ethereum",
           minUsd: DUST_ETHEREUM,
           note: `Blast shut down on November 4, 2026. ${formatAmount(asset.amount, 18)} ${asset.symbol} are set aside on Ethereum for ${contract.what}${paid}.`,
+          fr: {
+            label: contract.id === "contract-2" ? "Blast : retraits inachevés" : "Blast : solde resté à l'arrêt",
+            note: `Blast s'est arrêté le 4 novembre 2026. ${formatAmount(asset.amount, 18, "fr")} ${asset.symbol} sont mis de côté sur Ethereum pour ${contract.whatFr}${paidFr}.`,
+            claimAt: "blast.io (tapez-le vous-même), sur Ethereum",
+            linkLabel: "Voir le contrat de récupération",
+          },
         });
-      if (BigInt(eth) > 0n) out.findings.push(finding("eth", { symbol: "ETH", decimals: 18, amount: BigInt(eth) }, " (its ETH and WETH)"));
-      if (BigInt(usd) > 0n) out.findings.push(finding("usd", { symbol: "DAI", decimals: 18, amount: BigInt(usd), token: DAI, tokenChain: "ethereum" }, " (its USDB, paid in DAI)"));
+      if (BigInt(eth) > 0n) out.findings.push(finding("eth", { symbol: "ETH", decimals: 18, amount: BigInt(eth) }, " (its ETH and WETH)", " (ses ETH et WETH)"));
+      if (BigInt(usd) > 0n)
+        out.findings.push(finding("usd", { symbol: "DAI", decimals: 18, amount: BigInt(usd), token: DAI, tokenChain: "ethereum" }, " (its USDB, paid in DAI)", " (ses USDB, payés en DAI)"));
     }),
   );
   return out;

@@ -65,8 +65,10 @@ function Mark({ cell, strong }: { cell: Cell; strong?: boolean }) {
       </span>
     );
   return (
-    <span className="text-text-3">
-      <span aria-hidden>—</span>
+    <span className="inline-flex h-6 w-6 items-center justify-center text-text-3">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>
+        <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" />
+      </svg>
       <span className="sr-only">
         <T en="No" fr="Non" />
       </span>

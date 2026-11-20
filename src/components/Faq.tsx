@@ -7,8 +7,8 @@ const QUESTIONS: { q: [string, string]; a: [string, string] }[] = [
   {
     q: ["Is it safe to use?", "Est-ce que c'est sûr ?"],
     a: [
-      `${SITE.name} only reads public blockchain data. It never asks you to connect a wallet, sign anything or share a seed phrase — and nobody legitimate ever will. If a site, an app or a person in your DMs asks for that to "recover" funds, it's a scam.`,
-      `${SITE.name} lit seulement des données publiques de la blockchain. Il ne vous demande jamais de connecter un wallet, de signer quoi que ce soit ou de donner votre phrase secrète — et aucun service honnête ne le fera. Si un site, une app ou quelqu'un en DM vous le demande pour « récupérer » des fonds, c'est une arnaque.`,
+      `${SITE.name} only reads public blockchain data. It never asks you to connect a wallet, sign anything or share a seed phrase, and nobody legitimate ever will. If a site, an app or a person in your DMs asks for that to "recover" funds, it's a scam.`,
+      `${SITE.name} lit seulement des données publiques de la blockchain. Il ne vous demande jamais de connecter un wallet, de signer quoi que ce soit ou de donner votre phrase secrète, et aucun service honnête ne le fera. Si un site, une app ou quelqu'un en DM vous le demande pour « récupérer » des fonds, c'est une arnaque.`,
     ],
   },
   {
@@ -21,8 +21,8 @@ const QUESTIONS: { q: [string, string]; a: [string, string] }[] = [
   {
     q: ["Why would money still be waiting for me?", "Pourquoi de l'argent m'attendrait encore ?"],
     a: [
-      "Many actions in crypto take two steps and the second is easy to forget: finishing a bridge withdrawal, claiming an airdrop, withdrawing a lock that expired, claiming a finalized withdrawal or rewards, swapping an old token for its new version. Until you do it, the funds stay in the contract — often for years.",
-      "Beaucoup d'actions en crypto se font en deux étapes, et la deuxième s'oublie facilement : terminer un retrait de bridge, réclamer un airdrop, retirer un verrou expiré, récupérer un retrait finalisé ou des récompenses, échanger un vieux token contre sa nouvelle version. Tant que ce n'est pas fait, les fonds restent dans le contrat — souvent pendant des années.",
+      "Many actions in crypto take two steps and the second is easy to forget: finishing a bridge withdrawal, claiming an airdrop, withdrawing a lock that expired, claiming a finalized withdrawal or rewards, swapping an old token for its new version. Until you do it, the funds stay in the contract, often for years.",
+      "Beaucoup d'actions en crypto se font en deux étapes, et la deuxième s'oublie facilement : terminer un retrait de bridge, réclamer un airdrop, retirer un verrou expiré, récupérer un retrait finalisé ou des récompenses, échanger un vieux token contre sa nouvelle version. Tant que ce n'est pas fait, les fonds restent dans le contrat, souvent pendant des années.",
     ],
   },
   {

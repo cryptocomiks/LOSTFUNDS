@@ -46,3 +46,21 @@ test("every check that writes texts for its findings writes them in French too",
     assert.match(src, /\bfr[:,]|\bfr\b\s*=|Fr\b/, `${file} has ${texts} English texts and no French ones`);
   }
 });
+
+test("no em dash in the texts a visitor reads (the owner's style rule)", () => {
+  const root = new URL("../src/", import.meta.url);
+  const files = ["components", "content", "lib/checks", "lib", "app", "config"].flatMap((d) =>
+    readdirSync(new URL(`${d}/`, root))
+      .filter((f) => /\.tsx?$/.test(f))
+      .map((f) => `${d}/${f}`),
+  );
+  for (const file of files) {
+    // Comments are for developers: only code (strings and JSX text) is checked.
+    const code = readFileSync(new URL(file, root), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "")
+      .replace(/\s\/\/ .*$/gm, "");
+    const at = code.indexOf("\u2014");
+    assert.equal(at, -1, `${file}: em dash near "${code.slice(Math.max(0, at - 40), at + 20).replace(/\n/g, " ")}"`);
+  }
+});

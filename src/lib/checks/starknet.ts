@@ -138,6 +138,14 @@ export async function checkStarknet(user: Address): Promise<CheckOutput> {
         note:
           `A withdrawal of ${formatAmount(amount, asset.decimals)} ${asset.symbol} from Starknet to this address reached Ethereum but was never finalized: ` +
           `the tokens stay in the StarkGate bridge (${m.to}) until withdraw(${named === undefined ? "" : "token, "}amount, recipient) is called on it.`,
+        fr: {
+          label: "Starknet → Ethereum",
+          note:
+            `Un retrait de ${formatAmount(amount, asset.decimals, "fr")} ${asset.symbol} de Starknet vers cette adresse est arrivé sur Ethereum mais n'a jamais été finalisé : ` +
+            `les tokens restent dans le bridge StarkGate (${m.to}) tant que withdraw(${named === undefined ? "" : "token, "}montant, destinataire) n'y est pas appelé.`,
+          claimAt: "starkgate.starknet.io, ou Etherscan (le bridge → withdraw)",
+          linkLabel: "Voir le bridge",
+        },
       });
     }),
   );

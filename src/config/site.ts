@@ -8,7 +8,7 @@ export const SITE = {
   url: "https://www.fundscheckers.com",
   /** The address as people type it, without https:// or www. */
   domain: "fundscheckers.com",
-  title: "FundsCheckers — find the crypto you forgot to claim",
+  title: "FundsCheckers: find the crypto you forgot to claim",
   description:
     "Unfinished bridge withdrawals, unclaimed airdrops, rewards and old deposits: check any Ethereum or Solana address in seconds. Free, read-only, no wallet connection.",
   /** e.g. "https://x.com/yourhandle" */

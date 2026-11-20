@@ -27,7 +27,7 @@ export const UNCLAIMED_LABELS: Record<string, { name: string; en: string; fr: st
   aerodrome: { name: "Aerodrome", en: "{n} expired locks never withdrawn", fr: "{n} verrous expirés jamais retirés" },
   velodrome: { name: "Velodrome", en: "{n} expired locks never withdrawn", fr: "{n} verrous expirés jamais retirés" },
   "solana-buffers": { name: "Solana program buffers", en: "SOL left by {n} unfinished deploys", fr: "SOL laissés par {n} déploiements inachevés" },
-  "ens-deeds": { name: "ENS auctions (2017–2019)", en: "ETH locked in {n} auction deeds", fr: "ETH bloqués dans {n} actes d'enchères" },
+  "ens-deeds": { name: "ENS auctions (2017-2019)", en: "ETH locked in {n} auction deeds", fr: "ETH bloqués dans {n} actes d'enchères" },
   starknet: { name: "Starknet", en: "{n} withdrawals never finalized on Ethereum", fr: "{n} retraits jamais finalisés sur Ethereum" },
   "zora-rewards": { name: "Zora", en: "Creator and referral rewards never withdrawn", fr: "Récompenses de créateurs et de parrainage jamais retirées" },
   kinto: { name: "Kinto", en: "USDC left for the users of the closed network", fr: "USDC laissés aux utilisateurs du réseau fermé" },

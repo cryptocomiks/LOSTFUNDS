@@ -37,8 +37,8 @@ const CARDS: { group: Group; title: ReactNode; text: ReactNode; guide: string; i
     title: <T en="Airdrops you never claimed" fr="Airdrops jamais réclamés" />,
     text: (
       <T
-        en="Airdrops that are still open years later — Uniswap, Curve, Safe, 1inch, Lido, Zora and more — checked against each project's own list."
-        fr="Des airdrops encore ouverts des années après — Uniswap, Curve, Safe, 1inch, Lido, Zora et d'autres — vérifiés sur la liste de chaque projet."
+        en="Airdrops that are still open years later (Uniswap, Curve, Safe, 1inch, Lido, Zora and more), checked against each project's own list."
+        fr="Des airdrops encore ouverts des années après (Uniswap, Curve, Safe, 1inch, Lido, Zora et d'autres), vérifiés sur la liste de chaque projet."
       />
     ),
     guide: "airdrops",

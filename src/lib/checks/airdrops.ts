@@ -28,7 +28,7 @@ interface Entry {
 type Lookup =
   | null // not eligible
   | { claimed: true }
-  | { claimed: false; amount: bigint; note?: string };
+  | { claimed: false; amount: bigint; note?: string; /** `note` in French. */ noteFr?: string };
 
 export interface Airdrop {
   id: string;
@@ -46,6 +46,8 @@ export interface Airdrop {
   /** Unix seconds of the airdrop, shown as the "Airdropped" date. */
   date: number;
   note: string;
+  /** `label`, `note` and `claimAt` in French. */
+  fr: { label: string; note: string; claimAt: string };
   /** Link shown as "View transaction": the claim contract. */
   txUrl: string;
   asset: (amount: bigint) => Asset;
@@ -210,6 +212,7 @@ async function kaminoLookup(user: string): Promise<Lookup> {
 const balanceOfAbi = parseAbi(["function balanceOf(address) view returns (uint256)"]);
 
 const longDate = (ts: number) => new Date(ts * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+const longDateFr = (ts: number) => new Date(ts * 1000).toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
 
 /** One loader per file, fetched once per page load. */
 function fileCache<T>(urlOf: (key: string) => string) {
@@ -298,6 +301,7 @@ function cowForLockedGno(chainId: number, dir: keyof typeof LGNO_CHUNKS, merkleD
       claimed: false,
       amount: left,
       note: "This address started claiming its COW for locked GNO but never collected the rest, fully vested since February 2026. There is no deadline.",
+      noteFr: "Cette adresse a commencé à réclamer ses COW pour GNO verrouillés, mais n'a jamais récupéré le reste, entièrement débloqué depuis février 2026. Il n'y a pas de date limite.",
     };
   };
 }
@@ -371,6 +375,7 @@ async function lombardLookup(user: string): Promise<Lookup> {
     claimed: false,
     amount,
     note: `Lombard's BARD airdrop (wave 4) was never claimed by this address. Claim it before ${longDate(Number(end))}: unclaimed BARD then goes back to Lombard's ecosystem fund.`,
+    noteFr: `L'airdrop BARD de Lombard (vague 4) n'a jamais été réclamé par cette adresse. Réclamez-le avant le ${longDateFr(Number(end))} : les BARD non réclamés retournent ensuite au fonds d'écosystème de Lombard.`,
   };
 }
 
@@ -435,6 +440,7 @@ async function dopplerLookup(user: string): Promise<Lookup> {
     claimed: false,
     amount: allocation,
     note: `Doppler Finance's XDP genesis airdrop has not been claimed by this wallet yet. Claim it before ${longDate(Number(deadline))} (12:00 UTC), when the claim period ends.`,
+    noteFr: `L'airdrop genesis XDP de Doppler Finance n'a pas encore été réclamé par ce wallet. Réclamez-le avant le ${longDateFr(Number(deadline))} (12 h UTC), fin de la période de réclamation.`,
   };
 }
 
@@ -483,6 +489,7 @@ async function pharosLookup(user: string): Promise<Lookup> {
     claimed: false,
     amount: BigInt(amount),
     note: `Pharos' PROS airdrop was never claimed by this wallet. Claim it on Pharos mainnet before ${longDate(Number(end))} (11:00 UTC): unclaimed PROS then go back to the Pharos Foundation.`,
+    noteFr: `L'airdrop PROS de Pharos n'a jamais été réclamé par ce wallet. Réclamez-le sur Pharos mainnet avant le ${longDateFr(Number(end))} (11 h UTC) : les PROS non réclamés retournent ensuite à la Pharos Foundation.`,
   };
 }
 
@@ -497,6 +504,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "app.uniswap.org, or the MerkleDistributor contract on Etherscan",
     date: 1600214400, // Sep 16, 2020
     note: "Uniswap's September 2020 airdrop has no deadline, and this address never claimed its UNI.",
+    fr: {
+      label: "Airdrop Uniswap",
+      note: "L'airdrop Uniswap de septembre 2020 n'a pas de date limite, et cette adresse n'a jamais réclamé ses UNI.",
+      claimAt: "app.uniswap.org, ou le contrat MerkleDistributor sur Etherscan",
+    },
     txUrl: `https://etherscan.io/address/${UNI_DISTRIBUTOR}#writeContract`,
     asset: (amount) => ({ symbol: "UNI", decimals: 18, amount, token: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", tokenChain: "ethereum" }),
     lookup: async (user) => {
@@ -521,6 +533,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "the vesting contract on Etherscan (claim, for your address)",
     date: 1597322954, // Aug 13, 2020
     note: "Curve's August 2020 early-user CRV finished vesting in 2021, and this address never claimed all of it. There is no deadline.",
+    fr: {
+      label: "Airdrop Curve des premiers utilisateurs",
+      note: "Les CRV distribués par Curve à ses premiers utilisateurs en août 2020 sont entièrement débloqués depuis 2021, et cette adresse ne les a jamais tous réclamés. Il n'y a pas de date limite.",
+      claimAt: "le contrat de vesting sur Etherscan (claim, avec votre adresse)",
+    },
     txUrl: `https://etherscan.io/address/${CURVE_VESTING}#writeContract`,
     asset: (amount) => ({ symbol: "CRV", decimals: 18, amount, token: "0xD533a949740bb3306d119CC777fa900bA034cd52", tokenChain: "ethereum" }),
     lookup: async (user) => {
@@ -543,6 +560,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "app.safe.global (SAFE claiming), or claimVestedTokens on the vesting contract",
     date: 1663765355, // Sep 21, 2022
     note: "This address redeemed its SAFE allocation in 2022 but never claimed all the tokens that have vested since. There is no deadline for vested tokens.",
+    fr: {
+      label: "Airdrop Safe",
+      note: "Cette adresse a validé son allocation SAFE en 2022, mais n'a jamais réclamé tous les tokens débloqués depuis. Il n'y a pas de date limite pour les tokens débloqués.",
+      claimAt: "app.safe.global (réclamation des SAFE), ou claimVestedTokens sur le contrat de vesting",
+    },
     txUrl: "https://etherscan.io/address/0xA0b937D5c8E32a80E3a8ed4227CD020221544ee6",
     asset: (amount) => ({ symbol: "SAFE", decimals: 18, amount, token: "0x5aFE3855358E112B5647B952709E6165e1c1eEEe", tokenChain: "ethereum" }),
     lookup: safeLookup,
@@ -557,6 +579,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "the MerkleDistributor on Etherscan (claim, with the index, amount and proof from 1inch's API)",
     date: 1608829629, // Dec 24, 2020
     note: "1inch's December 2020 airdrop has no deadline, and this address never claimed its 1INCH.",
+    fr: {
+      label: "Airdrop 1inch",
+      note: "L'airdrop 1inch de décembre 2020 n'a pas de date limite, et cette adresse n'a jamais réclamé ses 1INCH.",
+      claimAt: "le MerkleDistributor sur Etherscan (claim, avec l'index, le montant et la preuve donnés par l'API de 1inch)",
+    },
     txUrl: "https://etherscan.io/address/0xE295aD71242373C37C5FdA7B57F26f9eA1088AFe#writeContract",
     asset: (amount) => ({ symbol: "1INCH", decimals: 18, amount, token: "0x111111111117dC0aa78b770fA6A738034120C302", tokenChain: "ethereum" }),
     lookup: merkleDistributor("0xE295aD71242373C37C5FdA7B57F26f9eA1088AFe", async (user) => {
@@ -577,6 +604,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "the MerkleDistributor on Etherscan (claim, with your row from github.com/lidofinance/airdrop-data)",
     date: 1609783348, // Jan 4, 2021
     note: "Lido's January 2021 airdrop for early stETH holders has no deadline, and this address never claimed its LDO.",
+    fr: {
+      label: "Airdrop Lido des premiers stakers",
+      note: "L'airdrop Lido de janvier 2021 pour les premiers détenteurs de stETH n'a pas de date limite, et cette adresse n'a jamais réclamé ses LDO.",
+      claimAt: "le MerkleDistributor sur Etherscan (claim, avec votre ligne de github.com/lidofinance/airdrop-data)",
+    },
     txUrl: "https://etherscan.io/address/0x4b3EDb22952Fb4A70140E39FB1adD05A6B49622B#writeContract",
     asset: (amount) => ({ symbol: "LDO", decimals: 18, amount, token: "0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32", tokenChain: "ethereum" }),
     lookup: merkleDistributor(
@@ -594,6 +626,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "the MerkleDistributor on Etherscan (claim, with your row from github.com/lidofinance/airdrop-data)",
     date: 1614702071, // Mar 2, 2021
     note: "Lido's March 2021 airdrop for stETH liquidity providers on 1inch has no deadline, and this address never claimed its LDO.",
+    fr: {
+      label: "Airdrop Lido pour les LP 1inch",
+      note: "L'airdrop Lido de mars 2021 pour les fournisseurs de liquidité stETH sur 1inch n'a pas de date limite, et cette adresse n'a jamais réclamé ses LDO.",
+      claimAt: "le MerkleDistributor sur Etherscan (claim, avec votre ligne de github.com/lidofinance/airdrop-data)",
+    },
     txUrl: "https://etherscan.io/address/0xdB46C277dA1599390eAb394327602889E9546296#writeContract",
     asset: (amount) => ({ symbol: "LDO", decimals: 18, amount, token: "0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32", tokenChain: "ethereum" }),
     lookup: merkleDistributor(
@@ -611,6 +648,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "the MerkleAirdrop on Etherscan (claim, with your proof from github.com/convex-eth/platform)",
     date: 1621246646, // May 17, 2021
     note: "Convex's May 2021 airdrop has no deadline, and this address never claimed its CVX.",
+    fr: {
+      label: "Airdrop Convex",
+      note: "L'airdrop Convex de mai 2021 n'a pas de date limite, et cette adresse n'a jamais réclamé ses CVX.",
+      claimAt: "le MerkleAirdrop sur Etherscan (claim, avec votre preuve de github.com/convex-eth/platform)",
+    },
     txUrl: `https://etherscan.io/address/${CONVEX_AIRDROP}#writeContract`,
     asset: (amount) => ({ symbol: "CVX", decimals: 18, amount, token: "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B", tokenChain: "ethereum" }),
     lookup: async (user) => {
@@ -635,6 +677,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "zora.co, or the claim contract on Basescan (claim, sent from the eligible wallet)",
     date: 1745416800, // Apr 23, 2025
     note: "Zora's April 2025 airdrop on Base has no deadline, and this address never claimed its ZORA.",
+    fr: {
+      label: "Airdrop Zora",
+      note: "L'airdrop Zora d'avril 2025 sur Base n'a pas de date limite, et cette adresse n'a jamais réclamé ses ZORA.",
+      claimAt: "zora.co, ou le contrat de réclamation sur Basescan (claim, envoyé depuis le wallet éligible)",
+    },
     txUrl: `https://basescan.org/address/${ZORA_CLAIM}#writeContract`,
     asset: (amount) => ({ symbol: "ZORA", decimals: 18, amount, token: "0x1111111111166b7FE7bd91427724B487980aFc69", tokenChain: "base" }),
     lookup: async (user) => {
@@ -658,6 +705,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "my.soniclabs.com/airdrop",
     date: 1736942400, // Jan 15, 2025 (season 1)
     note: "",
+    fr: {
+      label: "Airdrop Sonic",
+      note: "",
+      claimAt: "my.soniclabs.com/airdrop",
+    },
     txUrl: `https://sonicscan.org/address/${SONIC_AIRDROP}`,
     asset: (amount) => ({ symbol: "S", decimals: 18, amount, priceKey: "coingecko:sonic-3" }),
     lookup: async (user) => {
@@ -680,6 +732,7 @@ export const AIRDROP_LIST: Airdrop[] = [
         claimed: false,
         amount,
         note: `This wallet holds Sonic airdrop NFTs worth ${Number(formatUnits(amount, 18)).toLocaleString("en-US", { maximumFractionDigits: 2 })} S that were never unlocked. Unlock them before ${longDate(deadline)}: whatever is still locked then is burned.`,
+        noteFr: `Ce wallet détient des NFT d'airdrop Sonic d'une valeur de ${Number(formatUnits(amount, 18)).toLocaleString("fr-FR", { maximumFractionDigits: 2 })} S, jamais débloqués. Débloquez-les avant le ${longDateFr(deadline)} : ce qui sera encore verrouillé à cette date sera brûlé.`,
       };
     },
   },
@@ -693,6 +746,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "dydx.community (Claim rewards), from the eligible wallet",
     date: 1631059200, // Sep 8, 2021 (retroactive mining rewards; trading rewards until 2023)
     note: "dYdX's retroactive and trading rewards (2021–2023) have no deadline, and this address never claimed all of its DYDX.",
+    fr: {
+      label: "Récompenses dYdX",
+      note: "Les récompenses rétroactives et de trading de dYdX (2021-2023) n'ont pas de date limite, et cette adresse n'a jamais réclamé tous ses DYDX.",
+      claimAt: "dydx.community (Claim rewards), depuis le wallet éligible",
+    },
     txUrl: `https://etherscan.io/address/${DYDX_DISTRIBUTOR}`,
     asset: (amount) => ({ symbol: "DYDX", decimals: 18, amount, token: DYDX_TOKEN, tokenChain: "ethereum" }),
     lookup: dydxLookup,
@@ -707,6 +765,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "swap.cow.fi → Account (Locked GNO vesting), on Ethereum",
     date: 1644584715, // Feb 11, 2022 (start of the 4-year vesting)
     note: "GnosisDAO's COW for those who locked GNO in 2021 has been fully vested since February 2026, has no deadline, and this address never claimed it.",
+    fr: {
+      label: "COW pour GNO verrouillés",
+      note: "Les COW de GnosisDAO pour ceux qui ont verrouillé des GNO en 2021 sont entièrement débloqués depuis février 2026 et n'ont pas de date limite, et cette adresse ne les a jamais réclamés.",
+      claimAt: "swap.cow.fi → Account (Locked GNO vesting), sur Ethereum",
+    },
     txUrl: "https://etherscan.io/address/0x64646f112FfD6F1B7533359CFaAF7998F23C8c40",
     asset: (amount) => ({ symbol: "COW", decimals: 18, amount, token: "0xDEf1CA1fb7FBcDC777520aa7f396b4E015F497aB", tokenChain: "ethereum" }),
     lookup: cowForLockedGno(1, "mainnet", "0x64646f112FfD6F1B7533359CFaAF7998F23C8c40", "0x68FFAaC7A431f276fe73604C127Bd78E49070c92"),
@@ -721,6 +784,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "swap.cow.fi → Account (Locked GNO vesting), on Gnosis Chain",
     date: 1644584715, // Feb 11, 2022 (start of the 4-year vesting)
     note: "GnosisDAO's COW for those who locked GNO on Gnosis Chain in 2021 has been fully vested since February 2026, has no deadline, and this address never claimed it.",
+    fr: {
+      label: "COW pour GNO verrouillés (Gnosis Chain)",
+      note: "Les COW de GnosisDAO pour ceux qui ont verrouillé des GNO sur Gnosis Chain en 2021 sont entièrement débloqués depuis février 2026 et n'ont pas de date limite, et cette adresse ne les a jamais réclamés.",
+      claimAt: "swap.cow.fi → Account (Locked GNO vesting), sur Gnosis Chain",
+    },
     txUrl: "https://gnosisscan.io/address/0x48D8566887F8c7d99757CE29c2cD39962bfd9547",
     asset: (amount) => ({ symbol: "COW", decimals: 18, amount, token: "0x177127622c4A00F3d409B75571e12cB3c8973d3c", tokenChain: "xdai" }),
     lookup: cowForLockedGno(100, "gnosisChain", "0x48D8566887F8c7d99757CE29c2cD39962bfd9547", "0x3d610e917130f9D036e85A030596807f57e11093"),
@@ -735,6 +803,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "claimAirdrop() on the Avantis airdrop contract on Basescan (Write as Proxy), from the eligible wallet",
     date: 1772710200, // Mar 5, 2026
     note: "Avantis' Season 2 AVNT was never claimed by this wallet. The official claim window is over, but the tokens are still in the airdrop contract and claimable until Avantis takes them back: claim soon.",
+    fr: {
+      label: "Airdrop Avantis Saison 2",
+      note: "Les AVNT de la Saison 2 d'Avantis n'ont jamais été réclamés par ce wallet. La période officielle de réclamation est terminée, mais les tokens sont toujours dans le contrat d'airdrop et restent réclamables jusqu'à ce qu'Avantis les reprenne : réclamez-les vite.",
+      claimAt: "claimAirdrop() sur le contrat d'airdrop d'Avantis sur Basescan (Write as Proxy), depuis le wallet éligible",
+    },
     txUrl: `https://basescan.org/address/${AVANTIS_AIRDROP}#writeProxyContract`,
     asset: (amount) => ({ symbol: "AVNT", decimals: 18, amount, token: "0x696F9436B67233384889472Cd7cD58A6fB5DF4f1", tokenChain: "base" }),
     lookup: avantisLookup,
@@ -750,6 +823,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "claim.lombard.finance, before October 29, 2026",
     date: 1784879891, // Jul 24, 2026 (wave 4)
     note: "",
+    fr: {
+      label: "Airdrop BARD de Lombard",
+      note: "",
+      claimAt: "claim.lombard.finance, avant le 29 octobre 2026",
+    },
     txUrl: `https://etherscan.io/address/${BARD_DISTRIBUTOR}`,
     asset: (amount) => ({ symbol: "BARD", decimals: 18, amount, token: BARD_TOKEN, tokenChain: "ethereum" }),
     lookup: lombardLookup,
@@ -765,6 +843,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "app.hedgey.finance/claim/431f05ff-38d0-4f86-a306-65d8d511d3c0, before July 1, 2027",
     date: 1781787600, // Jun 18, 2026
     note: "Re Protocol's RE airdrop (a Hedgey claim campaign) was never claimed by this address. It can be claimed until July 1, 2027.",
+    fr: {
+      label: "Airdrop Re Protocol",
+      note: "L'airdrop RE de Re Protocol (une campagne de claim Hedgey) n'a jamais été réclamé par cette adresse. Il peut être réclamé jusqu'au 1er juillet 2027.",
+      claimAt: "app.hedgey.finance/claim/431f05ff-38d0-4f86-a306-65d8d511d3c0, avant le 1er juillet 2027",
+    },
     txUrl: `https://etherscan.io/address/${HEDGEY_CAMPAIGNS}`,
     asset: (amount) => ({ symbol: "RE", decimals: 18, amount, token: "0x526526528F35AC738177003b8773B402B8Df8143", tokenChain: "ethereum" }),
     lookup: hedgeyCampaign(1, "0x431f05ff38d04f86a30665d8d511d3c0", 1814461200), // ends Jul 1, 2027, 17:00 UTC
@@ -780,6 +863,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "app.doppler.finance/airdrop, on Base, before November 28, 2026",
     date: 1790596740, // Sep 28, 2026
     note: "",
+    fr: {
+      label: "Airdrop XDP de Doppler Finance",
+      note: "",
+      claimAt: "app.doppler.finance/airdrop, sur Base, avant le 28 novembre 2026",
+    },
     txUrl: `https://basescan.org/address/${DOPPLER_AIRDROP}`,
     asset: (amount) => ({ symbol: "XDP", decimals: 18, amount, token: "0x07b3D902783c3C12b077508c3B5c00113d1291D0", tokenChain: "base" }),
     lookup: dopplerLookup,
@@ -795,6 +883,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "claim.pharos.xyz, on Pharos mainnet, before October 25, 2026, 11:00 UTC",
     date: 1777374000, // claims opened Apr 28, 2026, 11:00 UTC
     note: "",
+    fr: {
+      label: "Airdrop PROS de Pharos",
+      note: "",
+      claimAt: "claim.pharos.xyz, sur Pharos mainnet, avant le 25 octobre 2026, 11 h UTC",
+    },
     txUrl: `https://pharosscan.xyz/address/${PHAROS_AIRDROP}`,
     asset: (amount) => ({ symbol: "PROS", decimals: 18, amount, priceKey: "coingecko:pharos-network" }),
     lookup: pharosLookup,
@@ -809,6 +902,11 @@ export const AIRDROP_LIST: Airdrop[] = [
     claimAt: "app.kamino.finance",
     date: 1779890200, // distribution opened May 27, 2026
     note: "Kamino's Season 3 KMNO was never claimed by this wallet. Its official claim period is over, but the tokens are still on-chain and claimable until Kamino takes them back: claim soon.",
+    fr: {
+      label: "Airdrop Kamino Saison 3",
+      note: "Les KMNO de la Saison 3 de Kamino n'ont jamais été réclamés par ce wallet. La période officielle de réclamation est terminée, mais les tokens sont toujours on-chain et restent réclamables jusqu'à ce que Kamino les reprenne : réclamez-les vite.",
+      claimAt: "app.kamino.finance",
+    },
     txUrl: `https://solscan.io/account/${KAMINO_PROGRAM}`,
     asset: (amount) => ({ symbol: "KMNO", decimals: 6, amount, priceKey: "solana:KMNo3nJsBXfcpJTVhZcXLW7RmTwTt4GVFE7suUBo9sS" }),
     lookup: kaminoLookup,
@@ -839,6 +937,7 @@ export async function checkAirdrops(user: string, list: Airdrop[] = AIRDROP_LIST
           note: r.note ?? a.note,
           claimAt: a.claimAt,
           minUsd: AIRDROP_MIN_USD,
+          fr: { label: a.fr.label, note: r.noteFr ?? a.fr.note, claimAt: a.fr.claimAt },
         }),
       );
     }),
