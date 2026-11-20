@@ -30,7 +30,11 @@ export interface V2Market {
   reward: { token: Address; symbol: string };
   /** DISTRIBUTION_END of the controller. */
   ended: string;
+  /** The same date, in French. */
+  endedFr: string;
   extra?: string;
+  /** `extra`, in French. */
+  extraFr?: string;
   /**
    * Every aToken / variable-debt token whose incentive index is above zero (stable debt never had
    * any). Fixed: every program ended in 2022–23. getUserUnclaimedRewards alone would miss what
@@ -45,7 +49,9 @@ export const AAVE_V2_MARKETS: V2Market[] = [
     controller: "0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5",
     reward: { token: "0x4da27a545c0c5B758a6BA100e3a049001de870f5", symbol: "stkAAVE" },
     ended: "May 22, 2022",
+    endedFr: "22 mai 2022",
     extra: " They come as stkAAVE (staked AAVE): keep it staked, or unstake it after the cooldown on the app's Stake page.",
+    extraFr: " Elles arrivent en stkAAVE (AAVE stakés) : gardez-les stakés, ou déstakez-les après le cooldown sur la page Stake de l'app.",
     assets: [
       "0x3Ed3B47Dd13EC9a98b44e6204A523E766B225811", "0x531842cEbbdD378f8ee36D171d6cC9C4fcf475Ec", "0x9ff58f4fFB29fA2266Ab25e75e2A8b3503311656",
       "0x9c39809Dec7F95F5e0713634a4D0701329B3b4d2", "0x030bA81f1c18d280636F32af80b9AAd02Cf0854e", "0xF63B34710400CAd3e044cFfDcAb00a0f32E33eCf",
@@ -75,6 +81,7 @@ export const AAVE_V2_MARKETS: V2Market[] = [
     controller: "0x357D51124f59836DeD84c8a1730D72B749d8BC23",
     reward: { token: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", symbol: "WPOL" },
     ended: "April 13, 2022",
+    endedFr: "13 avril 2022",
     assets: [
       "0x27F8D03b3a2196956ED754baDc28D73be8830A6e", "0x75c4d1Fb84429023170086f06E682DcbBF537b7d", "0x1a13F4Ca1d028320A707D99520AbFefca3998b7F",
       "0x248960A9d75EdFa3de94F7193eae3161Eb349a12", "0x60D55F02A771d515e077c9C2403a1ef324885CeC", "0x8038857FD47108A07d1f6Bf652ef1cBeC279A2f3",
@@ -88,6 +95,7 @@ export const AAVE_V2_MARKETS: V2Market[] = [
     controller: "0x01D83Fe6A10D2f2B7AF17034343746188272cAc9",
     reward: { token: "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7", symbol: "WAVAX" },
     ended: "April 2, 2023",
+    endedFr: "2 avril 2023",
     assets: [
       "0x53f7c5869a859F0AeC3D334ee8B4Cf01E3492f21", "0x4e575CacB37bc1b5afEc68a0462c4165A5268983", "0x47AFa96Cdc9fAb46904A55a6ad4bf6660B53c38a",
       "0x1852DC24d1a8956a0B356AA18eDe954c7a0Ca5ae", "0x532E6537FEA298397212F09A61e03311686f548e", "0xfc1AdA7A288d6fCe0d29CcfAAa57Bc9114bb2DbE",
@@ -120,6 +128,11 @@ async function v2Market(m: V2Market, user: Address): Promise<Finding[]> {
       note: `Liquidity-mining rewards from Aave v2 on ${name}, a program that ended on ${m.ended}. This address earned them and never claimed them: they can still be claimed.${m.extra ?? ""}`,
       claimAt: `app.aave.com, ${name} V2 market, Dashboard → Claim`,
       minUsd: dustUsd(m.chainId),
+      fr: {
+        label: `Aave v2 · ${name}`,
+        note: `Récompenses de liquidity mining d'Aave v2 sur ${name}, un programme terminé le ${m.endedFr}. Cette adresse les a gagnées et ne les a jamais réclamées : elles peuvent toujours l'être.${m.extraFr ?? ""}`,
+        claimAt: `app.aave.com, marché ${name} V2, Dashboard → Claim`,
+      },
     }),
   ];
 }
@@ -150,6 +163,8 @@ export interface V3Market {
   chainId: number;
   /** Markets of app.aave.com these rewards show up in. */
   market: string;
+  /** `market` in French, when it differs. */
+  marketFr?: string;
   controller: Address;
   pools: Address[];
   /** The controller's reward tokens (getRewardsList) on Oct 1, 2026, when every program had ended. */
@@ -174,6 +189,7 @@ export const AAVE_V3_MARKETS: V3Market[] = [
   {
     chainId: 1,
     market: "Ethereum Core or Prime",
+    marketFr: "Ethereum Core ou Prime",
     controller: "0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb",
     pools: ["0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2", "0x4e033931ad43597d96D6bcc25c280717730B58B1", "0x0AA97c284e98396202b6A04024F5E2c65026F3c0"], // Core, Prime, EtherFi
     rewards: [
@@ -372,6 +388,13 @@ async function v3Market(m: V3Market, user: Address): Promise<Finding[]> {
           (isAToken(meta.symbol) ? ` They're paid as ${meta.symbol}, an Aave deposit you can withdraw.` : ""),
         claimAt: `app.aave.com, ${m.market} market, Dashboard → Claim`,
         minUsd: dustUsd(m.chainId),
+        fr: {
+          label: `Aave v3 · ${name}`,
+          note:
+            `Récompenses d'un programme d'incitation Aave v3 sur ${name}, que cette adresse a gagnées et n'a jamais réclamées : elles peuvent toujours l'être.` +
+            (isAToken(meta.symbol) ? ` Elles sont payées en ${meta.symbol}, un dépôt Aave que vous pouvez retirer.` : ""),
+          claimAt: `app.aave.com, marché ${m.marketFr ?? m.market}, Dashboard → Claim`,
+        },
       });
     }),
   );

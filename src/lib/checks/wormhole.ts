@@ -100,7 +100,7 @@ export const WORMHOLE_CHAINS: Record<number, WormholeChain> = {
   72: { name: "Robinhood Chain", evm: 4663 },
 };
 
-const chainName = (id: number) => WORMHOLE_CHAINS[id]?.name ?? `Wormhole chain ${id}`;
+const chainName = (id: number, fr = false) => WORMHOLE_CHAINS[id]?.name ?? (fr ? `chaîne Wormhole ${id}` : `Wormhole chain ${id}`);
 
 /** The official Token Bridge emitter of a chain (32-byte, hex). */
 function tokenBridgeEmitter(chain: number): string | undefined {
@@ -654,6 +654,20 @@ function redeemNote(r: Redeem, dest: string, guardianSet: number): string {
   }
 }
 
+/** The same note in French. */
+function redeemNoteFr(r: Redeem, dest: string, guardianSet: number): string {
+  switch (r.kind) {
+    case "redeemable":
+      return "";
+    case "guardians":
+      return `Jamais récupéré sur ${dest}, mais il ne peut pas être récupéré tel quel : il a été signé par l'ensemble de gardiens n° ${guardianSet} de Wormhole, que ${dest} n'accepte pas (ou plus). Les gardiens doivent d'abord le signer à nouveau : demandez au support de Wormhole de réobserver le transfert.`;
+    case "unattested":
+      return `Jamais récupéré sur ${dest} : le token n'y a pas encore de version wrappée. Enregistrez-le d'abord sur ${dest} (attestez le token dans Portal), puis récupérez-le.`;
+    case "failing":
+      return `Jamais récupéré sur ${dest}, mais la récupération échoue pour le moment (${r.reason.slice(0, 80)}). Vérifiez-le sur Portal ou Wormholescan.`;
+  }
+}
+
 /**
  * `user` is an EVM address or a Solana address. Wormholescan's index matches the address as
  * sender or recipient; for an EVM user the VAA's recipient or the source transaction's sender
@@ -719,6 +733,17 @@ export async function checkWormhole(user: string): Promise<CheckOutput> {
           : "",
       looksFake(asset.symbol) ? "Warning: this token's symbol imitates a well-known token; it may be a scam token with no value." : "",
     ];
+    const notesFr = [
+      s.kind === "redeemable"
+        ? `Signé par les gardiens mais jamais récupéré sur ${dest}. Récupérez-le sur Wormhole Portal avec la transaction d'origine.`
+        : redeemNoteFr(s, dest, t.guardianSet),
+      t.payloadType === 3
+        ? `Il transporte des données d'application, donc seul ${short(recipient ?? "")} peut le récupérer : reprenez-le dans l'app qui l'a envoyé.`
+        : isEvm && recipient && recipient !== me
+          ? `Les fonds vont à ${short(recipient)}, le destinataire que vous avez choisi.`
+          : "",
+      looksFake(asset.symbol) ? "Attention : le symbole de ce token imite un token connu ; il peut s'agir d'un token frauduleux sans valeur." : "",
+    ];
     out.findings.push(
       makeFinding(WORMHOLE, {
         key: f.id,
@@ -728,6 +753,7 @@ export async function checkWormhole(user: string): Promise<CheckOutput> {
         ...txLink(t.emitterChain, f),
         timestamp,
         note: notes.filter(Boolean).join(" "),
+        fr: { label: `Wormhole · ${chainName(t.emitterChain, true)} → ${dest}`, note: notesFr.filter(Boolean).join(" ") },
       }),
     );
   }
@@ -745,20 +771,27 @@ export async function checkWormhole(user: string): Promise<CheckOutput> {
     const timestamp = age(f, parseVaa(f.vaa)!.timestamp);
     let status: WithdrawalStatus;
     let note: string;
+    let noteFr: string;
     let readyAt: number | undefined;
     if (s.kind === "queued") {
       status = now() >= s.readyAt ? "ready" : "waiting";
       readyAt = status === "waiting" ? s.readyAt : undefined;
       note = `Native Token Transfer (NTT) that reached ${dest} but is held by the token's rate limit. Once released (anyone can do it, from the token's app or Wormholescan), the tokens go to the recipient.`;
+      noteFr = `Native Token Transfer (NTT) arrivé sur ${dest} mais retenu par la limite de débit du token. Une fois libéré (n'importe qui peut le faire, depuis l'app du token ou Wormholescan), les tokens vont au destinataire.`;
     } else if (s.kind === "redeemable") {
       status = now() - timestamp < DAY ? "recent" : "ready";
       note = `Native Token Transfer (NTT) signed by the guardians but never delivered on ${dest}. Complete it in the token's bridge app (or Wormhole Connect) with the source transaction.`;
+      noteFr = `Native Token Transfer (NTT) signé par les gardiens mais jamais livré sur ${dest}. Terminez-le dans l'app de bridge du token (ou Wormhole Connect) avec la transaction d'origine.`;
     } else {
       status = "manual";
       note = `Native Token Transfer (NTT). ${redeemNote(s, dest, n.guardianSet)}`;
+      noteFr = `Native Token Transfer (NTT). ${redeemNoteFr(s, dest, n.guardianSet)}`;
     }
     const recipient = evmAddress(n.to);
-    if (isEvm && recipient !== me) note += ` The funds go to ${short(recipient)}, the recipient you chose.`;
+    if (isEvm && recipient !== me) {
+      note += ` The funds go to ${short(recipient)}, the recipient you chose.`;
+      noteFr += ` Les fonds vont à ${short(recipient)}, le destinataire que vous avez choisi.`;
+    }
     out.findings.push(
       makeFinding(WORMHOLE, {
         key: f.id,
@@ -769,6 +802,7 @@ export async function checkWormhole(user: string): Promise<CheckOutput> {
         timestamp,
         readyAt,
         note,
+        fr: { label: `Wormhole · ${chainName(n.emitterChain, true)} → ${dest}`, note: noteFr },
       }),
     );
   }

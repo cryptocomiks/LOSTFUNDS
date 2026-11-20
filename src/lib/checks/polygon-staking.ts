@@ -189,10 +189,12 @@ export async function checkPolygonStaking(user: Address): Promise<CheckOutput> {
     data: Hex;
     fn: string;
     note: string;
+    noteFr: string;
   }
   const claims: Claim[] = [];
   for (const p of mine) {
     const where = `validator #${p.id}'s contract (${p.share})`;
+    const whereFr = `le contrat du validateur n° ${p.id} (${p.share})`;
     if (p.shares > 0n) {
       const rewards = get<bigint>(`${p.id}:rewards`);
       if (rewards >= get<bigint>(`${p.id}:min`))
@@ -203,6 +205,7 @@ export async function checkPolygonStaking(user: Address): Promise<CheckOutput> {
           data: encodeFunctionData({ abi: shareAbi, functionName: "withdrawRewardsPOL" }),
           fn: "withdrawRewardsPOL",
           note: `Rewards from staking with Polygon validator #${p.id}, never withdrawn. Withdraw them at staking.polygon.technology, or on Etherscan: Write as Proxy → withdrawRewardsPOL on ${where}, from this wallet.`,
+          noteFr: `Récompenses du staking auprès du validateur Polygon n° ${p.id}, jamais retirées. Retirez-les sur staking.polygon.technology, ou sur Etherscan : Write as Proxy → withdrawRewardsPOL sur ${whereFr}, depuis ce wallet.`,
         });
       const deactivation = get<readonly unknown[]>(`${p.id}:validator`)[3] as bigint;
       const [stake] = get<readonly [bigint, bigint]>(`${p.id}:stake`);
@@ -214,6 +217,7 @@ export async function checkPolygonStaking(user: Address): Promise<CheckOutput> {
           data: encodeFunctionData({ abi: shareAbi, functionName: "sellVoucher_newPOL", args: [stake, p.shares] }),
           fn: "sellVoucher_newPOL",
           note: `This POL is still delegated to Polygon validator #${p.id}, which has stopped validating: it earns nothing anymore. Unstake it at staking.polygon.technology (or sellVoucher_newPOL on ${where}), then claim it after 80 checkpoints, about a day.`,
+          noteFr: `Ces POL sont toujours délégués au validateur Polygon n° ${p.id}, qui a cessé de valider : ils ne rapportent plus rien. Déstakez-les sur staking.polygon.technology (ou sellVoucher_newPOL sur ${whereFr}), puis réclamez-les après 80 checkpoints, environ un jour.`,
         });
     }
     const unbonds: [string, bigint, bigint, Hex, string][] = [];
@@ -240,6 +244,7 @@ export async function checkPolygonStaking(user: Address): Promise<CheckOutput> {
         data,
         fn,
         note: `You unstaked this POL from Polygon validator #${p.id} and its waiting period is over, but it was never claimed. Claim it at staking.polygon.technology, or on Etherscan: Write as Proxy → ${fn} on ${where}, from this wallet.`,
+        noteFr: `Vous avez déstaké ces POL du validateur Polygon n° ${p.id} et leur période d'attente est terminée, mais ils n'ont jamais été réclamés. Réclamez-les sur staking.polygon.technology, ou sur Etherscan : Write as Proxy → ${fn} sur ${whereFr}, depuis ce wallet.`,
       });
     }
   }
@@ -269,6 +274,12 @@ export async function checkPolygonStaking(user: Address): Promise<CheckOutput> {
           note: c.note,
           claimAt: "staking.polygon.technology",
           minUsd: MIN_USD,
+          fr: {
+            label: c.key === "rewards" ? "Récompenses de staking Polygon" : "Staking Polygon",
+            linkLabel: "Ouvrir le contrat",
+            note: c.noteFr,
+            claimAt: "staking.polygon.technology",
+          },
         }),
       );
     }),

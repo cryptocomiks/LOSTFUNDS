@@ -44,7 +44,7 @@ export async function checkConvex(user: Address): Promise<CheckOutput> {
     ...EXTRAS.map((x) => read(x.pool, "earned")),
   ]);
 
-  const finding = (key: string, pool: Address, asset: Asset, note: string) =>
+  const finding = (key: string, pool: Address, asset: Asset, note: string, noteFr: string) =>
     makeFinding(CONVEX, {
       key,
       label: "Convex staking rewards",
@@ -56,9 +56,12 @@ export async function checkConvex(user: Address): Promise<CheckOutput> {
       claimAt: "convexfinance.com",
       minUsd: DUST_ETHEREUM,
       note,
+      fr: { label: "Récompenses de staking Convex", claimAt: "convexfinance.com", note: noteFr },
     });
   const stillStaked = (amount: bigint, symbol: string) =>
     amount > 0n ? ` You also still have ${formatAmount(amount, 18)} ${symbol} staked there, which you can withdraw at any time.` : "";
+  const stillStakedFr = (amount: bigint, symbol: string) =>
+    amount > 0n ? ` Vous y avez aussi encore ${formatAmount(amount, 18, "fr")} ${symbol} stakés, que vous pouvez retirer à tout moment.` : "";
 
   const [cvxClaim, crvClaim] = await Promise.all([
     cvxEarned > 0n
@@ -72,13 +75,25 @@ export async function checkConvex(user: Address): Promise<CheckOutput> {
   const findings: Finding[] = [];
   if (cvxClaim !== null)
     findings.push(
-      finding("cvx-pool", CVX_POOL, { ...CVXCRV, amount: cvxEarned }, `Staking CVX in Convex's original CVX staking pool earned this address ${formatAmount(cvxEarned, 18)} CRV that were never claimed. They're paid out as cvxCRV.${stillStaked(cvxStaked, "CVX")}`),
+      finding(
+        "cvx-pool",
+        CVX_POOL,
+        { ...CVXCRV, amount: cvxEarned },
+        `Staking CVX in Convex's original CVX staking pool earned this address ${formatAmount(cvxEarned, 18)} CRV that were never claimed. They're paid out as cvxCRV.${stillStaked(cvxStaked, "CVX")}`,
+        `Le staking de CVX dans le pool de staking CVX d'origine de Convex a rapporté à cette adresse ${formatAmount(cvxEarned, 18, "fr")} CRV jamais réclamés. Ils sont payés en cvxCRV.${stillStakedFr(cvxStaked, "CVX")}`,
+      ),
     );
   if (crvClaim !== null) {
     const rewards = [{ asset: { ...CRV, amount: crvEarned } }, ...EXTRAS.map((x, i) => ({ asset: { ...x.asset, amount: extras[i] } }))].filter((r) => r.asset.amount > 0n);
     for (const r of rewards)
       findings.push(
-        finding(`cvxcrv-pool-${r.asset.symbol.toLowerCase()}`, CVXCRV_POOL, r.asset, `Staking cvxCRV in Convex's original cvxCRV staking pool earned this address ${formatAmount(r.asset.amount, 18)} ${r.asset.symbol} that were never claimed.${stillStaked(cvxCrvStaked, "cvxCRV")}`),
+        finding(
+          `cvxcrv-pool-${r.asset.symbol.toLowerCase()}`,
+          CVXCRV_POOL,
+          r.asset,
+          `Staking cvxCRV in Convex's original cvxCRV staking pool earned this address ${formatAmount(r.asset.amount, 18)} ${r.asset.symbol} that were never claimed.${stillStaked(cvxCrvStaked, "cvxCRV")}`,
+          `Le staking de cvxCRV dans le pool de staking cvxCRV d'origine de Convex a rapporté à cette adresse ${formatAmount(r.asset.amount, 18, "fr")} ${r.asset.symbol} jamais réclamés.${stillStakedFr(cvxCrvStaked, "cvxCRV")}`,
+        ),
       );
   }
   return { findings, completed: 0 };

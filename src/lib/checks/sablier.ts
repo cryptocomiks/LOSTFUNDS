@@ -99,6 +99,12 @@ export async function checkSablier(user: Address): Promise<CheckOutput> {
         claimAt: "app.sablier.com (connect, open the stream, Withdraw)",
         minUsd: chainId === 1 ? DUST_ETHEREUM : DUST_L2,
         note: `${formatAmount(asset.amount, asset.decimals)} ${asset.symbol} streamed to this address on Sablier (${chain.name}) have vested and were never withdrawn.${ended ? " The stream has ended: everything left in it is yours to withdraw." : " The rest keeps vesting."}`,
+        fr: {
+          label: `Stream Sablier n° ${s.tokenId} · ${chain.name}`,
+          linkLabel: "Voir le stream",
+          claimAt: "app.sablier.com (connectez-vous, ouvrez le stream, Withdraw)",
+          note: `${formatAmount(asset.amount, asset.decimals, "fr")} ${asset.symbol} versés à cette adresse via Sablier (${chain.name}) sont débloqués et n'ont jamais été retirés.${ended ? " Le stream est terminé : tout ce qu'il contient encore est à vous, il ne reste qu'à le retirer." : " Le reste poursuit son vesting."}`,
+        },
       }),
     );
   });

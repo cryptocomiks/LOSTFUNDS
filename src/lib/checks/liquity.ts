@@ -64,6 +64,17 @@ const APP: Record<Kind, string> = {
   dsproxy: "the app that opened the trove (e.g. DeFi Saver)",
   dsa: "instadapp.io",
 };
+/** VIA and APP, in French. */
+const VIA_FR: Record<Kind, string> = {
+  wallet: "",
+  dsproxy: " via votre DSProxy",
+  dsa: " via votre compte Instadapp",
+};
+const APP_FR: Record<Kind, string> = {
+  wallet: "Etherscan (BorrowerOperations de Liquity → claimCollateral)",
+  dsproxy: "l'app qui a ouvert le trove (par ex. DeFi Saver)",
+  dsa: "instadapp.io",
+};
 
 /** The user's wallet, their DSProxy and their Instadapp accounts, the ways a Liquity position could be held. */
 export async function accountsOf(user: Address): Promise<{ address: Address; kind: Kind }[]> {
@@ -106,7 +117,8 @@ export async function checkLiquity(user: Address): Promise<CheckOutput> {
     accounts.map(async ({ address: account, kind }, i) => {
       const [surplus, spEth, spLqty, stakeEth, stakeLusd] = views[i];
       const owner = kind === "wallet" ? "" : ` (held by ${account})`;
-      const finding = (key: string, label: string, contract: Address, asset: Asset, note: string, claimAt: string) =>
+      const ownerFr = kind === "wallet" ? "" : ` (détenu par ${account})`;
+      const finding = (key: string, label: string, contract: Address, asset: Asset, note: string, claimAt: string, fr: { label: string; note: string; claimAt: string }) =>
         makeFinding(LIQUITY, {
           key: `${key}:${account}`,
           label,
@@ -119,6 +131,7 @@ export async function checkLiquity(user: Address): Promise<CheckOutput> {
           claimAt,
           minUsd: DUST_ETHEREUM,
           note,
+          fr: { ...fr, linkLabel: "Voir le contrat" },
         });
       const [surplusOk, spOk, stakeOk] = await Promise.all([
         surplus > 0n ? dryRun(c, { from: account, to: BORROWER_OPERATIONS, data: encodeFunctionData({ abi, functionName: "claimCollateral" }) }) : null,
@@ -134,12 +147,17 @@ export async function checkLiquity(user: Address): Promise<CheckOutput> {
             ETH(surplus),
             `A Liquity trove you opened${VIA[kind]}${owner} was redeemed against or liquidated in Recovery Mode, and the ${formatAmount(surplus, 18)} ETH of collateral above its debt was set aside for you. Liquity never sends it: it waits until claimCollateral() is called${kind === "wallet" ? " from this address" : " from that account"}.`,
             APP[kind],
+            {
+              label: "Liquity : collatéral restant après la fermeture de votre trove",
+              note: `Un trove Liquity que vous avez ouvert${VIA_FR[kind]}${ownerFr} a été racheté (redemption) ou liquidé en Recovery Mode, et les ${formatAmount(surplus, 18, "fr")} ETH de collatéral au-delà de sa dette ont été mis de côté pour vous. Liquity ne les envoie jamais : ils attendent que claimCollateral() soit appelé${kind === "wallet" ? " depuis cette adresse" : " depuis ce compte"}.`,
+              claimAt: APP_FR[kind],
+            },
           ),
         );
       if (spOk !== null)
-        for (const [asset, what] of [
-          [ETH(spEth), "ETH from liquidations"],
-          [LQTY(spLqty), "LQTY rewards"],
+        for (const [asset, what, whatFr] of [
+          [ETH(spEth), "ETH from liquidations", "ETH des liquidations"],
+          [LQTY(spLqty), "LQTY rewards", "récompenses en LQTY"],
         ] as const)
           if (asset.amount > 0n)
             findings.push(
@@ -150,6 +168,11 @@ export async function checkLiquity(user: Address): Promise<CheckOutput> {
                 asset,
                 `Your LUSD deposit in Liquity's Stability Pool${VIA[kind]}${owner} earned ${formatAmount(asset.amount, 18)} ${asset.symbol} (${what}) that were never claimed. Withdrawing from the pool, even 0 LUSD, pays them out.`,
                 kind === "wallet" ? "a Liquity frontend, or Etherscan (StabilityPool → withdrawFromSP with 0)" : APP[kind],
+                {
+                  label: "Stability Pool de Liquity",
+                  note: `Votre dépôt de LUSD dans le Stability Pool de Liquity${VIA_FR[kind]}${ownerFr} a rapporté ${formatAmount(asset.amount, 18, "fr")} ${asset.symbol} (${whatFr}) jamais réclamés. Un retrait du pool, même de 0 LUSD, les verse.`,
+                  claimAt: kind === "wallet" ? "un frontend Liquity, ou Etherscan (StabilityPool → withdrawFromSP avec 0)" : APP_FR[kind],
+                },
               ),
             );
       if (stakeOk !== null)
@@ -163,6 +186,11 @@ export async function checkLiquity(user: Address): Promise<CheckOutput> {
                 asset,
                 `Staking LQTY${VIA[kind]}${owner} earned ${formatAmount(asset.amount, 18)} ${asset.symbol} in protocol fees that were never claimed. Unstaking, even 0 LQTY, pays them out.`,
                 kind === "wallet" ? "a Liquity frontend, or Etherscan (LQTYStaking → unstake with 0)" : APP[kind],
+                {
+                  label: "Staking LQTY de Liquity",
+                  note: `Le staking de LQTY${VIA_FR[kind]}${ownerFr} a rapporté ${formatAmount(asset.amount, 18, "fr")} ${asset.symbol} de frais du protocole jamais réclamés. Déstaker, même 0 LQTY, les verse.`,
+                  claimAt: kind === "wallet" ? "un frontend Liquity, ou Etherscan (LQTYStaking → unstake avec 0)" : APP_FR[kind],
+                },
               ),
             );
     }),

@@ -90,6 +90,15 @@ async function checkChain(chain: (typeof CHAINS)[number], user: Address): Promis
               liquidity === 0n
                 ? `Your Uniswap v3 position #${id} (${pairName}, ${chain.name}) has no liquidity left, but ${formatAmount(asset.amount, asset.decimals)} ${asset.symbol} were never collected from it. They stay in the position until you collect them.`
                 : `Your Uniswap v3 position #${id} (${pairName}, ${chain.name}) has earned ${formatAmount(asset.amount, asset.decimals)} ${asset.symbol} in trading fees that were never collected. Fees are not added to the position or sent to you: they wait until you collect them. Your liquidity itself isn't counted here.`,
+            fr: {
+              label: `Uniswap v3 · ${pairName} n° ${id} · ${chain.name}`,
+              linkLabel: "Voir la position",
+              claimAt: "app.uniswap.org (Pool → votre position → Collect fees)",
+              note:
+                liquidity === 0n
+                  ? `Votre position Uniswap v3 n° ${id} (${pairName}, ${chain.name}) n'a plus de liquidité, mais ${formatAmount(asset.amount, asset.decimals, "fr")} ${asset.symbol} n'en ont jamais été collectés. Ils restent dans la position tant que vous ne les collectez pas.`
+                  : `Votre position Uniswap v3 n° ${id} (${pairName}, ${chain.name}) a gagné ${formatAmount(asset.amount, asset.decimals, "fr")} ${asset.symbol} de frais de trading jamais collectés. Les frais ne sont ni ajoutés à la position ni envoyés : ils attendent que vous les collectiez. Votre liquidité elle-même n'est pas comptée ici.`,
+            },
           }),
         );
       }

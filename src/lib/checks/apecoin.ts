@@ -76,7 +76,8 @@ export async function checkApeCoinStaking(user: Address): Promise<CheckOutput> {
         unclaimed > 0n ? dryRun(c, { from: user, to: STAKING, data: claim }) : null,
       ]);
       const nfts = pool === 0 ? "" : ` with ${mine.length > 1 ? `${mine.length} ${name}s` : `${name} #${mine[0].tokenId}`}`;
-      const finding = (key: string, amount: bigint, note: string) =>
+      const nftsFr = pool === 0 ? "" : ` avec ${mine.length > 1 ? `${mine.length} ${name}` : `${name} n° ${mine[0].tokenId}`}`;
+      const finding = (key: string, amount: bigint, note: string, noteFr: string) =>
         makeFinding(APECOIN_STAKING, {
           key: `${name}:${key}`,
           label: `ApeCoin staking (${name} pool)`,
@@ -89,6 +90,12 @@ export async function checkApeCoinStaking(user: Address): Promise<CheckOutput> {
           claimAt: pool === 0 ? "Etherscan (ApeCoinStaking → withdrawSelfApeCoin / claimSelfApeCoin)" : `Etherscan (ApeCoinStaking → withdraw / claim for ${name})`,
           minUsd: DUST_ETHEREUM,
           note,
+          fr: {
+            label: `Staking ApeCoin (pool ${name})`,
+            linkLabel: "Voir le contrat",
+            claimAt: pool === 0 ? "Etherscan (ApeCoinStaking → withdrawSelfApeCoin / claimSelfApeCoin)" : `Etherscan (ApeCoinStaking → withdraw / claim pour ${name})`,
+            note: noteFr,
+          },
         });
       if (withdrawOk !== null)
         findings.push(
@@ -96,10 +103,18 @@ export async function checkApeCoinStaking(user: Address): Promise<CheckOutput> {
             "staked",
             deposited,
             `${formatAmount(deposited, 18)} APE are still staked${nfts} in ApeCoin's original staking contract. Its rewards ended in ${pool === 0 ? "November 2024" : "April 2025"}, when staking moved to ApeChain: this APE earns nothing until you withdraw it.`,
+            `${formatAmount(deposited, 18, "fr")} APE sont toujours stakés${nftsFr} dans le contrat de staking d'origine d'ApeCoin. Ses récompenses ont pris fin en ${pool === 0 ? "novembre 2024" : "avril 2025"}, quand le staking est passé sur ApeChain : ces APE ne rapportent rien tant que vous ne les retirez pas.`,
           ),
         );
       if (claimOk !== null)
-        findings.push(finding("rewards", unclaimed, `Staking APE${nfts} earned ${formatAmount(unclaimed, 18)} APE of rewards that were never claimed. They stay claimable.`));
+        findings.push(
+          finding(
+            "rewards",
+            unclaimed,
+            `Staking APE${nfts} earned ${formatAmount(unclaimed, 18)} APE of rewards that were never claimed. They stay claimable.`,
+            `Le staking d'APE${nftsFr} a rapporté ${formatAmount(unclaimed, 18, "fr")} APE de récompenses jamais réclamées. Elles restent réclamables.`,
+          ),
+        );
     }),
   );
   return { findings, completed: 0 };

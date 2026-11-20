@@ -268,6 +268,8 @@ async function xdaiBridge(user: Address, out: CheckOutput): Promise<Pending[]> {
 }
 
 const HELP = "Only the Gnosis bridge team can unblock it: reach them through the official Gnosis Chain docs (docs.gnosischain.com). Nobody legitimate will DM you first.";
+const HELP_FR =
+  "Seule l'équipe du bridge Gnosis peut le débloquer : contactez-la via la documentation officielle de Gnosis Chain (docs.gnosischain.com). Aucun service honnête ne vous écrira en premier.";
 
 export async function checkGnosisBridge(user: Address): Promise<CheckOutput> {
   const out: CheckOutput = { findings: [], completed: 0 };
@@ -276,27 +278,40 @@ export async function checkGnosisBridge(user: Address): Promise<CheckOutput> {
     const age = now() - p.timestamp;
     let status: WithdrawalStatus;
     let note: string;
+    let noteFr: string;
     if (p.state === "ready") {
       status = "ready";
       note =
         "Never claimed on Ethereum. Claim it soon in the Gnosis bridge app: once the bridge validators who signed it are replaced, it can no longer be claimed without help.";
+      noteFr =
+        "Jamais réclamé sur Ethereum. Réclamez-le vite dans l'app du bridge Gnosis : une fois les validateurs du bridge qui l'ont signé remplacés, il ne pourra plus être réclamé sans aide.";
     } else if (p.state === "signing") {
       if (age < DAY) {
         status = "recent";
         note = "The bridge validators are still signing it. It can be claimed on Ethereum once they're done, usually within minutes.";
+        noteFr = "Les validateurs du bridge sont encore en train de le signer. Il pourra être réclamé sur Ethereum une fois qu'ils auront fini, en général en quelques minutes.";
       } else {
         status = "manual";
         note = `Never claimed on Ethereum, and the bridge validators never finished signing it. ${HELP}`;
+        noteFr = `Jamais réclamé sur Ethereum, et les validateurs du bridge n'ont jamais fini de le signer. ${HELP_FR}`;
       }
     } else if (p.state === "stranded") {
       status = "manual";
       note = `Never claimed on Ethereum, and the bridge validators who signed it have since been replaced, so Ethereum rejects the claim. ${HELP}`;
+      noteFr = `Jamais réclamé sur Ethereum, et les validateurs du bridge qui l'ont signé ont été remplacés depuis, donc Ethereum refuse la réclamation. ${HELP_FR}`;
     } else {
       status = "manual";
       note = "Never claimed on Ethereum, but Ethereum rejects the claim right now (bridge limits or maintenance). Try again later in the Gnosis bridge app.";
+      noteFr = "Jamais réclamé sur Ethereum, mais Ethereum refuse la réclamation pour le moment (limites du bridge ou maintenance). Réessayez plus tard dans l'app du bridge Gnosis.";
     }
-    if (p.receiver && !isAddressEqual(p.receiver, user)) note += ` The funds go to ${p.receiver}, the address chosen when it was sent.`;
-    if (p.bridge === "xDAI bridge") note += ` Paid out as ${p.asset.symbol} on Ethereum.`;
+    if (p.receiver && !isAddressEqual(p.receiver, user)) {
+      note += ` The funds go to ${p.receiver}, the address chosen when it was sent.`;
+      noteFr += ` Les fonds vont à ${p.receiver}, l'adresse choisie lors de l'envoi.`;
+    }
+    if (p.bridge === "xDAI bridge") {
+      note += ` Paid out as ${p.asset.symbol} on Ethereum.`;
+      noteFr += ` Payé en ${p.asset.symbol} sur Ethereum.`;
+    }
     out.findings.push(
       makeFinding(GNOSIS, {
         key: p.key,
@@ -306,6 +321,7 @@ export async function checkGnosisBridge(user: Address): Promise<CheckOutput> {
         txHash: p.tx,
         timestamp: p.timestamp,
         note,
+        fr: { label: `${p.bridge === "xDAI bridge" ? "Bridge xDAI" : p.bridge} · Gnosis → Ethereum`, note: noteFr },
       }),
     );
   }

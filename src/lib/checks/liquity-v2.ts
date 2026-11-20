@@ -41,6 +41,13 @@ const APP: Record<Kind, string> = {
   dsproxy: "the app that opened the trove (e.g. DeFi Saver)",
   dsa: "instadapp.io",
 };
+/** VIA and APP, in French. */
+const VIA_FR: Record<Kind, string> = { wallet: "", dsproxy: " via votre DSProxy", dsa: " via votre compte Instadapp" };
+const APP_FR: Record<Kind, string> = {
+  wallet: "Etherscan (BorrowerOperations de la branche → claimCollateral)",
+  dsproxy: "l'app qui a ouvert le trove (par ex. DeFi Saver)",
+  dsa: "instadapp.io",
+};
 
 export async function checkLiquityV2(user: Address): Promise<CheckOutput> {
   const c = l1Client();
@@ -70,6 +77,14 @@ export async function checkLiquityV2(user: Address): Promise<CheckOutput> {
           note:
             `A ${b.collateral} trove you opened${VIA[kind]}${kind === "wallet" ? "" : ` (held by ${account})`} on Liquity v2${first ? "'s first deployment, wound down when Liquity relaunched in 2025," : ""} was liquidated, ` +
             `and the ${formatAmount(amount, 18)} ${b.collateral} above its debt was set aside for you. It is never sent: call claimCollateral() on the ${b.collateral} branch's BorrowerOperations (${b.borrowerOperations}).`,
+          fr: {
+            label: `Liquity v2${first ? " (premier déploiement)" : ""} : collatéral restant après liquidation`,
+            linkLabel: "Voir le contrat",
+            claimAt: APP_FR[kind],
+            note:
+              `Un trove ${b.collateral} que vous avez ouvert${VIA_FR[kind]}${kind === "wallet" ? "" : ` (détenu par ${account})`} sur ${first ? "le premier déploiement de Liquity v2, arrêté quand Liquity a relancé en 2025," : "Liquity v2"} a été liquidé, ` +
+              `et les ${formatAmount(amount, 18, "fr")} ${b.collateral} au-delà de sa dette ont été mis de côté pour vous. Ils ne sont jamais envoyés : appelez claimCollateral() sur le BorrowerOperations de la branche ${b.collateral} (${b.borrowerOperations}).`,
+          },
         }),
       );
     }),

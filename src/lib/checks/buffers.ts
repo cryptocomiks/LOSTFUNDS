@@ -43,6 +43,15 @@ export async function checkBuffers(authority: string): Promise<CheckOutput> {
         `${one ? "A program buffer" : `${list.length} program buffers`} left by ${one ? "a " : ""}Solana program deploy${one ? "" : "s"} that never finished ` +
         `${one ? "holds" : "hold"} ${formatAmount(total, 9)} SOL. This wallet is ${one ? "its" : "their"} authority: closing ${one ? "it" : "them"} sends all of it back. ` +
         `Deployed programs are not affected.`,
+      fr: {
+        label: one ? "1 buffer de programme" : `${list.length.toLocaleString("fr-FR")} buffers de programmes`,
+        note:
+          `${one ? "Un buffer de programme laissé par un déploiement de programme Solana jamais terminé contient" : `${list.length.toLocaleString("fr-FR")} buffers de programmes laissés par des déploiements de programmes Solana jamais terminés contiennent`} ` +
+          `${formatAmount(total, 9, "fr")} SOL. Ce wallet en est l'autorité : ${one ? "le" : "les"} fermer renvoie tout. ` +
+          `Les programmes déployés ne sont pas touchés.`,
+        claimAt: "Outils Solana en ligne de commande : solana program close --buffers",
+        linkLabel: one ? "Voir le buffer" : "Voir le wallet",
+      },
     }),
   );
   return out;

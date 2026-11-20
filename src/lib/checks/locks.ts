@@ -23,6 +23,8 @@ interface Lock {
   symbol: string;
   token: Address;
   claimAt: string;
+  /** French: the name as it reads after "verrouillés dans", and the title. */
+  fr: { name: string; label: string };
 }
 
 /** Curve-style vote-escrows: locked(address) → (amount, end), then withdraw(). */
@@ -35,6 +37,7 @@ const VOTE_ESCROWS: Lock[] = [
     symbol: "CRV",
     token: "0xD533a949740bb3306d119CC777fa900bA034cd52",
     claimAt: "curve.finance (DAO → Lock)",
+    fr: { name: "le veCRV de Curve", label: "Verrou Curve (veCRV)" },
   },
   {
     key: "vebal",
@@ -44,6 +47,7 @@ const VOTE_ESCROWS: Lock[] = [
     symbol: "B-80BAL-20WETH",
     token: "0x5c6Ee304399DBdB9C8Ef030aB642B10820DB8F56",
     claimAt: "balancer.fi (veBAL)",
+    fr: { name: "le veBAL de Balancer", label: "Verrou Balancer (veBAL)" },
   },
   {
     key: "vefxs",
@@ -53,6 +57,7 @@ const VOTE_ESCROWS: Lock[] = [
     symbol: "FXS",
     token: "0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0",
     claimAt: "app.frax.finance",
+    fr: { name: "le veFXS de Frax", label: "Verrou Frax (veFXS)" },
   },
   {
     key: "vesdt",
@@ -62,6 +67,7 @@ const VOTE_ESCROWS: Lock[] = [
     symbol: "SDT",
     token: "0x73968b9a57c6E53d41345FD57a6E6ae27d6CDB2F",
     claimAt: "stakedao.org",
+    fr: { name: "le veSDT de Stake DAO", label: "Verrou Stake DAO (veSDT)" },
   },
 ];
 
@@ -73,6 +79,7 @@ const VEPENDLE: Lock = {
   symbol: "PENDLE",
   token: "0x808507121B80c02388fAd14726482e061B8da827",
   claimAt: "app.pendle.finance/vependle",
+  fr: { name: "le vePENDLE de Pendle", label: "Verrou Pendle (vePENDLE)" },
 };
 
 const VLCVX: Lock = {
@@ -83,6 +90,7 @@ const VLCVX: Lock = {
   symbol: "CVX",
   token: "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
   claimAt: "convexfinance.com",
+  fr: { name: "le vlCVX de Convex", label: "Verrou Convex (vlCVX)" },
 };
 
 const veAbi = parseAbi(["function locked(address) view returns (int128 amount, uint256 end)", "function withdraw()"]);
@@ -105,6 +113,8 @@ interface Expired {
   /** The withdrawal transaction. */
   data: Hex;
   note?: string;
+  /** `note`, in French. */
+  noteFr?: string;
 }
 
 export async function checkLocks(user: Address): Promise<CheckOutput> {
@@ -132,6 +142,7 @@ export async function checkLocks(user: Address): Promise<CheckOutput> {
       end: unlockTime,
       data: PROCESS_EXPIRED,
       note: "Withdraw it soon: 4 weeks after a lock ends, anyone can process it for you and keep a fee taken from it, growing every week.",
+      noteFr: "Retirez-les vite : 4 semaines après la fin d'un verrou, n'importe qui peut le traiter à votre place et garder une commission prélevée dessus, qui augmente chaque semaine.",
     });
   }
 
@@ -150,6 +161,12 @@ export async function checkLocks(user: Address): Promise<CheckOutput> {
         claimAt: e.lock.claimAt,
         minUsd: DUST_ETHEREUM,
         note: `${formatAmount(e.amount, 18)} ${e.lock.symbol} locked in ${e.lock.name} was never withdrawn. The lock ended on ${formatDate(e.end)}, but the tokens stay in the contract until you withdraw them.${e.note ? ` ${e.note}` : ""}`,
+        fr: {
+          label: e.lock.fr.label,
+          dateLabel: "Verrou terminé le",
+          claimAt: e.lock.claimAt,
+          note: `${formatAmount(e.amount, 18, "fr")} ${e.lock.symbol} verrouillés dans ${e.lock.fr.name} n'ont jamais été retirés. Le verrou s'est terminé le ${formatDate(e.end, "fr")}, mais les tokens restent dans le contrat tant que vous ne les retirez pas.${e.noteFr ? ` ${e.noteFr}` : ""}`,
+        },
       });
     }),
   );

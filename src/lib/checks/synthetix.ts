@@ -75,6 +75,8 @@ async function vestable(user: Address, chain: (typeof CHAINS)[number]): Promise<
   if (ok === null || amount === 0n) return null;
   const since = Number(vested.reduce((min, e) => (e.endTime < min ? e.endTime : min), vested[0].endTime));
   const how = ids.length <= 8 ? `Call vest with the entry IDs [${ids.join(",")}].` : `Call vest with its ${ids.length} vested entry IDs (see the guide).`;
+  const howFr =
+    ids.length <= 8 ? `Appelez vest avec les identifiants d'entrées [${ids.join(",")}].` : `Appelez vest avec les identifiants de ses ${ids.length} entrées débloquées (voir le guide).`;
   return makeFinding(SNX_ESCROW, {
     key: chain.tokenChain,
     label: `Synthetix escrow (${chain.name})`,
@@ -87,6 +89,12 @@ async function vestable(user: Address, chain: (typeof CHAINS)[number]): Promise<
     claimAt: `${new URL(chain.explorer).host} (RewardEscrowV2, Write Contract → vest)`,
     minUsd: chain.minUsd,
     note: `Synthetix paid staking rewards in SNX escrowed for a year. ${formatAmount(amount, 18)} SNX of this address's escrow on ${chain.name} has fully vested, but stays in the escrow contract until you claim it, with no deadline. ${how}`,
+    fr: {
+      label: `Escrow Synthetix (${chain.name})`,
+      dateLabel: "Débloqués depuis le",
+      claimAt: `${new URL(chain.explorer).host} (RewardEscrowV2, Write Contract → vest)`,
+      note: `Synthetix payait les récompenses de staking en SNX bloqués un an en escrow. ${formatAmount(amount, 18, "fr")} SNX de l'escrow de cette adresse sur ${chain.name} sont entièrement débloqués, mais restent dans le contrat d'escrow tant que vous ne les réclamez pas, sans date limite. ${howFr}`,
+    },
   });
 }
 

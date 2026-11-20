@@ -143,6 +143,10 @@ export async function checkScd(user: Address): Promise<CheckOutput> {
       const how = v.via
         ? `${bite}on your DSProxy (${v.via}), Write Contract → execute(address, bytes) with target ${SAI_PROXY} (Maker's SaiProxy) and data ${proxyFree}: the ETH is sent to this wallet.`
         : `${bite}on the Tub, free(${v.cup}, ${v.free}); then approve the Tub to spend that PETH on the PETH token (${PETH}) and call exit(${v.free}) on the Tub, which pays WETH (unwrap it with withdraw on the WETH contract).`;
+      const biteFr = v.art > 0n ? `soldez d'abord sa dette avec bite(${v.cup}) sur le Tub (${TUB}), depuis n'importe quel wallet ; puis ` : "";
+      const howFr = v.via
+        ? `${biteFr}sur votre DSProxy (${v.via}), Write Contract → execute(address, bytes) avec la cible ${SAI_PROXY} (le SaiProxy de Maker) et les données ${proxyFree} : l'ETH est envoyé à ce wallet.`
+        : `${biteFr}sur le Tub, free(${v.cup}, ${v.free}) ; puis approuvez le Tub pour ces PETH sur le token PETH (${PETH}) et appelez exit(${v.free}) sur le Tub, qui paie en WETH (unwrappez-le avec withdraw sur le contrat WETH).`;
       result.findings.push(
         makeFinding(SCD, {
           key: v.cup,
@@ -156,6 +160,12 @@ export async function checkScd(user: Address): Promise<CheckOutput> {
           note: `Collateral left in this Single-Collateral Dai vault (CDP) when Maker shut SCD down in 2020. It's yours to withdraw, on Etherscan: ${how}`,
           claimAt: v.via ? `Etherscan → your DSProxy ${v.via} → Write Contract → execute` : `Etherscan → Write Contract → free / exit, on ${TUB}`,
           minUsd: MIN_USD,
+          fr: {
+            label: `Coffre Maker SCD n° ${v.n}`,
+            linkLabel: v.via ? "Ouvrir votre DSProxy" : "Ouvrir le Tub",
+            note: `Collatéral resté dans ce coffre Single-Collateral Dai (CDP) quand Maker a arrêté SCD en 2020. Il est à vous et vous pouvez le retirer, sur Etherscan : ${howFr}`,
+            claimAt: v.via ? `Etherscan → votre DSProxy ${v.via} → Write Contract → execute` : `Etherscan → Write Contract → free / exit, sur ${TUB}`,
+          },
         }),
       );
     }),

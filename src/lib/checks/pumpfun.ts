@@ -51,6 +51,12 @@ export async function checkPumpFees(creator: string): Promise<CheckOutput> {
         claimAt: "pump.fun (your profile → creator rewards)",
         minUsd: 1,
         note: `Trades of the coins this wallet created on pump.fun paid it ${formatAmount(curveFees, 9)} SOL in creator fees, waiting in its creator vault until collected. Nothing is sent automatically.`,
+        fr: {
+          label: "Frais de créateur pump.fun",
+          note: `Les trades des tokens que ce wallet a créés sur pump.fun lui ont rapporté ${formatAmount(curveFees, 9, "fr")} SOL de frais de créateur, qui attendent dans son coffre de créateur jusqu'à ce qu'il les récupère. Rien n'est envoyé automatiquement.`,
+          claimAt: "pump.fun (votre profil → creator rewards)",
+          linkLabel: "Voir le coffre",
+        },
       }),
     );
   // A token account: mint (32 bytes), owner (32), then the amount (u64).
@@ -70,6 +76,12 @@ export async function checkPumpFees(creator: string): Promise<CheckOutput> {
         claimAt: "pump.fun (your profile → creator rewards)",
         minUsd: 1,
         note: `Coins this wallet created moved from pump.fun to PumpSwap, where their trades paid it ${formatAmount(swapFees, 9)} SOL (as wrapped SOL) in creator fees. They wait in its PumpSwap creator vault until collected.`,
+        fr: {
+          label: "Frais de créateur PumpSwap",
+          note: `Des tokens créés par ce wallet sont passés de pump.fun à PumpSwap, où leurs trades lui ont rapporté ${formatAmount(swapFees, 9, "fr")} SOL (en SOL wrappé) de frais de créateur. Ils attendent dans son coffre de créateur PumpSwap jusqu'à ce qu'il les récupère.`,
+          claimAt: "pump.fun (votre profil → creator rewards)",
+          linkLabel: "Voir le coffre",
+        },
       }),
     );
   return { findings, completed: 0 };

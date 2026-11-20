@@ -98,6 +98,15 @@ async function checkChain(chain: (typeof CHAINS)[number], user: Address): Promis
           note:
             `This address is the only signer needed on the Safe ${safe} (${info.name}), which holds ${formatAmount(asset.amount, asset.decimals)} ${asset.symbol} ` +
             `and ${lastDate ? "has sent nothing for over a year" : "has never sent a transaction"}. A Safe is a separate address: its funds don't show in your wallet. If you had forgotten it, open it at app.safe.global with this wallet and send the funds wherever you want.`,
+          fr: {
+            label: `Safe ${short} · ${info.name}`,
+            linkLabel: "Voir le Safe",
+            dateLabel: "Dernière utilisation le",
+            claimAt: "app.safe.global (connectez le wallet propriétaire, ouvrez le Safe)",
+            note:
+              `Cette adresse est le seul signataire nécessaire sur le Safe ${safe} (${info.name}), qui détient ${formatAmount(asset.amount, asset.decimals, "fr")} ${asset.symbol} ` +
+              `et ${lastDate ? "n'a rien envoyé depuis plus d'un an" : "n'a jamais envoyé de transaction"}. Un Safe est une adresse à part : ses fonds n'apparaissent pas dans votre wallet. Si vous l'aviez oublié, ouvrez-le sur app.safe.global avec ce wallet et envoyez les fonds où vous voulez.`,
+          },
         }),
       );
   });

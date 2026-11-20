@@ -114,6 +114,8 @@ interface Quote {
   /** "closed": the official contract no longer converts this token (nothing to show). "manual": it can't pay all of it right now. */
   status: "ready" | "manual" | "closed";
   note?: string;
+  /** `note` in French. */
+  noteFr?: string;
 }
 
 interface Redemption {
@@ -133,6 +135,8 @@ interface Redemption {
   txUrl: string;
   /** `had` and `get` are formatted amounts ("1,000 DAO", "10 ETH"). */
   note: (had: string, get: string) => string;
+  /** French label, claimAt and note (`had` and `get` formatted the French way: "1 000 DAO"); `symbol` when the English one is made of English words. */
+  fr: { label: string; claimAt: string; note: (had: string, get: string) => string; symbol?: string };
   /** The claim, as sent from the holder's wallet (an approval first when the contract pulls the tokens). */
   calls: (balance: bigint) => { to: Address; data: Hex }[];
 }
@@ -152,24 +156,41 @@ const tx = (to: Address, functionName: string, args: readonly unknown[] = []) =>
 /** Some 2016-era tokens refuse to change an allowance that isn't 0: reset it first, as a wallet would. */
 const approve = (token: Address, spender: Address, amount: bigint) => [tx(token, "approve", [spender, 0n]), tx(token, "approve", [spender, amount])];
 /** Paid from a reserve the contract holds: all of it, or a manual check when the reserve is short. */
-const fromReserve = (amount: bigint, reserve: unknown, what: string, then = "Check it before sending anything."): Quote =>
+const fromReserve = (
+  amount: bigint,
+  reserve: unknown,
+  what: string,
+  whatFr: string,
+  then = "Check it before sending anything.",
+  thenFr = "Vérifiez-le avant d'envoyer quoi que ce soit.",
+): Quote =>
   (reserve as bigint) >= amount
     ? { amount, status: "ready" }
-    : { amount, status: "manual", note: `${what} holds less than this right now, so the claim would fail. ${then}` };
+    : {
+        amount,
+        status: "manual",
+        note: `${what} holds less than this right now, so the claim would fail. ${then}`,
+        noteFr: `${whatFr} détient moins que cela en ce moment, donc la réclamation échouerait. ${thenFr}`,
+      };
 
 /** Old ETH wrappers from before today's WETH (Dec 2017): their contracts still hold the ETH, 1:1. */
-const wrapper = (key: string, label: string, token: Address, reserve: StateKey, about: string, verified: boolean): Redemption => ({
+const wrapper = (key: string, label: string, token: Address, reserve: StateKey, about: string, verified: boolean, fr: { label: string; about: string }): Redemption => ({
   key,
   label,
   token,
   symbol: "ETH token",
   decimals: 18,
   needs: [reserve],
-  quote: (balance, s) => fromReserve(balance, s[reserve], "The contract"),
+  quote: (balance, s) => fromReserve(balance, s[reserve], "The contract", "Le contrat"),
   asset: eth,
   claimAt: "the token contract (withdraw, with your full balance in wei)",
   txUrl: etherscan(token, verified),
   note: (_had, get) => `This wallet holds ${get} wrapped in ${about}, not today's WETH. Its contract still holds the ETH and gives it back 1:1: call withdraw with your balance.`,
+  fr: {
+    label: fr.label,
+    claimAt: "le contrat du token (withdraw, avec votre solde entier en wei)",
+    note: (_had, get) => `Ce wallet détient ${get} wrappés dans ${fr.about}, et non dans le WETH actuel. Son contrat détient toujours l'ETH et le rend 1:1 : appelez withdraw avec votre solde.`,
+  },
   calls: (balance) => [tx(token, "withdraw", [balance])],
 });
 
@@ -186,12 +207,18 @@ export const LEGACY_LIST: LegacyEntry[] = [
         decimals: 16,
         needs: ["withdrawDaoEth"],
         // 1 DAO (10^16 units) = 0.01 ETH (10^16 wei): withdraw() pays the balance in wei.
-        quote: (balance, s) => fromReserve(balance, s.withdrawDaoEth, "The WithdrawDAO contract"),
+        quote: (balance, s) => fromReserve(balance, s.withdrawDaoEth, "The WithdrawDAO contract", "Le contrat WithdrawDAO"),
         asset: eth,
         claimAt: "the WithdrawDAO contract on Etherscan (approve your DAO tokens to it, then withdraw)",
         txUrl: etherscan(WITHDRAW_DAO),
         note: (had, get) =>
           `${had} tokens from 2016 are still redeemable for ${get} (100 DAO = 1 ETH) through the WithdrawDAO contract created by the hard fork. It holds the ETH for every DAO token left, has no deadline, and TheDAO Security Fund can't touch it.`,
+        fr: {
+          label: "Remboursement The DAO",
+          claimAt: "le contrat WithdrawDAO sur Etherscan (approuvez-le pour vos tokens DAO, puis withdraw)",
+          note: (had, get) =>
+            `Ces ${had} de 2016 sont toujours échangeables contre ${get} (100 DAO = 1 ETH) via le contrat WithdrawDAO créé par le hard fork. Il détient l'ETH de tous les tokens DAO restants, sans date limite, et le TheDAO Security Fund n'a aucun pouvoir dessus.`,
+        },
         calls: (balance) => [...approve(DAO, WITHDRAW_DAO, balance), tx(WITHDRAW_DAO, "withdraw")],
       },
       {
@@ -202,12 +229,26 @@ export const LEGACY_LIST: LegacyEntry[] = [
         decimals: 18,
         needs: ["extraBalanceEth"],
         quote: (balance, s) =>
-          fromReserve(balance, s.extraBalanceEth, "The ExtraBalance withdrawal contract", "TheDAO Security Fund tops it up: ask them through thedao.fund before sending anything."),
+          fromReserve(
+            balance,
+            s.extraBalanceEth,
+            "The ExtraBalance withdrawal contract",
+            "Le contrat de retrait ExtraBalance",
+            "TheDAO Security Fund tops it up: ask them through thedao.fund before sending anything.",
+            "Le TheDAO Security Fund le réapprovisionne : contactez-le via thedao.fund avant d'envoyer quoi que ce soit.",
+          ),
         asset: eth,
         claimAt: "the ExtraBalance withdrawal contract (approve your ExtraBalance tokens to it, then withdraw)",
         txUrl: etherscan(EXTRA_BALANCE_REFUND, false),
         note: (had, get) =>
           `${had} are refunds of what was paid above 1 ETH per 100 DAO in 2016's sale: ${get}, 1 ETH per token, from the ExtraBalance withdrawal contract. TheDAO Security Fund keeps it funded for claims.`,
+        fr: {
+          label: "Remboursement ExtraBalance de TheDAO",
+          symbol: "tokens ExtraBalance",
+          claimAt: "le contrat de retrait ExtraBalance (approuvez-le pour vos tokens ExtraBalance, puis withdraw)",
+          note: (had, get) =>
+            `Ces ${had} donnent droit au remboursement de ce qui a été payé au-delà de 1 ETH pour 100 DAO lors de la vente de 2016 : ${get}, soit 1 ETH par token, versés par le contrat de retrait ExtraBalance. Le TheDAO Security Fund le garde approvisionné pour les réclamations.`,
+        },
         calls: (balance) => [...approve(EXTRA_BALANCE, EXTRA_BALANCE_REFUND, balance), tx(EXTRA_BALANCE_REFUND, "withdraw")],
       },
     ],
@@ -225,13 +266,19 @@ export const LEGACY_LIST: LegacyEntry[] = [
         needs: ["tapOff", "tapFix", "tapWeth"],
         quote: (balance, s) => {
           if (s.tapOff !== true) return { amount: 0n, status: "closed" };
-          return fromReserve(rmul(balance, s.tapFix as bigint), s.tapWeth, "The SaiTap contract");
+          return fromReserve(rmul(balance, s.tapFix as bigint), s.tapWeth, "The SaiTap contract", "Le contrat SaiTap");
         },
         asset: weth,
         claimAt: "the SaiTap contract on Etherscan (approve your SAI to it, then cash)",
         txUrl: etherscan(SAI_TAP),
         note: (had, get) =>
           `Single-Collateral Dai was shut down in May 2020 and SAI has no real market left, but the SaiTap contract still pays a fixed share of ETH for every SAI: ${had} → ${get}, which unwraps 1:1 to ETH. There is no deadline.`,
+        fr: {
+          label: "Échange de SAI Maker",
+          claimAt: "le contrat SaiTap sur Etherscan (approuvez-le pour vos SAI, puis cash)",
+          note: (had, get) =>
+            `Le Dai mono-collatéral (Single-Collateral Dai) a été arrêté en mai 2020 et le SAI n'a plus de vrai marché, mais le contrat SaiTap paie toujours une part fixe d'ETH pour chaque SAI : ${had} → ${get}, à unwrapper 1:1 en ETH. Il n'y a pas de date limite.`,
+        },
         calls: (balance) => [...approve(SAI, SAI_TAP, balance), tx(SAI_TAP, "cash", [balance])],
       },
       {
@@ -244,13 +291,19 @@ export const LEGACY_LIST: LegacyEntry[] = [
         quote: (balance, s) => {
           if (s.tubOut !== true) return { amount: 0n, status: "closed" };
           const amount = rmul(balance, wmul(s.tubPer as bigint, 2n * WAD - (s.tubGap as bigint)));
-          return fromReserve(amount, s.tubWeth, "The SaiTub contract");
+          return fromReserve(amount, s.tubWeth, "The SaiTub contract", "Le contrat SaiTub");
         },
         asset: weth,
         claimAt: "the SaiTub contract on Etherscan (approve your PETH to it, then exit)",
         txUrl: etherscan(SAI_TUB),
         note: (had, get) =>
           `PETH is the pooled ETH of Maker's first system (Single-Collateral Dai), shut down in May 2020. The SaiTub contract still turns ${had} back into ${get}, which unwraps 1:1 to ETH. There is no deadline.`,
+        fr: {
+          label: "Échange de PETH Maker",
+          claimAt: "le contrat SaiTub sur Etherscan (approuvez-le pour vos PETH, puis exit)",
+          note: (had, get) =>
+            `Le PETH est l'ETH mis en commun du premier système de Maker (le Dai mono-collatéral), arrêté en mai 2020. Le contrat SaiTub reconvertit toujours ${had} en ${get}, à unwrapper 1:1 en ETH. Il n'y a pas de date limite.`,
+        },
         calls: (balance) => [...approve(PETH, SAI_TUB, balance), tx(SAI_TUB, "exit", [balance])],
       },
     ],
@@ -268,13 +321,20 @@ export const LEGACY_LIST: LegacyEntry[] = [
         needs: ["redeemerStopped", "redeemerMkr"],
         quote: (balance, s) => {
           if (s.redeemerStopped !== false) return { amount: 0n, status: "closed" };
-          return fromReserve(balance, s.redeemerMkr, "The MKR Redeemer");
+          return fromReserve(balance, s.redeemerMkr, "The MKR Redeemer", "Le MKR Redeemer");
         },
         asset: (amount) => ({ symbol: "MKR", decimals: 18, amount, token: MKR, tokenChain: "ethereum" }),
         claimAt: "the MKR Redeemer contract on Etherscan (approve your old MKR to it, then redeem)",
         txUrl: etherscan(MKR_REDEEMER),
         note: (had, get) =>
           `Maker replaced its original 2016 MKR token in December 2017, and the old one no longer trades. Its Redeemer contract still swaps ${had} for ${get}, 1:1, with no deadline (you can then keep the MKR, sell it, or upgrade it to SKY).`,
+        fr: {
+          label: "Échange d'anciens MKR (2016)",
+          symbol: "anciens MKR",
+          claimAt: "le contrat MKR Redeemer sur Etherscan (approuvez-le pour vos anciens MKR, puis redeem)",
+          note: (had, get) =>
+            `Maker a remplacé son token MKR d'origine, de 2016, en décembre 2017, et l'ancien n'a plus de marché. Son contrat Redeemer échange toujours ${had} contre ${get}, 1:1, sans date limite (vous pouvez ensuite garder les MKR, les vendre ou les convertir en SKY).`,
+        },
         calls: (balance) => [...approve(MKR_2016, MKR_REDEEMER, balance), tx(MKR_REDEEMER, "redeem")],
       },
     ],
@@ -292,13 +352,19 @@ export const LEGACY_LIST: LegacyEntry[] = [
         needs: ["acidReady", "acidRate", "acidEth"],
         quote: (balance, s) => {
           if (s.acidReady !== true) return { amount: 0n, status: "closed" };
-          return fromReserve(balance * (s.acidRate as bigint), s.acidEth, "DigixDAO's Acid contract");
+          return fromReserve(balance * (s.acidRate as bigint), s.acidEth, "DigixDAO's Acid contract", "Le contrat Acid de DigixDAO");
         },
         asset: eth,
         claimAt: "the Acid contract on Etherscan (approve your DGD to it, then burn)",
         txUrl: etherscan(DGD_ACID),
         note: (had, get) =>
           `DigixDAO dissolved in 2020 and DGD no longer trades, but its Acid refund contract still pays 0.193 ETH per DGD: ${had} → ${get}. burn() takes the whole DGD balance and sends the ETH back in the same transaction.`,
+        fr: {
+          label: "Remboursement des DGD de DigixDAO",
+          claimAt: "le contrat Acid sur Etherscan (approuvez-le pour vos DGD, puis burn)",
+          note: (had, get) =>
+            `DigixDAO a été dissoute en 2020 et le DGD n'a plus de marché, mais son contrat de remboursement Acid paie toujours 0,193 ETH par DGD : ${had} → ${get}. burn() prend tout le solde de DGD et envoie l'ETH dans la même transaction.`,
+        },
         calls: (balance) => [...approve(DGD, DGD_ACID, balance), tx(DGD_ACID, "burn")],
       },
     ],
@@ -323,6 +389,12 @@ export const LEGACY_LIST: LegacyEntry[] = [
         txUrl: etherscan(GNT),
         note: (had, get) =>
           `Golem replaced GNT with GLM in November 2020, and GNT no longer trades. The migration is still open, 1:1 with no deadline: ${had} → ${get}, in one transaction, without an approval.`,
+        fr: {
+          label: "Migration GNT → GLM de Golem",
+          claimAt: "migrate.golem.network, ou migrate sur le contrat GNT sur Etherscan",
+          note: (had, get) =>
+            `Golem a remplacé le GNT par le GLM en novembre 2020, et le GNT n'a plus de marché. La migration est toujours ouverte, 1:1 et sans date limite : ${had} → ${get}, en une seule transaction, sans approbation.`,
+        },
         calls: (balance) => [tx(GNT, "migrate", [balance])],
       },
     ],
@@ -345,6 +417,12 @@ export const LEGACY_LIST: LegacyEntry[] = [
         txUrl: etherscan(KNC),
         note: (had, get) =>
           `Kyber replaced KNC Legacy (KNCL) with today's KNC in 2021, and KNCL has no market left. The migration is still open, 1:1 with no deadline: ${had} → ${get}.`,
+        fr: {
+          label: "Migration KNCL → KNC de Kyber",
+          claimAt: "kyberswap.com/kyberdao/stake-knc (Migrate), ou mintWithOldKnc sur le contrat KNC sur Etherscan",
+          note: (had, get) =>
+            `Kyber a remplacé le KNC Legacy (KNCL) par le KNC actuel en 2021, et le KNCL n'a plus de marché. La migration est toujours ouverte, 1:1 et sans date limite : ${had} → ${get}.`,
+        },
         calls: (balance) => [...approve(KNCL, KNC, balance), tx(KNC, "mintWithOldKnc", [balance])],
       },
     ],
@@ -367,6 +445,12 @@ export const LEGACY_LIST: LegacyEntry[] = [
         txUrl: etherscan(RPL),
         note: (had, get) =>
           `Rocket Pool replaced its first RPL token in October 2021. The old one can't be staked and most exchanges no longer take it, but the swap is still open, 1:1 with no deadline: ${had} → ${get}.`,
+        fr: {
+          label: "Migration RPL v1 → RPL de Rocket Pool",
+          claimAt: "stake.rocketpool.net (Swap RPL v1), ou swapTokens sur le contrat RPL sur Etherscan",
+          note: (had, get) =>
+            `Rocket Pool a remplacé son premier token RPL en octobre 2021. L'ancien ne peut pas être staké et la plupart des exchanges ne l'acceptent plus, mais l'échange est toujours ouvert, 1:1 et sans date limite : ${had} → ${get}.`,
+        },
         calls: (balance) => [...approve(RPL_V1, RPL, balance), tx(RPL, "swapTokens", [balance])],
       },
     ],
@@ -375,9 +459,18 @@ export const LEGACY_LIST: LegacyEntry[] = [
     id: "weth-old",
     name: "Old wrapped ETH",
     redemptions: [
-      wrapper("w-eth-2016", "Old wrapped ETH (W-ETH, 2016)", W_ETH_2016, "wEth2016Eth", "W-ETH, the 2016 ETH wrapper of Maker's first exchange (OasisDEX)", false),
-      wrapper("weth-0x-2017", "Old wrapped ETH (0x WETH, 2017)", WETH_0X_2017, "weth0xEth", "the 2017 WETH of 0x's first exchange contracts", true),
-      wrapper("eth-bancor-2017", "Old wrapped ETH (Bancor, 2017)", ETH_BANCOR_2017, "ethBancorEth", "Bancor's 2017 ETH token", true),
+      wrapper("w-eth-2016", "Old wrapped ETH (W-ETH, 2016)", W_ETH_2016, "wEth2016Eth", "W-ETH, the 2016 ETH wrapper of Maker's first exchange (OasisDEX)", false, {
+        label: "Ancien ETH wrappé (W-ETH, 2016)",
+        about: "W-ETH, le wrapper d'ETH de 2016 du premier exchange de Maker (OasisDEX)",
+      }),
+      wrapper("weth-0x-2017", "Old wrapped ETH (0x WETH, 2017)", WETH_0X_2017, "weth0xEth", "the 2017 WETH of 0x's first exchange contracts", true, {
+        label: "Ancien ETH wrappé (WETH de 0x, 2017)",
+        about: "le WETH de 2017 des premiers contrats d'exchange de 0x",
+      }),
+      wrapper("eth-bancor-2017", "Old wrapped ETH (Bancor, 2017)", ETH_BANCOR_2017, "ethBancorEth", "Bancor's 2017 ETH token", true, {
+        label: "Ancien ETH wrappé (Bancor, 2017)",
+        about: "le token ETH de Bancor de 2017",
+      }),
     ],
   },
 ];
@@ -472,10 +565,13 @@ export async function checkLegacy(user: string, list: LegacyEntry[] = LEGACY_LIS
         let status: WithdrawalStatus = q.status;
         const asset = r.asset(q.amount);
         let note = r.note(`${formatAmount(balance, r.decimals)} ${r.symbol}`, `${formatAmount(q.amount, asset.decimals)} ${asset.symbol}`);
+        let noteFr = r.fr.note(`${formatAmount(balance, r.decimals, "fr")} ${r.fr.symbol ?? r.symbol}`, `${formatAmount(q.amount, asset.decimals, "fr")} ${asset.symbol}`);
         if (q.note) note += ` ${q.note}`;
+        if (q.note) noteFr += ` ${q.noteFr ?? q.note}`;
         if (status === "ready" && (await dryRun(me, r.calls(balance))) === false) {
           status = "manual";
           note += " A dry run of the claim from this address fails right now (for example, a smart-contract wallet that can't receive ETH this way): check it before sending anything.";
+          noteFr += " Une simulation de la réclamation depuis cette adresse échoue en ce moment (par exemple, un wallet smart contract qui ne peut pas recevoir d'ETH de cette façon) : vérifiez-le avant d'envoyer quoi que ce soit.";
         }
         out.findings.push(
           makeFinding(source, {
@@ -489,6 +585,7 @@ export async function checkLegacy(user: string, list: LegacyEntry[] = LEGACY_LIS
             note,
             claimAt: r.claimAt,
             minUsd: 5,
+            fr: { label: r.fr.label, note: noteFr, claimAt: r.fr.claimAt },
           }),
         );
       }),

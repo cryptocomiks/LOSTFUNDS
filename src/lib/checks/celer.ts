@@ -180,7 +180,7 @@ async function transferStatus(id: Hex): Promise<TransferStatus> {
   return s;
 }
 
-const chainName = (id: number) => evmChain(id)?.name ?? `chain ${id}`;
+const chainName = (id: number, fr = false) => evmChain(id)?.name ?? (fr ? `chaîne ${id}` : `chain ${id}`);
 
 /** Symbols made to look like well-known tokens (e.g. "USⅮΤ") are a common scam. */
 const looksFake = (symbol?: string) => !!symbol && /[^\x20-\x7e]/.test(symbol);
@@ -268,6 +268,15 @@ export async function checkCeler(user: Address): Promise<CheckOutput> {
           `This transfer failed and was refunded on ${chainName(src)}, but the refund was never collected. ` +
           "Open cBridge's transfer history with this wallet and confirm the refund." +
           (asset.priceKey === "none:none" && looksFake(asset.symbol) ? " Warning: this token's symbol imitates a well-known token; it may be a scam token with no value." : ""),
+        fr: {
+          label: `cBridge · ${chainName(src, true)} → ${dst ? chainName(dst, true) : "?"}`,
+          note:
+            `Ce transfert a échoué et a été remboursé sur ${chainName(src, true)}, mais le remboursement n'a jamais été récupéré. ` +
+            "Ouvrez l'historique des transferts de cBridge avec ce wallet et confirmez le remboursement." +
+            (asset.priceKey === "none:none" && looksFake(asset.symbol)
+              ? " Attention : le symbole de ce token imite un token connu ; il peut s'agir d'un token frauduleux sans valeur."
+              : ""),
+        },
       }),
     );
   }

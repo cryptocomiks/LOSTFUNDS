@@ -72,6 +72,7 @@ async function underlying(c: PublicClient, strategy: Address, shares: bigint): P
 }
 
 const BEIGEN_NOTE = " It pays out bEIGEN, EigenLayer's backing token, which converts 1:1 into EIGEN.";
+const BEIGEN_NOTE_FR = " Il est payé en bEIGEN, le token d'EigenLayer qui se convertit 1:1 en EIGEN.";
 
 export async function checkEigenWithdrawals(user: Address): Promise<CheckOutput> {
   const c = l1Client();
@@ -100,8 +101,11 @@ export async function checkEigenWithdrawals(user: Address): Promise<CheckOutput>
       }
       const readyAt = ready ? undefined : now() + Number(lastBlock + 1n - head) * BLOCK_TIME;
       const someoneElse = !isAddressEqual(w.withdrawer, user) ? ` Only ${w.withdrawer}, the withdrawer it names, can complete it.` : "";
+      const someoneElseFr = !isAddressEqual(w.withdrawer, user) ? ` Seule ${w.withdrawer}, l'adresse de retrait qu'il désigne, peut le terminer.` : "";
+      const waitFr = `${days} jour${days > 1 ? "s" : ""}`;
       parts.forEach((p, j) => {
         const beigen = p.asset.symbol === "bEIGEN" ? BEIGEN_NOTE : "";
+        const beigenFr = p.asset.symbol === "bEIGEN" ? BEIGEN_NOTE_FR : "";
         findings.push(
           makeFinding(EIGEN_WITHDRAWALS, {
             key: `${w.nonce}:${j}`,
@@ -118,6 +122,14 @@ export async function checkEigenWithdrawals(user: Address): Promise<CheckOutput>
             note: ready
               ? `This withdrawal from EigenLayer was queued on ${formatDate(queuedAt)} and its ${days}-day wait is over, but nothing is sent until it's completed.${beigen}${someoneElse}`
               : `This withdrawal from EigenLayer was queued on ${formatDate(queuedAt)}. It can be completed after its ${days}-day wait, around ${formatDate(readyAt!)}. Nothing is sent automatically: complete it then.${beigen}${someoneElse}`,
+            fr: {
+              label: "Retrait EigenLayer",
+              dateLabel: "Mis en file le",
+              claimAt: CLAIM_AT,
+              note: ready
+                ? `Ce retrait d'EigenLayer a été mis en file le ${formatDate(queuedAt, "fr")} et son délai d'attente de ${waitFr} est écoulé, mais rien n'est envoyé tant qu'il n'est pas terminé.${beigenFr}${someoneElseFr}`
+                : `Ce retrait d'EigenLayer a été mis en file le ${formatDate(queuedAt, "fr")}. Il pourra être terminé après son délai d'attente de ${waitFr}, vers le ${formatDate(readyAt!, "fr")}. Rien n'est envoyé automatiquement : terminez-le à ce moment-là.${beigenFr}${someoneElseFr}`,
+            },
           }),
         );
       });
@@ -204,6 +216,7 @@ export async function checkEigenRewards(user: Address): Promise<CheckOutput> {
 
   const through = root.rewardsCalculationEndTimestamp;
   const viaClaimer = from !== user ? ` It must be claimed from ${from}, the claimer address this wallet set.` : "";
+  const viaClaimerFr = from !== user ? ` Elles doivent être réclamées depuis ${from}, l'adresse de réclamation définie par ce wallet.` : "";
   const assets = await Promise.all(ok.map(({ i, amount }) => assetOf(c, leaves[i].token, amount)));
   // Operators' own tokens with no market price are dust nearly every time: only EIGEN is kept unpriced.
   const isEigen = (a: Asset) => a.token !== undefined && (isAddressEqual(a.token, EIGEN) || isAddressEqual(a.token, BEIGEN));
@@ -224,6 +237,12 @@ export async function checkEigenRewards(user: Address): Promise<CheckOutput> {
         claimAt: CLAIM_AT,
         minUsd: DUST_ETHEREUM,
         note: `Restaking on EigenLayer earned this address ${formatAmount(amount, asset.decimals)} ${asset.symbol} in rewards, counted until ${formatDate(through)}, that were never claimed. Rewards aren't sent automatically.${viaClaimer}`,
+        fr: {
+          label: "Récompenses EigenLayer",
+          dateLabel: "Gagnées jusqu'au",
+          claimAt: CLAIM_AT,
+          note: `Le restaking sur EigenLayer a rapporté à cette adresse ${formatAmount(amount, asset.decimals, "fr")} ${asset.symbol} de récompenses, comptées jusqu'au ${formatDate(through, "fr")}, jamais réclamées. Les récompenses ne sont pas envoyées automatiquement.${viaClaimerFr}`,
+        },
       }),
     ];
   });

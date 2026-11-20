@@ -43,6 +43,13 @@ export async function checkKinto(user: Address): Promise<CheckOutput> {
         claimAt: "Etherscan → KintoLeftOver → Write Contract → acceptAndClaim, from this wallet",
         minUsd: MIN_USD,
         note: `Kinto shut down in September 2025. What this address still had there was converted to ${formatAmount(amount, 6)} USDC, waiting on Ethereum in Kinto's KintoLeftOver contract, with no deadline. Call acceptAndClaim() (no arguments) from this wallet: the USDC is sent to it in the same transaction.`,
+        fr: {
+          label: "Solde restant sur Kinto",
+          linkLabel: "Ouvrir le contrat de réclamation",
+          dateLabel: "Arrêté le",
+          claimAt: "Etherscan → KintoLeftOver → Write Contract → acceptAndClaim, depuis ce wallet",
+          note: `Kinto s'est arrêté en septembre 2025. Ce que cette adresse y avait encore a été converti en ${formatAmount(amount, 6, "fr")} USDC, qui attendent sur Ethereum dans le contrat KintoLeftOver de Kinto, sans date limite. Appelez acceptAndClaim() (sans argument) depuis ce wallet : les USDC lui sont envoyés dans la même transaction.`,
+        },
       }),
     ],
     completed: 0,

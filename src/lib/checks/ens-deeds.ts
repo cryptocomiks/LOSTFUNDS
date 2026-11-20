@@ -110,6 +110,9 @@ export async function checkEnsDeeds(user: Address): Promise<CheckOutput> {
   const wallet = contractWallet
     ? " This address runs smart-contract code (a contract wallet, or an EIP-7702 account): the deed sends the ETH with a fixed gas allowance that some of these can't receive, so check that yours can before releasing."
     : "";
+  const walletFr = contractWallet
+    ? " Cette adresse exécute du code de smart contract (un wallet smart contract, ou un compte EIP-7702) : l'acte envoie l'ETH avec une quantité de gas fixe que certains ne peuvent pas recevoir, vérifiez donc que le vôtre le peut avant de libérer l'acte."
+    : "";
   const findings = mine.slice(0, mine.length > SHOWN ? SHOWN - 1 : SHOWN).map((e) =>
     makeFinding(ENS_DEEDS, {
       key: e.hash,
@@ -124,6 +127,13 @@ export async function checkEnsDeeds(user: Address): Promise<CheckOutput> {
       note: `This ETH paid for a .eth name in ENS's 2017–2019 auctions is still locked in the name's deed. Since 2019 the deed's owner can take it all back at any time, without affecting the name: on Etherscan, call releaseDeed on the old registrar with hash ${e.hash}.${wallet}`,
       claimAt: `Etherscan → Write Contract → releaseDeed, on ${REGISTRAR}`,
       minUsd: MIN_USD,
+      fr: {
+        label: "Dépôt d'enchère ENS",
+        linkLabel: "Ouvrir le registrar",
+        dateLabel: "Enregistré le",
+        note: `Cet ETH payé pour un nom .eth lors des enchères ENS de 2017-2019 est toujours bloqué dans l'acte (deed) du nom. Depuis 2019, le propriétaire de l'acte peut tout récupérer à tout moment, sans effet sur le nom : sur Etherscan, appelez releaseDeed sur l'ancien registrar avec le hash ${e.hash}.${walletFr}`,
+        claimAt: `Etherscan → Write Contract → releaseDeed, sur ${REGISTRAR}`,
+      },
     }),
   );
   if (mine.length > SHOWN) {
@@ -142,6 +152,12 @@ export async function checkEnsDeeds(user: Address): Promise<CheckOutput> {
         note: `${rest.length} more deeds from the 2017–2019 auctions are owned by this address, holding ${Number(formatUnits(total, 18)).toLocaleString("en-US", { maximumFractionDigits: 4 })} ETH in all. Release each one with releaseDeed on the old registrar, with the name's hash: the keccak256 of its label (of "vitalik" for vitalik.eth).${wallet}`,
         claimAt: `Etherscan → Write Contract → releaseDeed, on ${REGISTRAR}`,
         minUsd: MIN_USD,
+        fr: {
+          label: `Dépôts d'enchères ENS (${rest.length.toLocaleString("fr-FR")} autres noms)`,
+          linkLabel: "Ouvrir le registrar",
+          note: `${rest.length.toLocaleString("fr-FR")} autres actes des enchères de 2017-2019 appartiennent à cette adresse et contiennent ${Number(formatUnits(total, 18)).toLocaleString("fr-FR", { maximumFractionDigits: 4 })} ETH au total. Libérez chacun d'eux avec releaseDeed sur l'ancien registrar, avec le hash du nom : le keccak256 de son label (de « vitalik » pour vitalik.eth).${walletFr}`,
+          claimAt: `Etherscan → Write Contract → releaseDeed, sur ${REGISTRAR}`,
+        },
       }),
     );
   }

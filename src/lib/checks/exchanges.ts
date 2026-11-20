@@ -92,31 +92,56 @@ const switcheoAbi = parseAbi([
 /** Where to withdraw, shown as text: the official app if one is left, and Etherscan's Write Contract tab. */
 export const exchangeClaimAt = (contract: Address, fn: string, app?: string) =>
   `${app ? `${app}, or ` : ""}Etherscan → Write Contract → ${fn}, on ${contract}`;
+/** The same in French. */
+const exchangeClaimAtFr = (contract: Address, fn: string, app?: string) =>
+  `${app ? `${app}, ou ` : ""}Etherscan → Write Contract → ${fn}, sur ${contract}`;
 
 /** Switcheo's wait between announcing and withdrawing, in words. */
 const wait = (seconds: bigint) => (seconds === 0n ? "right after" : `${Math.ceil(Number(seconds) / 3600)} hours after`);
+const waitFr = (seconds: bigint) => {
+  if (seconds === 0n) return "juste après";
+  const hours = Math.ceil(Number(seconds) / 3600);
+  return `${hours.toLocaleString("fr-FR")} heure${hours > 1 ? "s" : ""} après`;
+};
 
-/** The call that withdraws a whole balance, as Etherscan's Write Contract tab asks for it. */
-function withdrawal(kind: DepositExchange["kind"], token: Address, amount: bigint, user: Address, delay: bigint): { data: Hex; fn: string; how: string } {
+/** The call that withdraws a whole balance, as Etherscan's Write Contract tab asks for it (`fr`: `fn` and `how` in French). */
+function withdrawal(
+  kind: DepositExchange["kind"],
+  token: Address,
+  amount: bigint,
+  user: Address,
+  delay: bigint,
+): { data: Hex; fn: string; how: string; fr: { fn: string; how: string } } {
   if (kind === "switcheo")
     // Only the announcement can be simulated now: the withdrawal needs it on-chain first.
     return {
       data: encodeFunctionData({ abi: switcheoAbi, functionName: "announceWithdraw", args: [token, amount] }),
       fn: "announceWithdraw, then slowWithdraw",
       how: `announceWithdraw with assetId ${token}${token === zeroAddress ? " (ETH)" : ""} and amount ${amount}, then, ${wait(delay)}, slowWithdraw with withdrawer ${user}, the same assetId and amount`,
+      fr: {
+        fn: "announceWithdraw, puis slowWithdraw",
+        how: `announceWithdraw avec l'assetId ${token}${token === zeroAddress ? " (ETH)" : ""} et le montant ${amount}, puis, ${waitFr(delay)}, slowWithdraw avec le withdrawer ${user}, le même assetId et le même montant`,
+      },
     };
   if (kind === "idex")
     return {
       data: encodeFunctionData({ abi: idexAbi, functionName: "withdraw", args: [token, amount] }),
       fn: "withdraw",
       how: `withdraw with token ${token}${token === zeroAddress ? " (ETH)" : ""} and amount ${amount}`,
+      fr: { fn: "withdraw", how: `withdraw avec le token ${token}${token === zeroAddress ? " (ETH)" : ""} et le montant ${amount}` },
     };
   if (token === zeroAddress)
-    return { data: encodeFunctionData({ abi, functionName: "withdraw", args: [amount] }), fn: "withdraw", how: `withdraw with amount ${amount}` };
+    return {
+      data: encodeFunctionData({ abi, functionName: "withdraw", args: [amount] }),
+      fn: "withdraw",
+      how: `withdraw with amount ${amount}`,
+      fr: { fn: "withdraw", how: `withdraw avec le montant ${amount}` },
+    };
   return {
     data: encodeFunctionData({ abi, functionName: "withdrawToken", args: [token, amount] }),
     fn: "withdrawToken",
     how: `withdrawToken with token ${token} and amount ${amount}`,
+    fr: { fn: "withdrawToken", how: `withdrawToken avec le token ${token} et le montant ${amount}` },
   };
 }
 
@@ -178,6 +203,12 @@ export async function checkExchange(ex: DepositExchange, user: Address): Promise
           : ex.kind === "switcheo"
             ? `This ${h.symbol} was left on Switcheo's Ethereum contract. Its escape hatch lets you withdraw it without Switcheo, in two transactions.`
             : `This ${h.symbol} was left on ${ex.name} and never withdrawn. The contract lets you withdraw it at any time, no app needed.`;
+      const introFr =
+        ex.kind === "idex"
+          ? `IDEX v1 n'est plus exploité, mais ces ${h.symbol} sont toujours dans son contrat, et le contrat vous laisse les retirer sans IDEX.`
+          : ex.kind === "switcheo"
+            ? `Ces ${h.symbol} sont restés sur le contrat Ethereum de Switcheo. Sa sortie de secours vous laisse les retirer sans Switcheo, en deux transactions.`
+            : `Ces ${h.symbol} sont restés sur ${ex.name} et n'ont jamais été retirés. Le contrat vous laisse les retirer à tout moment, sans aucune app.`;
       out.findings.push(
         makeFinding(source, {
           key: h.token,
@@ -191,6 +222,12 @@ export async function checkExchange(ex: DepositExchange, user: Address): Promise
           note: `${intro} ${h.app ? `Withdraw it at ${h.app}, or on Etherscan: open` : "On Etherscan, open"} the contract's Write Contract tab, connect this wallet and call ${w.how}.`,
           claimAt: exchangeClaimAt(h.contract, w.fn, h.app),
           minUsd: MIN_USD,
+          fr: {
+            label: ex.name,
+            linkLabel: "Ouvrir le contrat",
+            note: `${introFr} ${h.app ? `Retirez-les sur ${h.app}, ou sur Etherscan : ouvrez` : "Sur Etherscan, ouvrez"} l'onglet Write Contract du contrat, connectez ce wallet et appelez ${w.fr.how}.`,
+            claimAt: exchangeClaimAtFr(h.contract, w.fr.fn, h.app),
+          },
         }),
       );
     }),

@@ -67,22 +67,33 @@ function claimsNote(c: Claimed, weeks: number) {
   return "";
 }
 
+/** The same, in French. */
+function claimsNoteFr(c: Claimed, weeks: number) {
+  if (!c.complete) return `C'est au moins ce qui attend : une réclamation couvre jusqu'à ${weeks} semaines, alors recommencez jusqu'à ce qu'il ne reste rien.`;
+  if (c.claims > 1) return `Il faut ${c.claims} réclamations pour tout récupérer : une réclamation couvre jusqu'à ${weeks} semaines.`;
+  return "";
+}
+
 const CURVE_DISTRIBUTORS = [
   {
     key: "3crv",
     label: "Curve fees (3CRV)",
+    labelFr: "Frais Curve (3CRV)",
     contract: "0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc" as Address,
     symbol: "3CRV",
     token: "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490" as Address,
     paidIn: "3CRV, the LP token of Curve's 3pool (DAI/USDC/USDT)",
+    paidInFr: "3CRV, le token LP du 3pool de Curve (DAI/USDC/USDT)",
   },
   {
     key: "crvusd",
     label: "Curve fees (crvUSD)",
+    labelFr: "Frais Curve (crvUSD)",
     contract: "0xD16d5eC345Dd86Fb63C6a9C43c517210F1027914" as Address,
     symbol: "crvUSD",
     token: "0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E" as Address,
     paidIn: "crvUSD (since mid-2024)",
+    paidInFr: "crvUSD (depuis mi-2024)",
   },
 ];
 /** 3CRV fees started in September 2020: 7 claims of 50 weeks cover everything until 2027. */
@@ -119,6 +130,12 @@ export async function checkCurveFees(user: Address): Promise<CheckOutput> {
         claimAt: "curve.finance (DAO page)",
         minUsd: DUST_ETHEREUM,
         note: `Curve shares its fees every week with veCRV holders, paid in ${d.paidIn}. This address held veCRV and hasn't claimed its share since ${formatDate(since)}. ${claimsNote(claimed, 50)}`.trim(),
+        fr: {
+          label: d.labelFr,
+          dateLabel: "Non réclamés depuis le",
+          claimAt: "curve.finance (page DAO)",
+          note: `Curve partage ses frais chaque semaine avec les détenteurs de veCRV, payés en ${d.paidInFr}. Cette adresse détenait des veCRV et n'a pas réclamé sa part depuis le ${formatDate(since, "fr")}. ${claimsNoteFr(claimed, 50)}`.trim(),
+        },
       });
     }),
   );
@@ -165,6 +182,12 @@ export async function checkBalancerFees(user: Address): Promise<CheckOutput> {
         claimAt: "balancer.fi (veBAL)",
         minUsd: DUST_ETHEREUM,
         note: `Balancer shares its fees every week with veBAL holders, in BAL and USDC. This address held veBAL and hasn't claimed its ${t.symbol} since ${formatDate(since)}. ${claimsNote(claimed, 20)}`.trim(),
+        fr: {
+          label: `Frais Balancer (${t.symbol})`,
+          dateLabel: "Non réclamés depuis le",
+          claimAt: "balancer.fi (veBAL)",
+          note: `Balancer partage ses frais chaque semaine avec les détenteurs de veBAL, en BAL et en USDC. Cette adresse détenait des veBAL et n'a pas réclamé ses ${t.symbol} depuis le ${formatDate(since, "fr")}. ${claimsNoteFr(claimed, 20)}`.trim(),
+        },
       }),
     ];
   });

@@ -24,6 +24,7 @@ export const STARGATE_VESTG = rewardSource("stargate-vestg", "Stargate veSTG");
 export const VE_DISTRIBUTOR: Address = "0x1E68BE052a9a9ff04714582831457a9B319Bcafe";
 /** Last day STG converts into ZRO (LayerZero's announcement of September 15, 2026). */
 const ZRO_CONVERSION_END = "December 15, 2026";
+const ZRO_CONVERSION_END_FR = "15 décembre 2026";
 
 export const STARGATE_CHAINS: {
   chainId: number;
@@ -155,6 +156,13 @@ async function onChain(user: Address, chain: (typeof STARGATE_CHAINS)[number]): 
         claimAt: `stargate.finance (Stake), or claimUsdc() on the distributor on ${explorerHost}`,
         minUsd,
         note: `This address held veSTG on ${chain.name} at the snapshot of August 10, 2025, when LayerZero bought Stargate: veSTG holders got half of Stargate's revenue for the six months that followed. Its share, ${formatAmount(paid, chain.decimals)} ${chain.symbol}, was never claimed. There is no deadline: claim it on stargate.finance, or call claimUsdc() (no arguments) on the distributor from this address.`,
+        fr: {
+          label: `Partage de revenus veSTG de Stargate (${chain.name})`,
+          linkLabel: "Ouvrir le distributeur",
+          dateLabel: "Snapshot du",
+          claimAt: `stargate.finance (Stake), ou claimUsdc() sur le distributeur sur ${explorerHost}`,
+          note: `Cette adresse détenait des veSTG sur ${chain.name} au snapshot du 10 août 2025, quand LayerZero a racheté Stargate : les détenteurs de veSTG ont reçu la moitié des revenus de Stargate des six mois suivants. Sa part, ${formatAmount(paid, chain.decimals, "fr")} ${chain.symbol}, n'a jamais été réclamée. Sans date limite : réclamez-la sur stargate.finance, ou appelez claimUsdc() (sans argument) sur le distributeur depuis cette adresse.`,
+        },
       }),
     );
   if (locked > 0n && withdrawn !== null)
@@ -171,6 +179,12 @@ async function onChain(user: Address, chain: (typeof STARGATE_CHAINS)[number]): 
         claimAt: `withdraw() on the veSTG contract on ${explorerHost}, then stargate.finance to convert it into ZRO`,
         minUsd,
         note: `${formatAmount(locked, 18)} STG are still locked in veSTG on ${chain.name}. Stargate unlocked every lock when LayerZero bought it, so withdraw() (no arguments) on the veSTG contract sends them back to this address now. STG converts into ZRO at a fixed rate (1 STG = 0.08634 ZRO) on stargate.finance until ${ZRO_CONVERSION_END}.`,
+        fr: {
+          label: `STG verrouillés dans veSTG (${chain.name})`,
+          linkLabel: "Ouvrir le contrat veSTG",
+          claimAt: `withdraw() sur le contrat veSTG sur ${explorerHost}, puis stargate.finance pour les convertir en ZRO`,
+          note: `${formatAmount(locked, 18, "fr")} STG sont encore verrouillés dans veSTG sur ${chain.name}. Stargate a débloqué tous les verrous quand LayerZero l'a racheté : withdraw() (sans argument) sur le contrat veSTG les renvoie donc à cette adresse dès maintenant. Les STG se convertissent en ZRO à un taux fixe (1 STG = 0,08634 ZRO) sur stargate.finance jusqu'au ${ZRO_CONVERSION_END_FR}.`,
+        },
       }),
     );
   return { findings, claimed: left === 0n && taken > 0n };

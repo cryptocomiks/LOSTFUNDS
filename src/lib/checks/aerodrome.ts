@@ -98,6 +98,7 @@ async function checkDex(dex: (typeof DEXES)[number], user: Address): Promise<Fin
       ]);
       const expired = !lock.isPermanent && lock.amount > 0n && lock.end < now;
       const common = { timestamp: 0, minUsd: DUST_L2, claimAt: dex.app, linkLabel: "View veNFT" };
+      const commonFr = { claimAt: dex.app, linkLabel: "Voir le veNFT" };
       const url = `${dex.explorer}/nft/${dex.escrow}/${id}`;
       if (expired) {
         const ok = voted
@@ -117,6 +118,14 @@ async function checkDex(dex: (typeof DEXES)[number], user: Address): Promise<Fin
               note:
                 `Your ve${dex.symbol} #${id} on ${dex.name} (${dex.chain}) expired, but its ${formatAmount(BigInt(lock.amount), 18)} ${dex.symbol} stay locked in the escrow until you withdraw them.` +
                 (voted ? " It still has votes: reset them first (the app does both)." : ""),
+              fr: {
+                ...commonFr,
+                label: `${dex.name} : verrou expiré n° ${id}`,
+                dateLabel: "Verrou terminé le",
+                note:
+                  `Votre ve${dex.symbol} n° ${id} sur ${dex.name} (${dex.chain}) a expiré, mais ses ${formatAmount(BigInt(lock.amount), 18, "fr")} ${dex.symbol} restent verrouillés dans l'escrow tant que vous ne les retirez pas.` +
+                  (voted ? " Il a encore des votes : réinitialisez-les d'abord (l'app fait les deux)." : ""),
+              },
             }),
           );
       }
@@ -131,6 +140,11 @@ async function checkDex(dex: (typeof DEXES)[number], user: Address): Promise<Fin
             txUrl: url,
             ...common,
             note: `Your ve${dex.symbol} #${id} on ${dex.name} (${dex.chain}) earned ${formatAmount(rebase, 18)} ${dex.symbol} of rebases that were never claimed.${expired ? " As the lock has expired, claiming sends them straight to your wallet." : ""}`,
+            fr: {
+              ...commonFr,
+              label: `${dex.name} : rebases du veNFT n° ${id}`,
+              note: `Votre ve${dex.symbol} n° ${id} sur ${dex.name} (${dex.chain}) a gagné ${formatAmount(rebase, 18, "fr")} ${dex.symbol} de rebases jamais réclamés.${expired ? " Comme le verrou a expiré, les réclamer les envoie directement sur votre wallet." : ""}`,
+            },
           }),
         );
     }),

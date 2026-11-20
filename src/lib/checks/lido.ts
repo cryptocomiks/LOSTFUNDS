@@ -43,6 +43,13 @@ function idList(ids: bigint[]) {
   return ids.length > 4 ? `${shown.join(", ")} and ${ids.length - 4} more` : shown.join(", ");
 }
 
+/** The same list in French: "n° 1, n° 2, n° 3". */
+function idListFr(ids: bigint[]) {
+  const shown = ids.slice(0, 4).map((id) => `n° ${id}`);
+  const more = ids.length - 4;
+  return more > 0 ? `${shown.join(", ")} et ${more} autre${more > 1 ? "s" : ""}` : shown.join(", ");
+}
+
 /** When Lido expects to finalize these requests (best effort: their claim doesn't depend on it). */
 async function finalizationEstimate(ids: bigint[]): Promise<number | undefined> {
   try {
@@ -93,6 +100,7 @@ export async function checkLido(user: Address): Promise<CheckOutput> {
     if (amount > 0n) {
       const first = claimable[0];
       const since = formatDate(requestedAt(first));
+      const sinceFr = formatDate(requestedAt(first), "fr");
       findings.push(
         makeFinding(LIDO, {
           key: "claimable",
@@ -109,6 +117,15 @@ export async function checkLido(user: Address): Promise<CheckOutput> {
             claimable.length === 1
               ? `You asked Lido to unstake this ETH on ${since} (request #${first}). Lido finalized the request, but the ETH stays in its withdrawal queue until you claim it. There's no deadline.`
               : `${claimable.length} Lido withdrawal requests (${idList(claimable)}), the oldest from ${since}, were finalized but never claimed. The ETH stays in Lido's withdrawal queue until you claim it. There's no deadline.`,
+          fr: {
+            label: "Retrait Lido",
+            dateLabel: "Demandé le",
+            claimAt: CLAIM_AT,
+            note:
+              claimable.length === 1
+                ? `Vous avez demandé à Lido de déstaker cet ETH le ${sinceFr} (demande n° ${first}). Lido a finalisé la demande, mais l'ETH reste dans sa file de retrait tant que vous ne le réclamez pas, sans date limite.`
+                : `${claimable.length} demandes de retrait Lido (${idListFr(claimable)}), la plus ancienne du ${sinceFr}, ont été finalisées mais jamais réclamées. L'ETH reste dans la file de retrait de Lido tant que vous ne le réclamez pas, sans date limite.`,
+          },
         }),
       );
     }
@@ -122,6 +139,10 @@ export async function checkLido(user: Address): Promise<CheckOutput> {
     const when = readyAt
       ? `Lido hasn't finalized ${one ? "it" : "them"} yet and expects to around ${formatDate(readyAt)}.`
       : `Lido hasn't finalized ${one ? "it" : "them"} yet (it usually takes 1 to 5 days, longer when many people unstake at once).`;
+    const notYetFr = `Lido ne ${one ? "l'a" : "les a"} pas encore ${one ? "finalisée" : "finalisées"}`;
+    const whenFr = readyAt
+      ? `${notYetFr} et prévoit de le faire vers le ${formatDate(readyAt, "fr")}.`
+      : `${notYetFr} (il faut en général 1 à 5 jours, plus quand beaucoup de monde déstake en même temps).`;
     findings.push(
       makeFinding(LIDO, {
         key: "pending",
@@ -136,6 +157,12 @@ export async function checkLido(user: Address): Promise<CheckOutput> {
         claimAt: CLAIM_AT,
         minUsd: DUST_ETHEREUM,
         note: `You asked Lido to unstake ${formatAmount(amount, 18)} stETH (${one ? `request #${first}` : `requests ${idList(pending)}`}). ${when} The ETH isn't sent automatically: claim it then.`,
+        fr: {
+          label: "Retrait Lido",
+          dateLabel: "Demandé le",
+          claimAt: CLAIM_AT,
+          note: `Vous avez demandé à Lido de déstaker ${formatAmount(amount, 18, "fr")} stETH (${one ? `demande n° ${first}` : `demandes ${idListFr(pending)}`}). ${whenFr} L'ETH n'est pas envoyé automatiquement : réclamez-le à ce moment-là.`,
+        },
       }),
     );
   }

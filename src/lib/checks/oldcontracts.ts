@@ -54,6 +54,12 @@ export async function checkCryptoPunks(user: Address): Promise<CheckOutput> {
         ...contractLink,
         claimAt: "Etherscan (CryptoPunksMarket → withdraw)",
         note: `${formatAmount(pending, 18)} ETH from punks this address sold, or offers it made that were outbid, wait in the CryptoPunks market contract. The market never sends them: withdraw() pays them out.`,
+        fr: {
+          label: "CryptoPunks : ETH jamais retiré",
+          linkLabel: "Voir le contrat",
+          claimAt: "Etherscan (CryptoPunksMarket → withdraw)",
+          note: `${formatAmount(pending, 18, "fr")} ETH provenant de punks vendus par cette adresse, ou de ses offres surenchéries, attendent dans le contrat du marché CryptoPunks. Le marché ne les envoie jamais : withdraw() les verse.`,
+        },
       }),
     );
 
@@ -82,6 +88,12 @@ export async function checkCryptoPunks(user: Address): Promise<CheckOutput> {
           ...contractLink,
           claimAt: `Etherscan (CryptoPunksMarket → withdrawBidForPunk ${index})`,
           note: `This address has had a ${formatAmount(value, 18)} ETH bid open on punk #${index} for more than a year, and the ETH stays locked in the CryptoPunks market while it is open. Withdrawing the bid sends it back.`,
+          fr: {
+            label: `CryptoPunks : offre ouverte sur le punk n° ${index}`,
+            linkLabel: "Voir le contrat",
+            claimAt: `Etherscan (CryptoPunksMarket → withdrawBidForPunk ${index})`,
+            note: `Cette adresse a une offre de ${formatAmount(value, 18, "fr")} ETH ouverte sur le punk n° ${index} depuis plus d'un an, et l'ETH reste bloqué dans le marché CryptoPunks tant qu'elle est ouverte. Retirer l'offre le renvoie.`,
+          },
         }),
       );
     }),
@@ -116,6 +128,13 @@ export async function checkFomo3d(user: Address): Promise<CheckOutput> {
       ]
         .filter(([v]) => (v as bigint) > 0n)
         .map(([v, what]) => `${formatAmount(v as bigint, 18)} ETH of ${what}`);
+      const partsFr = [
+        [win, "gains"],
+        [gen, "dividendes de clés"],
+        [aff, "récompenses de parrainage"],
+      ]
+        .filter(([v]) => (v as bigint) > 0n)
+        .map(([v, what]) => `${formatAmount(v as bigint, 18, "fr")} ETH de ${what}`);
       findings.push(
         makeFinding(FOMO3D, {
           key: g.name,
@@ -129,6 +148,12 @@ export async function checkFomo3d(user: Address): Promise<CheckOutput> {
           minUsd: DUST_ETHEREUM,
           claimAt: `Etherscan (${g.name} → withdraw)`,
           note: `Playing ${g.name} in 2018 left ${parts.join(", ")} in this address's player vault. It was never withdrawn: withdraw() sends all of it.`,
+          fr: {
+            label: `${g.name} : coffre du joueur`,
+            linkLabel: "Voir le contrat",
+            claimAt: `Etherscan (${g.name} → withdraw)`,
+            note: `Avoir joué à ${g.name} en 2018 a laissé ${partsFr.join(", ")} dans le coffre de joueur de cette adresse. Rien n'a jamais été retiré : withdraw() envoie tout.`,
+          },
         }),
       );
     }),

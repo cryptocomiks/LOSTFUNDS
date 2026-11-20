@@ -47,6 +47,12 @@ export async function checkZoraRewards(user: Address): Promise<CheckOutput> {
         claimAt: "zora.co (your profile → rewards), or the explorer (ProtocolRewards → withdraw)",
         minUsd: chain.dust,
         note: `Mints of NFTs or coins this address created, or of mint links it shared, earned it ${formatAmount(balance, 18)} ETH of Zora protocol rewards on ${chain.name}. They are credited to it, never sent: withdraw(your address, amount) pays them out.`,
+        fr: {
+          label: `Récompenses Zora · ${chain.name}`,
+          linkLabel: "Voir le contrat",
+          claimAt: "zora.co (votre profil → rewards), ou l'explorateur (ProtocolRewards → withdraw)",
+          note: `Les mints de NFT ou de coins créés par cette adresse, ou de liens de mint qu'elle a partagés, lui ont rapporté ${formatAmount(balance, 18, "fr")} ETH de récompenses du protocole Zora sur ${chain.name}. Ils lui sont crédités, jamais envoyés : withdraw(votre adresse, montant) les verse.`,
+        },
       });
     }),
   );

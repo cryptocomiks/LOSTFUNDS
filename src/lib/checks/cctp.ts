@@ -334,7 +334,7 @@ export const CCTP_DOMAINS: CctpDomain[] = [
 ];
 
 const domainOf = (d: number) => CCTP_DOMAINS.find((c) => c.domain === d);
-const nameOf = (d: number) => (d === SOLANA ? "Solana" : (domainOf(d)?.name ?? `domain ${d}`));
+const nameOf = (d: number, fr = false) => (d === SOLANA ? "Solana" : (domainOf(d)?.name ?? (fr ? `domaine ${d}` : `domain ${d}`)));
 
 /** Can we tell whether a message to this domain was received? (Noble, Sui, Aptos… can't be read from here.) */
 function checkable(dst: number, version: 1 | 2) {
@@ -768,10 +768,12 @@ async function settle(burns: Burn[], out: CheckOutput, errors: string[]) {
 async function settleOne(b: Burn): Promise<Finding | "minted"> {
   const from = nameOf(b.src);
   const to = nameOf(b.dst);
+  const fromFr = nameOf(b.src, true);
+  const toFr = nameOf(b.dst, true);
   const age = () => (b.timestamp ? now() - b.timestamp : Infinity);
   if (b.version === 2 && b.iris === null) {
     // Circle hasn't indexed it yet, or never will: without its nonce we can't tell whether it was minted.
-    if (age() < DAY) return finding(b, "recent", `Burned on ${from}; Circle hasn't processed it yet.`);
+    if (age() < DAY) return finding(b, "recent", `Burned on ${from}; Circle hasn't processed it yet.`, `Brûlé sur ${fromFr} ; Circle ne l'a pas encore traité.`);
     throw new Error(`Circle's API has no record of transfer ${b.tx?.slice(0, 12)}…`);
   }
 
@@ -782,35 +784,73 @@ async function settleOne(b: Burn): Promise<Finding | "minted"> {
   if (!b.timestamp && b.src === SOLANA && b.tx) b.timestamp = await solanaTxTime(b.tx);
   const m = b.iris;
   const v1Note = b.version === 1 ? " Circle is retiring CCTP V1: mint it before Dec 1, 2026, when its contracts are paused." : "";
+  const v1NoteFr = b.version === 1 ? " Circle arrête CCTP V1 : mintez-les avant le 1er décembre 2026, date à laquelle ses contrats seront mis en pause." : "";
   const how =
     b.caller !== ZERO32
       ? " Only the app you used can complete it (it set itself as the destination caller): reopen that app."
       : " Anyone can complete it with the attestation: use a CCTP tool or the app you used.";
+  const howFr =
+    b.caller !== ZERO32
+      ? " Seule l'app que vous avez utilisée peut terminer le transfert (elle s'est désignée comme seul relayeur autorisé) : rouvrez cette app."
+      : " N'importe qui peut terminer le transfert avec l'attestation : utilisez un outil CCTP ou l'app que vous avez utilisée.";
 
   if (!m) {
-    if (age() < DAY) return finding(b, "recent", `Burned on ${from}; Circle hasn't processed it yet.`);
-    return finding(b, "manual", `USDC was burned on ${from} but never minted on ${to}, and Circle's API has no attestation for it. Contact the app you used or Circle's support.${v1Note}`);
+    if (age() < DAY) return finding(b, "recent", `Burned on ${from}; Circle hasn't processed it yet.`, `Brûlé sur ${fromFr} ; Circle ne l'a pas encore traité.`);
+    return finding(
+      b,
+      "manual",
+      `USDC was burned on ${from} but never minted on ${to}, and Circle's API has no attestation for it. Contact the app you used or Circle's support.${v1Note}`,
+      `Des USDC ont été brûlés sur ${fromFr} mais jamais mintés sur ${toFr}, et l'API de Circle n'a pas d'attestation pour ce transfert. Contactez l'app que vous avez utilisée ou le support de Circle.${v1NoteFr}`,
+    );
   }
   if (m.status !== "complete" || !isAttestation(m.attestation)) {
-    if (age() < DAY) return finding(b, "recent", `Burned on ${from}; Circle's attestation isn't ready yet.`);
+    if (age() < DAY) return finding(b, "recent", `Burned on ${from}; Circle's attestation isn't ready yet.`, `Brûlé sur ${fromFr} ; l'attestation de Circle n'est pas encore prête.`);
     const why = m.delayReason ? ` (${m.delayReason.replace(/_/g, " ")})` : "";
-    return finding(b, "manual", `USDC was burned on ${from}, but Circle hasn't attested it yet${why}, so it can't be minted on ${to}. Check it with the app you used.`);
+    return finding(
+      b,
+      "manual",
+      `USDC was burned on ${from}, but Circle hasn't attested it yet${why}, so it can't be minted on ${to}. Check it with the app you used.`,
+      `Des USDC ont été brûlés sur ${fromFr}, mais Circle ne les a pas encore attestés${why}, donc ils ne peuvent pas être mintés sur ${toFr}. Vérifiez avec l'app que vous avez utilisée.`,
+    );
   }
 
   const status: WithdrawalStatus = age() < DAY ? "recent" : "ready";
   const attested = `USDC was burned on ${from} and attested by Circle, but never minted on ${to}.`;
+  const attestedFr = `Des USDC ont été brûlés sur ${fromFr} et attestés par Circle, mais jamais mintés sur ${toFr}.`;
   if (b.dst === SOLANA) {
-    if (b.version === 1 && now() >= V1_PAUSE) return finding(b, "manual", `${attested} Circle paused CCTP V1 on Dec 1, 2026: ask the app you used or Circle's support.`);
-    return finding(b, status, attested + how + v1Note);
+    if (b.version === 1 && now() >= V1_PAUSE)
+      return finding(
+        b,
+        "manual",
+        `${attested} Circle paused CCTP V1 on Dec 1, 2026: ask the app you used or Circle's support.`,
+        `${attestedFr} Circle a mis CCTP V1 en pause le 1er décembre 2026 : demandez à l'app que vous avez utilisée ou au support de Circle.`,
+      );
+    return finding(b, status, attested + how + v1Note, attestedFr + howFr + v1NoteFr);
   }
   const message = (m.message && parseMessage(m.message) ? m.message : b.message) as Hex | undefined;
   const sim = message ? await simulateMint(b, message, m.attestation) : "unavailable";
   if (sim === "used") return "minted"; // minted since the check above
-  if (sim === "ok" || sim === "unavailable") return finding(b, status, attested + how + v1Note);
+  if (sim === "ok" || sim === "unavailable") return finding(b, status, attested + how + v1Note, attestedFr + howFr + v1NoteFr);
   if (sim === "expired")
-    return finding(b, "manual", `${attested} Its attestation expired: ask Circle for a new one (re-attest the message), then mint it with the app you used.`);
-  if (sim === "paused") return finding(b, "manual", `${attested} The ${to} contract is paused (Circle retired CCTP V1): ask the app you used or Circle's support.`);
-  return finding(b, "manual", `${attested} A test mint on ${to} failed (${sim.revert}): check it with the app you used.${v1Note}`);
+    return finding(
+      b,
+      "manual",
+      `${attested} Its attestation expired: ask Circle for a new one (re-attest the message), then mint it with the app you used.`,
+      `${attestedFr} Leur attestation a expiré : demandez-en une nouvelle à Circle (réattester le message), puis mintez-les avec l'app que vous avez utilisée.`,
+    );
+  if (sim === "paused")
+    return finding(
+      b,
+      "manual",
+      `${attested} The ${to} contract is paused (Circle retired CCTP V1): ask the app you used or Circle's support.`,
+      `${attestedFr} Le contrat sur ${toFr} est en pause (Circle a arrêté CCTP V1) : demandez à l'app que vous avez utilisée ou au support de Circle.`,
+    );
+  return finding(
+    b,
+    "manual",
+    `${attested} A test mint on ${to} failed (${sim.revert}): check it with the app you used.${v1Note}`,
+    `${attestedFr} Une simulation du mint sur ${toFr} a échoué (${sim.revert}) : vérifiez avec l'app que vous avez utilisée.${v1NoteFr}`,
+  );
 }
 
 /** Circle's record of a v1 burn (asked only when it wasn't minted). */
@@ -826,7 +866,7 @@ async function solanaTxTime(sig: string): Promise<number> {
   return tx?.blockTime ?? 0;
 }
 
-function finding(b: Burn, status: WithdrawalStatus, note: string): Finding {
+function finding(b: Burn, status: WithdrawalStatus, note: string, noteFr: string): Finding {
   const { txHash, txUrl } = txLink(b);
   const id = b.version === 1 ? `${b.src}-${b.nonce}` : (b.iris?.eventNonce ?? `${b.dst}-${b.amount}`);
   return makeFinding(CCTP, {
@@ -838,6 +878,7 @@ function finding(b: Burn, status: WithdrawalStatus, note: string): Finding {
     txUrl,
     timestamp: b.timestamp,
     note,
+    fr: { label: `Circle CCTP · ${nameOf(b.src, true)} → ${nameOf(b.dst, true)}`, note: noteFr },
   });
 }
 

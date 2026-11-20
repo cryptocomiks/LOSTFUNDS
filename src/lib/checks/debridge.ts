@@ -58,11 +58,11 @@ const INTERNAL_IDS: Record<number, number> = {
 /** EVM chain id of a deBridge chain id, when it's an EVM chain. */
 const evmIdOf = (dlnId: number) => (dlnId === SOLANA || dlnId === TRON ? undefined : (INTERNAL_IDS[dlnId] ?? dlnId));
 
-function chainName(dlnId: number) {
+function chainName(dlnId: number, fr = false) {
   if (dlnId === SOLANA) return "Solana";
   if (dlnId === TRON) return "Tron";
   const id = evmIdOf(dlnId)!;
-  return evmChain(id)?.name ?? `chain ${id}`;
+  return evmChain(id)?.name ?? (fr ? `chaîne ${id}` : `chain ${id}`);
 }
 
 const dlnAbi = parseAbi([
@@ -212,6 +212,14 @@ export async function checkDebridge(user: string): Promise<CheckOutput> {
             ? "The order was cancelled but the refund was never claimed on the source chain. Claim it on deBridge."
             : "This order was never filled. Cancel it on deBridge to get the funds back on the source chain.") +
           (fake ? " Warning: this token's symbol imitates a well-known token; it may be a scam token with no value." : ""),
+        fr: {
+          label: `deBridge · ${chainName(give, true)} → ${chainName(take, true)}`,
+          note:
+            (cancelled
+              ? "L'ordre a été annulé mais le remboursement n'a jamais été réclamé sur la chaîne d'origine. Réclamez-le sur deBridge."
+              : "Cet ordre n'a jamais été exécuté. Annulez-le sur deBridge pour récupérer les fonds sur la chaîne d'origine.") +
+            (fake ? " Attention : le symbole de ce token imite un token connu ; il peut s'agir d'un token frauduleux sans valeur." : ""),
+        },
       }),
     );
   }

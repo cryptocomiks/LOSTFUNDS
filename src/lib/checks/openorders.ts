@@ -54,6 +54,8 @@ const KNOWN_MINTS: Record<string, string> = {
 const sol = (lamports: bigint): Asset => ({ symbol: "SOL", decimals: 9, amount: lamports, priceKey: "coingecko:solana" });
 const solscan = (account: string) => `https://solscan.io/account/${account}`;
 const plural = (n: number, word: string) => `${n.toLocaleString("en-US")} ${word}${n > 1 ? "s" : ""}`;
+/** The same in French, where the plural isn't always a final "s": both forms are given. */
+const pluralFr = (n: number, one: string, many: string) => `${n.toLocaleString("fr-FR")} ${n > 1 ? many : one}`;
 const b64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
 export interface OpenOrders {
@@ -108,6 +110,7 @@ export async function checkOpenOrders(owner: string): Promise<CheckOutput> {
   const withTokens = accounts.filter((a) => a.baseTotal > 0n || a.quoteTotal > 0n);
   const withOrders = accounts.filter((a) => a.hasOrders).length;
   const programs = [...new Set(accounts.map((a) => a.program))].join(" and ");
+  const programsFr = [...new Set(accounts.map((a) => a.program))].join(" et ");
   const one = accounts.length === 1;
   out.findings.push(
     makeFinding(OPEN_ORDERS, {
@@ -127,6 +130,17 @@ export async function checkOpenOrders(owner: string): Promise<CheckOutput> {
         (withOrders ? ` ${plural(withOrders, "account")} still ${withOrders > 1 ? "have" : "has"} orders on the book, to cancel first.` : ""),
       claimAt: "a script (see the guide: no app does it since Step Finance closed)",
       minUsd: 1,
+      fr: {
+        label: pluralFr(accounts.length, `compte open orders ${programsFr}`, `comptes open orders ${programsFr}`),
+        note:
+          `Trader sur ${one ? "le carnet d'ordres" : "les carnets d'ordres"} ${programsFr} a ouvert ${one ? "un compte, payé" : `${pluralFr(accounts.length, "compte", "comptes")}, un par marché, payés`} ` +
+          `par ce wallet. ${one ? "Il contient encore sa caution" : "Ils contiennent encore leur caution"} (environ 0,023 SOL${one ? "" : " chacun"}) : ` +
+          `${formatAmount(rent, 9, "fr")} SOL au total, renvoyés sur votre wallet à la fermeture ${one ? "du compte" : "des comptes"}.` +
+          (withTokens.length ? ` ${one ? "Il" : `${withTokens.length.toLocaleString("fr-FR")} d'entre eux`} ${withTokens.length > 1 ? "contiennent" : "contient"} encore des tokens (listés séparément) : faites d'abord le settle, la fermeture vient après.` : "") +
+          (withOrders ? ` ${pluralFr(withOrders, "compte", "comptes")} ${withOrders > 1 ? "ont" : "a"} encore des ordres dans le carnet, à annuler d'abord.` : ""),
+        claimAt: "un script (voir le guide : aucune app ne le fait depuis la fermeture de Step Finance)",
+        linkLabel: one ? "Voir le compte" : "Voir le wallet",
+      },
     }),
   );
   if (!withTokens.length) return out;
@@ -184,6 +198,14 @@ export async function checkOpenOrders(owner: string): Promise<CheckOutput> {
         ` (mint ${mint}). They were never settled: settling sends them to your wallet, then the account can be closed for its rent.`,
       claimAt: "a script: settle, then close (see the guide)",
       minUsd: 1,
+      fr: {
+        label: `${KNOWN_MINTS[mint] ?? "Tokens"} en attente de settle sur ${programsFr}`,
+        note:
+          `${formatAmount(amount, decimals, "fr")} ${symbol} issus d'ordres sur ${programsFr} ${held.size > 1 ? `attendent dans ${held.size.toLocaleString("fr-FR")} de vos comptes open orders` : "attendent dans un de vos comptes open orders"}` +
+          ` (mint ${mint}). Ils n'ont jamais été « settled » : le settle les envoie sur votre wallet, puis le compte peut être fermé pour récupérer sa caution.`,
+        claimAt: "un script : settle, puis fermeture (voir le guide)",
+        linkLabel: "Voir le compte",
+      },
     });
     out.findings.push(finding);
   }

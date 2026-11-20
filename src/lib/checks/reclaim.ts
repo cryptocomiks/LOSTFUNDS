@@ -27,6 +27,8 @@ const NO_RECLAIM = new Set(["11111111111111111111111111111111", "1nc1nerator1111
 const sol = (lamports: bigint): Asset => ({ symbol: "SOL", decimals: 9, amount: lamports, priceKey: "coingecko:solana" });
 const solscan = (account: string) => `https://solscan.io/account/${account}`;
 const plural = (n: number, word: string) => `${n.toLocaleString("en-US")} ${word}${n > 1 ? "s" : ""}`;
+/** The same in French, where the plural isn't always a final "s": both forms are given. */
+const pluralFr = (n: number, one: string, many: string) => `${n.toLocaleString("fr-FR")} ${n > 1 ? many : one}`;
 const b64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
 /* ───────────────────────── Token accounts ───────────────────────── */
@@ -120,6 +122,14 @@ export async function checkTokenRent(owner: string): Promise<CheckOutput> {
           `its deposit back to your wallet. No tokens are touched, and the account can be opened again later.`,
         claimAt: "Solflare (token → ⋯ → Close Account), or sol-incinerator.com",
         minUsd: 1,
+        fr: {
+          label: pluralFr(empty, "compte de tokens vide", "comptes de tokens vides"),
+          note:
+            `${empty > 1 ? `Ces ${pluralFr(empty, "compte de tokens", "comptes de tokens")} sont vides, mais chacun contient` : "Ce compte de tokens est vide, mais il contient"} encore la ` +
+            `caution payée à son ouverture (environ 0,002 SOL) : ${formatAmount(rent, 9, "fr")} SOL au total. Fermer un compte vide renvoie ` +
+            `sa caution sur votre wallet. Aucun token n'est touché, et le compte pourra être rouvert plus tard.`,
+          claimAt: "Solflare (token → ⋯ → Close Account), ou sol-incinerator.com",
+        },
       }),
     );
   if (wrapped)
@@ -137,6 +147,13 @@ export async function checkTokenRent(owner: string): Promise<CheckOutput> {
           `wrapped SOL account: its whole balance, rent deposit included, comes back to your wallet as plain SOL.`,
         claimAt: "your wallet (Wrapped SOL → ⋯ → Unwrap)",
         minUsd: 1,
+        fr: {
+          label: wrapped > 1 ? `SOL wrappé (${wrapped.toLocaleString("fr-FR")} comptes)` : "SOL wrappé",
+          note:
+            `Ce wallet détient ${formatAmount(wrappedLamports, 9, "fr")} SOL sous forme de SOL wrappé (wSOL), souvent laissé après un swap. L'unwrap ferme le ` +
+            `compte de SOL wrappé : tout son solde, caution comprise, revient sur votre wallet en SOL ordinaire.`,
+          claimAt: "votre wallet (Wrapped SOL → ⋯ → Unwrap)",
+        },
       }),
     );
   return out;
@@ -266,6 +283,14 @@ export async function checkInactiveStake(owner: string): Promise<CheckOutput> {
         `Withdrawing sends the whole balance back to your wallet and closes the stake account.`,
       claimAt: "your wallet's staking tab (Phantom: Withdraw Stake, Solflare: Withdraw)",
       minUsd: 1,
+      fr: {
+        label: pluralFr(ready.length, "compte de stake inactif", "comptes de stake inactifs"),
+        note:
+          `${one ? "Ce compte de stake a été déstaké ou n'a jamais été délégué" : `Ces ${ready.length.toLocaleString("fr-FR")} comptes de stake ont été déstakés ou n'ont jamais été délégués`} : ` +
+          `${formatAmount(total, 9, "fr")} SOL qui ne rapportent rien et n'apparaissent pas dans votre solde disponible tant que vous ne les retirez pas. ` +
+          `Le retrait renvoie tout le solde sur votre wallet et ferme le compte de stake.`,
+        claimAt: "l'onglet staking de votre wallet (Phantom : Withdraw Stake, Solflare : Withdraw)",
+      },
     }),
   );
   return out;
@@ -358,6 +383,15 @@ export async function checkMarinadeTickets(owner: string): Promise<CheckOutput> 
         (payable ? "" : " Marinade can't pay it out at this moment (paused, or its reserve is being refilled): try again in a few hours."),
       claimAt: "app.marinade.finance, or Marinade's CLI (marinade claim <ticket>)",
       minUsd: 1,
+      fr: {
+        label: one ? "Ticket de déstaking Marinade" : `${due.length.toLocaleString("fr-FR")} tickets de déstaking Marinade`,
+        note:
+          `${one ? "Ce wallet a demandé un déstaking différé" : `Ce wallet a demandé ${due.length.toLocaleString("fr-FR")} déstakings différés`} sur Marinade ` +
+          `(${one ? `epoch ${oldest}` : `à partir de l'epoch ${oldest}`}) et n'a jamais réclamé le SOL : ${formatAmount(total, 9, "fr")} SOL attendent dans ` +
+          `la réserve de Marinade, caution du ticket comprise. La réclamation les envoie sur ce wallet.` +
+          (payable ? "" : " Marinade ne peut pas les payer pour le moment (en pause, ou sa réserve est en cours de réapprovisionnement) : réessayez dans quelques heures."),
+        claimAt: "app.marinade.finance, ou l'outil en ligne de commande de Marinade (marinade claim <ticket>)",
+      },
     }),
   );
   return out;

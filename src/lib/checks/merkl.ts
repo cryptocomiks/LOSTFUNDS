@@ -110,6 +110,11 @@ async function verifyChain(chainId: number, list: Candidate[], user: Address): P
         note: `Rewards from Merkl campaigns on ${name} (lending, liquidity or chain incentives) that this address earned and never claimed: they can still be claimed.`,
         claimAt: `app.merkl.xyz/users/${user}`,
         minUsd: dustUsd(chainId),
+        fr: {
+          label: `Merkl · ${name}`,
+          note: `Récompenses de campagnes Merkl sur ${name} (prêt, liquidité ou incitations de la chaîne), que cette adresse a gagnées et n'a jamais réclamées : elles peuvent toujours l'être.`,
+          claimAt: `app.merkl.xyz/users/${user}`,
+        },
       });
     }),
   );

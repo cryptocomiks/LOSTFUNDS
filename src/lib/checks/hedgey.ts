@@ -85,6 +85,7 @@ async function checkChain(chain: (typeof CHAINS)[number], user: Address): Promis
       await addPrices([asset]);
       if (asset.usd === undefined) return; // no market price: worthless or spam token
       const end = new Date(x.end * 1000).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+      const endFr = new Date(x.end * 1000).toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
       out.push(
         makeFinding(HEDGEY, {
           key: `${chain.chainId}:${x.id}`,
@@ -98,6 +99,12 @@ async function checkChain(chain: (typeof CHAINS)[number], user: Address): Promis
           claimAt: `app.hedgey.finance/claim/${uuidOf(x.id)}, before ${end}`,
           minUsd: 2,
           note: `This address can claim ${formatAmount(x.p.amount, meta.decimals)} ${meta.symbol} from a Hedgey claim campaign on ${chain.name} (an airdrop or distribution by the token's team). It was never claimed, and the campaign closes on ${end}.`,
+          fr: {
+            label: `Claim Hedgey · ${meta.symbol} · ${chain.name}`,
+            note: `Cette adresse peut réclamer ${formatAmount(x.p.amount, meta.decimals, "fr")} ${meta.symbol} dans une campagne de claim Hedgey sur ${chain.name} (un airdrop ou une distribution de l'équipe du token). Ils n'ont jamais été réclamés, et la campagne se termine le ${endFr}.`,
+            claimAt: `app.hedgey.finance/claim/${uuidOf(x.id)}, avant le ${endFr}`,
+            linkLabel: "Ouvrir la page de claim",
+          },
         }),
       );
     }),

@@ -302,7 +302,7 @@ async function checkTx(
     } else if (state.status === "rejected") {
       status = "manual";
       notes.push("A dry run of the claim on Ethereum fails. Check this withdrawal in the chain's official bridge.");
-      notesFr.push("Un essai à blanc de la réclamation sur Ethereum échoue. Vérifiez ce retrait dans le bridge officiel de la chaîne.");
+      notesFr.push("Une simulation de la réclamation sur Ethereum échoue. Vérifiez ce retrait dans le bridge officiel de la chaîne.");
     } else status = "ready";
     if (!toUser) {
       notes.push(`The funds go to ${short(w.receiver)} on Ethereum, the receiver set when the withdrawal was made.`);
