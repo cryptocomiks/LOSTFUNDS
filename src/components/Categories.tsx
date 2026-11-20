@@ -13,8 +13,8 @@ const CARDS: { group: Group; title: ReactNode; text: ReactNode; guide: string; i
     title: <T en="Unfinished bridge withdrawals" fr="Retraits de bridge inachevés" />,
     text: (
       <T
-        en="Leaving a rollup (Base, Arbitrum, OP, zkSync, Polygon…) takes a last step on Ethereum. If it never happened, the funds are still in the bridge."
-        fr="Quitter un rollup (Base, Arbitrum, OP, zkSync, Polygon…) demande une dernière étape sur Ethereum. Si elle n'a jamais été faite, les fonds sont encore dans le bridge."
+        en="Leaving a rollup (Base, Arbitrum, OP, zkSync, Starknet, Polygon…) takes a last step on Ethereum. If it never happened, the funds are still in the bridge. Networks that closed, like Blast and zkSync Lite, are covered too."
+        fr="Quitter un rollup (Base, Arbitrum, OP, zkSync, Starknet, Polygon…) demande une dernière étape sur Ethereum. Si elle n'a jamais été faite, les fonds sont encore dans le bridge. Les réseaux fermés, comme Blast et zkSync Lite, sont couverts aussi."
       />
     ),
     guide: "opstack",
@@ -49,8 +49,8 @@ const CARDS: { group: Group; title: ReactNode; text: ReactNode; guide: string; i
     title: <T en="Rewards & withdrawals left behind" fr="Récompenses et retraits oubliés" />,
     text: (
       <T
-        en="Finalized Lido withdrawals never claimed, Liquity collateral never taken back, expired locks never withdrawn, staking and lending rewards that piled up."
-        fr="Des retraits Lido finalisés jamais réclamés, du collatéral Liquity jamais récupéré, des verrous expirés jamais retirés, des récompenses de staking et de prêt qui se sont accumulées."
+        en="Finalized Lido withdrawals never claimed, Uniswap fees never collected, Liquity collateral never taken back, vesting never withdrawn, expired locks, staking and lending rewards that piled up."
+        fr="Des retraits Lido finalisés jamais réclamés, des frais Uniswap jamais collectés, du collatéral Liquity jamais récupéré, du vesting jamais retiré, des verrous expirés, des récompenses de staking et de prêt qui se sont accumulées."
       />
     ),
     guide: "rewards",
@@ -61,8 +61,8 @@ const CARDS: { group: Group; title: ReactNode; text: ReactNode; guide: string; i
     title: <T en="Old contracts & migrations" fr="Anciens contrats et migrations" />,
     text: (
       <T
-        en="Deposits forgotten in old contracts (EtherDelta, CryptoPunks, FoMo3D…), and old tokens that are only worth something once migrated or redeemed."
-        fr="Des dépôts oubliés dans d'anciens contrats (EtherDelta, CryptoPunks, FoMo3D…), et de vieux tokens qui ne valent quelque chose qu'une fois migrés ou échangés."
+        en="Deposits forgotten in old contracts (EtherDelta, CryptoPunks, FoMo3D…), old tokens that are only worth something once migrated or redeemed, and Safes you no longer think about."
+        fr="Des dépôts oubliés dans d'anciens contrats (EtherDelta, CryptoPunks, FoMo3D…), de vieux tokens qui ne valent quelque chose qu'une fois migrés ou échangés, et des Safes auxquels vous ne pensez plus."
       />
     ),
     guide: "legacy",

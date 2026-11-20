@@ -19,6 +19,7 @@ export const UNCLAIMED_LABELS: Record<string, { name: string; en: string; fr: st
   "old-exchanges": { name: "EtherDelta, IDEX v1 & co.", en: "ETH deposits left in old exchange contracts", fr: "Dépôts d'ETH restés dans les contrats d'anciens exchanges" },
   digixdao: { name: "DigixDAO", en: "ETH refund that DGD holders never collected", fr: "Remboursement en ETH jamais récupéré par les détenteurs de DGD" },
   apecoin: { name: "ApeCoin staking", en: "APE still staked where rewards have ended", fr: "APE toujours stakés là où les récompenses sont terminées" },
+  blast: { name: "Blast", en: "Balances and withdrawals left when the network shut down", fr: "Soldes et retraits laissés à l'arrêt du réseau" },
   "zksync-lite": { name: "zkSync Lite", en: "Balances left when the network shut down", fr: "Soldes laissés à l'arrêt du réseau" },
   liquity: { name: "Liquity", en: "Collateral set aside for closed loans", fr: "Collatéral mis de côté pour des prêts fermés" },
   stargate: { name: "Stargate", en: "STG left in locks that are all unlocked", fr: "STG restés dans des verrous tous débloqués" },

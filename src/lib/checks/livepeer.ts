@@ -60,6 +60,12 @@ export async function checkLivepeer(user: Address): Promise<CheckOutput> {
         asset: { symbol: "LPT", decimals: 18, amount, token: LPT, tokenChain: "arbitrum" },
         ...link,
         note: `You unstaked ${formatAmount(amount, 18)} LPT on Livepeer (Arbitrum) and the waiting period is over, but they were never withdrawn: unstaked LPT stays in Livepeer's contract until you withdraw it (unbonding lock #${id}).`,
+        fr: {
+          label: "Livepeer : LPT déstakés jamais retirés",
+          note: `Vous avez déstaké ${formatAmount(amount, 18, "fr")} LPT sur Livepeer (Arbitrum) et la période d'attente est terminée, mais ils n'ont jamais été retirés : les LPT déstakés restent dans le contrat de Livepeer tant que vous ne les retirez pas (unbonding lock n° ${id}).`,
+          claimAt: "explorer.livepeer.org (votre compte → Withdraw)",
+          linkLabel: "Voir le contrat",
+        },
       });
     }),
     (async (): Promise<Finding | null> => {
@@ -73,6 +79,12 @@ export async function checkLivepeer(user: Address): Promise<CheckOutput> {
         ...link,
         claimAt: "explorer.livepeer.org (your account → Withdraw fees)",
         note: `Staking LPT on Livepeer (Arbitrum) earned this address ${formatAmount(fees, 18)} ETH in fees that were never withdrawn. They are paid in ETH on Arbitrum when you withdraw them.`,
+        fr: {
+          label: "Livepeer : frais en ETH jamais retirés",
+          note: `Le staking de LPT sur Livepeer (Arbitrum) a rapporté à cette adresse ${formatAmount(fees, 18, "fr")} ETH de frais jamais retirés. Ils sont payés en ETH sur Arbitrum quand vous les retirez.`,
+          claimAt: "explorer.livepeer.org (votre compte → Withdraw fees)",
+          linkLabel: "Voir le contrat",
+        },
       });
     })(),
   ]);

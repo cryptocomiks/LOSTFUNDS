@@ -12,6 +12,7 @@ import { sourceMetaById as sourceById, sourcesMetaFor as sourcesFor, type Source
 import type { Finding, NetworkResult, WithdrawalStatus } from "@/lib/types";
 import { UNCLAIMED } from "@/lib/unclaimed";
 import { CountUp } from "./CountUp";
+import { bridgeFr, SOURCE_FR, sourceName } from "@/lib/sourceFr";
 import { ShareResult } from "./ShareResult";
 import {
   Alert,
@@ -71,6 +72,34 @@ const GROUPS_FR: Record<Group, string> = {
   reclaim: "SOL récupérable",
 };
 
+/** What each group looks for, in plain words (shown when the group is open). */
+const GROUP_HELP: Record<Group, [string, string]> = {
+  l2: [
+    "Money sent from a “layer 2” network (Base, Arbitrum, Starknet…) back to Ethereum. These withdrawals take two or three steps, and the last one, on Ethereum, is easy to forget. Networks that shut down are here too.",
+    "De l'argent renvoyé d'un réseau « layer 2 » (Base, Arbitrum, Starknet…) vers Ethereum. Ces retraits se font en deux ou trois étapes, et la dernière, sur Ethereum, s'oublie facilement. Les réseaux qui ont fermé sont ici aussi.",
+  ],
+  solana: [
+    "Transfers between two blockchains that left one side but were never received, or never refunded, on the other.",
+    "Des transferts entre deux blockchains partis d'un côté mais jamais reçus, ou jamais remboursés, de l'autre.",
+  ],
+  airdrops: [
+    "Free tokens a project set aside for its early users. They only become yours once you claim them, and some never expire.",
+    "Des tokens gratuits qu'un projet a mis de côté pour ses premiers utilisateurs. Ils ne sont à vous qu'une fois réclamés, et certains n'expirent jamais.",
+  ],
+  rewards: [
+    "Rewards, fees and withdrawals that an app holds for you until you come and take them: staking, lending, liquidity pools, vesting, locks that have expired.",
+    "Des récompenses, frais et retraits qu'une app garde pour vous jusqu'à ce que vous veniez les chercher : staking, prêt, pools de liquidité, vesting, verrous expirés.",
+  ],
+  legacy: [
+    "Deposits left in apps from 2016–2021, old tokens that are only worth something once swapped for their new version, and Safes you may have forgotten.",
+    "Des dépôts restés dans des apps de 2016–2021, de vieux tokens qui ne valent quelque chose qu'une fois échangés contre leur nouvelle version, et des Safes que vous avez peut-être oubliés.",
+  ],
+  reclaim: [
+    "SOL locked as a deposit in Solana accounts you no longer use, and fees owed to you. Closing the accounts gives the SOL back.",
+    "Du SOL bloqué en caution dans des comptes Solana que vous n'utilisez plus, et des frais qui vous sont dus. Fermer les comptes vous rend ce SOL.",
+  ],
+};
+
 /** The address errors from resolveInput, in French. */
 function inputErrorFr(msg: string): string {
   if (msg.startsWith("Paste a wallet")) return "Collez une adresse de wallet ou un nom ENS.";
@@ -101,7 +130,10 @@ function FindingRow({ f, index, lang }: { f: Finding; index: number; lang: Lang 
   const fr = lang === "fr";
   // Some findings (airdrops) come from a source listed under another id: never assume it exists.
   const source = sourceById(f.networkId);
-  const claimAt = f.claimAt ?? source?.bridgeUrl;
+  // French texts when the check provides them; the English ones otherwise.
+  const t = (fr && f.fr) || {};
+  const claimAt = t.claimAt ?? f.claimAt ?? (source && (fr ? (SOURCE_FR[source.id]?.bridgeUrl ?? bridgeFr(source.bridgeUrl)) : source.bridgeUrl));
+  const dateLabel = t.dateLabel ?? f.dateLabel;
   // Reclaimable SOL sits in accounts, not in a transfer: no date, and the link opens the account.
   const inAccount = source?.group === "reclaim";
   return (
@@ -109,16 +141,12 @@ function FindingRow({ f, index, lang }: { f: Finding; index: number; lang: Lang 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-[13px] text-text-2">
           <NetDot id={f.networkId} />
-          <span className="font-medium text-text">{f.networkName}</span>
+          <span className="font-medium text-text">{t.label ?? (fr && f.networkName === source?.name ? sourceName(source, lang) : f.networkName)}</span>
           {f.timestamp > 0 && !inAccount && (
             <>
               <span aria-hidden>·</span>
               <span>
-                {fr
-                  ? f.dateLabel
-                    ? f.dateLabel
-                    : f.networkId === "airdrops" ? "Airdroppé le" : "Envoyé le"
-                  : (f.dateLabel ?? (f.networkId === "airdrops" ? "Airdropped" : "Sent"))}{" "}
+                {dateLabel ?? (fr ? (f.networkId === "airdrops" ? "Airdroppé le" : "Envoyé le") : f.networkId === "airdrops" ? "Airdropped" : "Sent")}{" "}
                 {formatDate(f.timestamp, lang)}
               </span>
             </>
@@ -129,14 +157,14 @@ function FindingRow({ f, index, lang }: { f: Finding; index: number; lang: Lang 
 
       <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className="text-[28px] leading-tight font-semibold tracking-tight tabular-nums">
-          {formatAmount(f.asset.amount, f.asset.decimals)} <span className="text-text-2">{f.asset.symbol}</span>
+          {formatAmount(f.asset.amount, f.asset.decimals, lang)} <span className="text-text-2">{f.asset.symbol}</span>
         </span>
         {f.asset.usd !== undefined && (
           <span className="text-[17px] text-text-2 tabular-nums">≈ {formatUsd(f.asset.usd, lang)}</span>
         )}
       </div>
 
-      <p className="mt-1.5 text-[15px] leading-relaxed break-words text-text-2">{f.note ?? STATUS_HELP[f.status](f, lang)}</p>
+      <p className="mt-1.5 text-[15px] leading-relaxed break-words text-text-2">{t.note ?? f.note ?? STATUS_HELP[f.status](f, lang)}</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <button
@@ -152,9 +180,11 @@ function FindingRow({ f, index, lang }: { f: Finding; index: number; lang: Lang 
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-[14px] text-link hover:underline"
         >
-          {f.linkLabel && !fr
-            ? f.linkLabel
-            : inAccount
+          {t.linkLabel
+            ? t.linkLabel
+            : f.linkLabel && !fr
+              ? f.linkLabel
+              : inAccount
               ? fr ? "Voir sur Solscan" : "View on Solscan"
               : /\/(address|account)\//.test(f.txUrl)
                 ? fr ? "Voir le contrat" : "View contract"
@@ -257,8 +287,9 @@ function GroupBlock({
           <Chevron width={16} height={16} className={`text-text-3 transition-transform ${open ? "rotate-180" : ""}`} />
         </span>
       </button>
+      {open && <p className="border-t border-line px-4 pt-3 text-[13px] leading-relaxed text-text-2 sm:px-5">{pick(GROUP_HELP[group], lang)}</p>}
       {open && (
-        <ul className="grid grid-cols-2 gap-2 border-t border-line p-3 sm:grid-cols-3 md:grid-cols-4">
+        <ul className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3 md:grid-cols-4">
           {sources.map((n) => {
             const r = results[n.id];
             const state = r?.state ?? "queued";
@@ -270,7 +301,7 @@ function GroupBlock({
               >
                 <span className="flex min-w-0 items-center gap-2">
                   <NetDot id={n.id} />
-                  <span className="truncate">{n.name}</span>
+                  <span className="truncate">{sourceName(n, lang)}</span>
                 </span>
                 {state === "running" || state === "queued" ? (
                   <Spinner className="text-text-3" />
@@ -610,8 +641,8 @@ export function Checker() {
                     </p>
                     <p className="mt-3 max-w-[560px] text-[15px] text-text-2">
                       {fr
-                        ? "Une réclamation envoie toujours 100 % des fonds sur votre propre adresse, via l'app officielle. Personne ne peut le faire à votre place, et personne n'a besoin de votre phrase secrète. Ouvrez « Comment réclamer » sur chaque ligne pour les étapes."
-                        : 'Claiming always sends 100% of the funds to your own address, through the official app. Nobody else can do it for you, and nobody needs your seed phrase. Open "How to claim" on each line for the steps.'}
+                        ? "Une réclamation envoie toujours 100 % des fonds sur votre propre adresse, via l'app officielle. Personne ne peut le faire à votre place, et personne n'a besoin de votre phrase secrète. Ouvrez « Comment réclamer » sur chaque ligne pour les étapes. Chaque réclamation est une transaction ordinaire : vous ne payez que les frais de réseau, quelques centimes sur la plupart des réseaux et davantage sur Ethereum."
+                        : 'Claiming always sends 100% of the funds to your own address, through the official app. Nobody else can do it for you, and nobody needs your seed phrase. Open "How to claim" on each line for the steps. Each claim is an ordinary transaction: you only pay the network fee, a few cents on most networks and more on Ethereum.'}
                     </p>
                     {finished === sourcesFor(target.kind).length && <ShareResult data={{ usd: totalUsd, count: stuck.length }} lang={lang} />}
                   </div>
@@ -695,7 +726,7 @@ export function Checker() {
                       .filter((r) => r.state === "error")
                       .map((r) => (
                         <li key={r.networkId}>
-                          {sourceById(r.networkId)?.name}: {r.error}
+                          {sourceById(r.networkId) && sourceName(sourceById(r.networkId)!, lang)}: {r.error}
                         </li>
                       ))}
                   </ul>

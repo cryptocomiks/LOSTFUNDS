@@ -45,6 +45,17 @@ export interface Finding {
   minUsd?: number;
   /** Text of the link to `txUrl` (default "View transaction"), e.g. when it opens a contract. */
   linkLabel?: string;
+  /** The same texts in French, shown when the page is in French (the English ones are the fallback). */
+  fr?: FindingFr;
+}
+
+/** French versions of a finding's texts: its title (`networkName`), note, where to claim, date and link labels. */
+export interface FindingFr {
+  label?: string;
+  note?: string;
+  claimAt?: string;
+  dateLabel?: string;
+  linkLabel?: string;
 }
 
 export type NetworkCheckState = "queued" | "running" | "done" | "error";

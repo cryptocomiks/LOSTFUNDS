@@ -62,6 +62,14 @@ export function Safety() {
           </Reveal>
         ))}
       </div>
+      <Reveal className="mt-8">
+        <p className="max-w-[760px] text-[15px] leading-relaxed text-text-2">
+          <T
+            en="A good habit while you are here: review the permissions (token approvals) your wallet has given to apps over the years, and revoke the ones you no longer use. A dedicated tool such as revoke.cash lists them from your address. Type its name yourself, like every address on this page."
+            fr="Une bonne habitude tant que vous y êtes : passez en revue les autorisations (token approvals) que votre wallet a données à des apps au fil des années, et révoquez celles que vous n'utilisez plus. Un outil dédié comme revoke.cash les liste à partir de votre adresse. Tapez son nom vous-même, comme toutes les adresses de cette page."
+          />
+        </p>
+      </Reveal>
     </Section>
   );
 }

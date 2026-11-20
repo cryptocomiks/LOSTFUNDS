@@ -14,6 +14,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { base58 } from "@scure/base";
 import { erc20Abi, formatUnits, multicall3Abi, parseAbi, zeroAddress, type Address, type Hex, type PublicClient } from "viem";
 import { l1BulkClient, l1Client, l2Client } from "../src/lib/clients.ts";
+import { BLAST_RECOVERY } from "../src/lib/checks/blast.ts";
 import { DEPOSIT_EXCHANGES } from "../src/lib/checks/exchanges.ts";
 import { LIQUITY_V2_BRANCHES } from "../src/lib/checks/liquity-v2.ts";
 import { LEGACY_BRIDGE_TOKENS, type StoredMessage } from "../src/lib/checks/starknet.ts";
@@ -84,6 +85,11 @@ async function expiredLocks(chainId: number, escrow: Address): Promise<{ amount:
 const SOURCES: Record<string, () => Promise<{ parts: Part[]; count?: number }>> = {
   // Everything the claim contract holds is an unclaimed zkSync Lite balance.
   "zksync-lite": async () => ({ parts: [eth(await ethOf(ZKSYNC_LITE_CLAIM)), ...(await held(["USDC", "USDT", "DAI", "WBTC"], ZKSYNC_LITE_CLAIM))] }),
+  // Blast's two recovery contracts: everything they hold is owed to Blast's former users.
+  blast: async () => {
+    const balances = await Promise.all(BLAST_RECOVERY.map(async (r) => ({ eth: await ethOf(r.address), dai: await balanceOf(TOKENS.DAI[0], r.address) })));
+    return { parts: [eth(balances.reduce((s, b) => s + b.eth, 0n)), token("DAI", balances.reduce((s, b) => s + b.dai, 0n), 18, TOKENS.DAI[0])] };
+  },
   // The DAO's withdrawal contracts only pay DAO token holders.
   "the-dao": async () => ({
     parts: [eth((await ethOf("0xBf4eD7b27F1d666546E30D74d50d173d20bca754")) + (await ethOf("0x755cdba6AE4F479f7164792B318b2a06c759833B")))],

@@ -1,5 +1,5 @@
 import type { Network } from "../networks";
-import type { Asset, Finding, WithdrawalStatus } from "../types";
+import type { Asset, Finding, FindingFr, WithdrawalStatus } from "../types";
 
 export const DAY = 86_400;
 export const now = () => Math.floor(Date.now() / 1000);
@@ -40,6 +40,8 @@ export function makeFinding(
     dateLabel?: string;
     /** Text of the link (default "View transaction"). */
     linkLabel?: string;
+    /** French versions of label, note, claimAt, dateLabel and linkLabel (every text the visitor reads). */
+    fr?: FindingFr;
   },
 ): Finding {
   return {
@@ -59,6 +61,7 @@ export function makeFinding(
     minUsd: p.minUsd,
     ...(p.dateLabel && { dateLabel: p.dateLabel }),
     ...(p.linkLabel && { linkLabel: p.linkLabel }),
+    ...(p.fr && { fr: p.fr }),
   };
 }
 

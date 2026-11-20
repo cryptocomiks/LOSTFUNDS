@@ -18,10 +18,15 @@ const reads = createPublicClient({ chain: mainnet, transport: http("https://ethe
 const coreAbi = parseAbi(["function l2ToL1Messages(bytes32) view returns (uint256)"]);
 
 /** A range's logs, split in halves while the node refuses it (too many results, response too large). */
-async function fetchRange(from: bigint, to: bigint): Promise<Awaited<ReturnType<typeof logs.getLogs<typeof event>>>> {
+async function fetchRange(from: bigint, to: bigint, attempt = 0): Promise<Awaited<ReturnType<typeof logs.getLogs<typeof event>>>> {
   try {
     return await logs.getLogs({ address: CORE, event, fromBlock: from, toBlock: to });
   } catch (e) {
+    // A rate limit says nothing about the range: wait and ask again.
+    if (/rate limit|429|too many/i.test(String((e as Error).message)) && attempt < 8) {
+      await new Promise((r) => setTimeout(r, 4000 * (attempt + 1)));
+      return fetchRange(from, to, attempt + 1);
+    }
     if (to - from < 100n) throw e;
     const mid = (from + to) / 2n;
     return [...(await fetchRange(from, mid)), ...(await fetchRange(mid + 1n, to))];
