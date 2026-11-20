@@ -292,14 +292,22 @@ async function checkTx(
     }
     let status: WithdrawalStatus;
     const notes: string[] = [];
+    const notesFr: string[] = [];
     if (state.status === "pending") {
       status = now() - timestamp < 7 * DAY ? "recent" : "waiting";
-      if (status === "waiting") notes.push("Its batch hasn't been executed on Ethereum yet. It becomes claimable once it is.");
+      if (status === "waiting") {
+        notes.push("Its batch hasn't been executed on Ethereum yet. It becomes claimable once it is.");
+        notesFr.push("Son batch n'a pas encore été exécuté sur Ethereum. Il deviendra réclamable une fois que ce sera fait.");
+      }
     } else if (state.status === "rejected") {
       status = "manual";
       notes.push("A dry run of the claim on Ethereum fails. Check this withdrawal in the chain's official bridge.");
+      notesFr.push("Un essai à blanc de la réclamation sur Ethereum échoue. Vérifiez ce retrait dans le bridge officiel de la chaîne.");
     } else status = "ready";
-    if (!toUser) notes.push(`The funds go to ${short(w.receiver)} on Ethereum, the receiver set when the withdrawal was made.`);
+    if (!toUser) {
+      notes.push(`The funds go to ${short(w.receiver)} on Ethereum, the receiver set when the withdrawal was made.`);
+      notesFr.push(`Les fonds vont à ${short(w.receiver)} sur Ethereum, le destinataire défini lors du retrait.`);
+    }
 
     out.findings.push(
       makeFinding(net, {
@@ -309,6 +317,7 @@ async function checkTx(
         txHash: hash,
         timestamp,
         note: notes.length ? notes.join(" ") : undefined,
+        fr: notesFr.length ? { note: notesFr.join(" ") } : undefined,
       }),
     );
   }

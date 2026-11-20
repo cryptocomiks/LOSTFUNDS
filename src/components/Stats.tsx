@@ -44,7 +44,8 @@ export function Stats() {
             } ${i > 1 ? "border-t border-line md:border-t-0" : ""} ${i % 2 ? "border-l border-line" : ""}`}
           >
             <p className="text-[40px] leading-none font-semibold tracking-[-0.03em] tabular-nums sm:text-[48px]">
-              {s.value ? <CountUp value={s.value} suffix={s.suffix} duration={1400} /> : "0"}
+              {/* Only the counts climb: "100%" and "0" are promises, and must never read as 97% or 3 on the way. */}
+              {i < 2 ? <CountUp value={s.value} duration={1400} /> : `${s.value}${s.suffix}`}
             </p>
             <p className="mt-3 text-[15px] font-semibold">{s.label}</p>
             <p className="mt-1 text-[14px] leading-snug text-text-2">{s.detail}</p>

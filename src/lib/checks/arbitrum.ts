@@ -72,6 +72,7 @@ async function checkReceipt(net: Network, receipt: TransactionReceipt, user: Add
           txHash: receipt.transactionHash,
           timestamp,
           note: "Pre-Nitro (Arbitrum Classic) withdrawal. Check its status in the official bridge.",
+          fr: { note: "Retrait d'avant Nitro (Arbitrum Classic). Vérifiez son statut dans le bridge officiel." },
         }),
       );
     return;

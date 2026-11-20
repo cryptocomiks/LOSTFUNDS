@@ -170,6 +170,13 @@ export async function checkZkSyncLite(user: Address): Promise<CheckOutput> {
         claimAt: "lite.zksync.io",
         minUsd: DUST_ETHEREUM,
         note: `zkSync Lite shut down on May 4, 2026 with ${formatAmount(l.amount, asset.decimals)} ${asset.symbol} in this address's account. It's waiting in the official claim contract on Ethereum, with no deadline: open lite.zksync.io with this wallet, which builds the proof and sends the claim (Matter Labs pays the gas of the first 100,000 claims). This is claim #${l.index} of the exit tree.`,
+        fr: {
+          label: `Solde zkSync Lite (${asset.symbol})`,
+          note: `zkSync Lite s'est arrêté le 4 mai 2026 avec ${formatAmount(l.amount, asset.decimals, "fr")} ${asset.symbol} sur le compte de cette adresse. Ce solde attend dans le contrat de réclamation officiel sur Ethereum, sans date limite : ouvrez lite.zksync.io avec ce wallet, le site construit la preuve et envoie la réclamation (Matter Labs paie le gas des 100 000 premières réclamations). C'est la réclamation n° ${l.index} de l'exit tree.`,
+          claimAt: "lite.zksync.io",
+          dateLabel: "Arrêté le",
+          linkLabel: "Ouvrir le contrat de réclamation",
+        },
       });
     });
   return { findings, completed: leaves.length - open.length };

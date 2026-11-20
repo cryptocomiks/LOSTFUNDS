@@ -8,14 +8,13 @@ import { LangToggle } from "./LangToggle";
 
 const hasTips = Boolean(SITE.tips.evm.address || SITE.tips.solana.address || SITE.tips.bitcoin.address);
 
-/** The page's sections, in order. */
+/** The page's sections, in order. (The support section has its own button on the right.) */
 const LINKS: { id: string; en: string; fr: string }[] = [
   { id: "top", en: "Check", fr: "Vérifier" },
   { id: "what", en: "What we find", fr: "Ce qu'on trouve" },
   { id: "how", en: "How it works", fr: "Comment ça marche" },
   { id: "guides", en: "Guides", fr: "Guides" },
   { id: "faq", en: "FAQ", fr: "FAQ" },
-  ...(hasTips ? [{ id: "tip", en: "Tip", fr: "Soutenir" }] : []),
   { id: "safety", en: "Safety", fr: "Sécurité" },
 ];
 
@@ -79,7 +78,7 @@ export function Header() {
   }, [open]);
 
   const link = (on: boolean) =>
-    `rounded-full px-3 py-1.5 text-[13px] transition-colors ${on ? "bg-fill text-text" : "text-text-2 hover:bg-fill hover:text-text"}`;
+    `rounded-full px-3 py-1.5 text-[13px] whitespace-nowrap transition-colors ${on ? "bg-fill text-text" : "text-text-2 hover:bg-fill hover:text-text"}`;
 
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-[var(--nav)] backdrop-blur-xl backdrop-saturate-[1.8]">

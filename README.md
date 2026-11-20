@@ -91,6 +91,14 @@ npx tsx tests/screenshots.ts shots   # screenshots of out/ with mocked chain dat
 
 `scripts/starknet-withdrawals.ts` rebuilds the Starknet snapshot the same way (`public/legacy/starknet`).
 
+## Two languages
+
+The page is in English and French. Static texts carry both versions (`T` in `src/lib/i18n.tsx`). A finding's texts (title, note, where to claim, date and link labels) are written by its check in English, with the French ones next to them in `fr` (`makeFinding`, see `src/lib/checks/livepeer.ts`); amounts in French texts use `formatAmount(amount, decimals, "fr")`. French names of the checks whose name is a description are in `src/lib/sourceFr.ts`. `tests/i18n.test.ts` fails when a check writes English texts without French ones.
+
+## Keeping the checks alive
+
+`NODE_USE_ENV_PROXY=1 npx tsx scripts/rpc-health.ts` asks every RPC node the checks use for its block number and lists the dead ones, and the networks left without any (a network with no live node fails for every visitor). Airdrops carry their end date (`ends`): once it has passed they are no longer listed, run or counted, without a new deployment.
+
 ## Many visitors at once
 
 There is no server: the page is static files on a CDN, and each visitor's browser queries the public nodes and APIs itself, so rate limits apply per visitor (per IP), not to the site as a whole. To keep each check light:

@@ -177,6 +177,7 @@ async function checkLegacy(
         txHash: receipt.transactionHash,
         timestamp,
         note: "Pre-Bedrock withdrawal (before June 6, 2023). Most bridge apps don't show these; see the guide below.",
+        fr: { note: "Retrait d'avant Bedrock (avant le 6 juin 2023). La plupart des apps de bridge ne les affichent pas ; voyez le guide ci-dessous." },
       }),
     );
   }
