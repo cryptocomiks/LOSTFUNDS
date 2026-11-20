@@ -8,6 +8,7 @@ import { readCache, writeCache } from "@/lib/resultCache";
 import { NETWORK_COLORS } from "@/lib/brand";
 import { formatAmount, formatDate, formatUsd, shortAddress } from "@/lib/format";
 import { GROUPS, type Group } from "@/lib/groups";
+import { MAX_WALLETS, splitInputs } from "@/lib/inputs";
 import { sourceMetaById as sourceById, sourcesMetaFor as sourcesFor, type SourceMeta } from "@/lib/sourceMeta";
 import type { Finding, NetworkResult, WithdrawalStatus } from "@/lib/types";
 import { UNCLAIMED } from "@/lib/unclaimed";
@@ -29,6 +30,32 @@ import {
 } from "./icons";
 
 type Phase = "idle" | "resolving" | "checking" | "done";
+
+/** One address of a run. Several can be given at once: they are checked one after the other. */
+interface Wallet {
+  target: Target;
+  results: Record<string, NetworkResult>;
+  /** When the shown results come (partly) from this browser's recent cache. */
+  cachedAt: number | null;
+  /** Start of this wallet's check: the cache entry's age (so it expires 10 min after the check, not later). */
+  startedAt: number;
+  state: "queued" | "checking" | "done";
+}
+
+const NO_RESULTS: Record<string, NetworkResult> = {};
+const sameWallet = (a: Target, b: Target) => a.kind === b.kind && a.address === b.address;
+const TOO_MANY = `You can check up to ${MAX_WALLETS} addresses at a time.`;
+
+/** What one wallet's results add up to. */
+function summarize(results: Record<string, NetworkResult>) {
+  const list = Object.values(results);
+  const stuck = list.flatMap((r) => r.findings).filter((f) => f.status !== "recent");
+  return {
+    stuck: stuck.length,
+    usd: stuck.reduce((s, f) => s + (f.asset.usd ?? 0), 0),
+    errors: list.filter((r) => r.state === "error").length,
+  };
+}
 
 /**
  * The checks themselves (viem and every protocol's code) are a separate download: the page shows up
@@ -107,6 +134,7 @@ function inputErrorFr(msg: string): string {
   if (msg.endsWith("doesn't resolve to an address.")) return `${msg.replace(" doesn't resolve to an address.", "")} ne correspond à aucune adresse.`;
   if (msg.startsWith("That's a transaction hash")) return "C'est un hash de transaction, pas une adresse de wallet.";
   if (msg.startsWith("That doesn't look")) return "Ça ne ressemble pas à une adresse de wallet.";
+  if (msg === TOO_MANY) return `Vous pouvez vérifier jusqu'à ${MAX_WALLETS} adresses à la fois.`;
   return msg;
 }
 
@@ -352,75 +380,151 @@ export function Checker() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [errorIsInput, setErrorIsInput] = useState(false);
-  const [target, setTarget] = useState<Target | null>(null);
-  const [results, setResults] = useState<Record<string, NetworkResult>>({});
-  /** When the shown results come (partly) from this browser's recent cache. */
-  const [cachedAt, setCachedAt] = useState<number | null>(null);
+  /** Which entry the error is about, when several addresses were given. */
+  const [errorEntry, setErrorEntry] = useState<string | null>(null);
+  const [wallets, setWallets] = useState<Wallet[]>([]);
+  /** The wallet whose details are shown. */
+  const [active, setActive] = useState(0);
+  /** The details follow the wallet being checked, until the visitor picks one. */
+  const followRef = useRef(true);
   const abortRef = useRef<AbortController | null>(null);
-  /** Start of the current run: the cache entry's age (so it expires 10 min after the check, not later). */
-  const startedAtRef = useRef(0);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  const run = useCallback(async (raw: string, fresh = false) => {
-    abortRef.current?.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-    setError(null);
-    setResults({});
-    setCachedAt(null);
-    startedAtRef.current = Date.now();
-    setPhase("resolving");
-    try {
-      const { resolveInput, runChecks } = await engine();
-      const resolved = await resolveInput(raw);
-      if (ctrl.signal.aborted) return;
-      setTarget(resolved);
-      setPhase("checking");
-      const url = new URL(location.href);
-      url.searchParams.set("address", resolved.ens ?? resolved.address);
-      url.hash = "";
-      history.replaceState(null, "", url);
-      requestAnimationFrame(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  const activeIndex = Math.min(active, wallets.length - 1);
+  const wallet = wallets[activeIndex] as Wallet | undefined;
+  const target = wallet?.target ?? null;
+  const results = wallet?.results ?? NO_RESULTS;
+  const cachedAt = wallet?.cachedAt ?? null;
 
+  const patch = useCallback(
+    (t: Target, fn: (w: Wallet) => Wallet) => setWallets((prev) => prev.map((w) => (sameWallet(w.target, t) ? fn(w) : w))),
+    [],
+  );
+
+  /** Runs every check for one wallet. Returns its results once they are all in. */
+  const checkWallet = useCallback(
+    async (t: Target, fresh: boolean, signal: AbortSignal, runChecks: typeof import("@/lib/checker").runChecks) => {
       // Checks this browser completed a few minutes ago are shown as they were; only the rest run.
-      const cached = fresh ? null : readCache(resolved.kind, resolved.address);
-      const known = new Set(sourcesFor(resolved.kind).map((s) => s.id));
+      const cached = fresh ? null : readCache(t.kind, t.address);
+      const known = new Set(sourcesFor(t.kind).map((s) => s.id));
       const reused = (cached?.results ?? []).filter((r) => known.has(r.networkId));
-      if (reused.length) {
-        setCachedAt(cached!.at);
-        setResults(Object.fromEntries(reused.map((r) => [r.networkId, r])));
-      }
-      const todo = [...known].filter((id) => !reused.some((r) => r.networkId === id));
+      const local: Record<string, NetworkResult> = Object.fromEntries(reused.map((r) => [r.networkId, r]));
+      patch(t, (w) => ({ ...w, state: "checking", startedAt: Date.now(), cachedAt: reused.length ? cached!.at : null, results: { ...local } }));
+      const todo = [...known].filter((id) => !(id in local));
 
       const failed: string[] = [];
       const update = (r: NetworkResult) => {
-        if (r.state === "error") failed.push(r.networkId);
-        setResults((prev) => ({ ...prev, [r.networkId]: r }));
+        local[r.networkId] = r;
+        patch(t, (w) => ({ ...w, results: { ...w.results, [r.networkId]: r } }));
       };
-      if (todo.length) await runChecks(resolved, update, ctrl.signal, todo);
+      if (todo.length)
+        await runChecks(
+          t,
+          (r) => {
+            if (r.state === "error") failed.push(r.networkId);
+            update(r);
+          },
+          signal,
+          todo,
+        );
       // One automatic second attempt for checks whose data sources were busy. The wait is longer
       // and randomized so that many visitors on one network don't all retry at the same instant.
-      if (failed.length && !ctrl.signal.aborted) {
+      if (failed.length && !signal.aborted) {
         await new Promise((r) => setTimeout(r, 4000 + Math.random() * 3000));
-        if (!ctrl.signal.aborted) await runChecks(resolved, (r) => setResults((prev) => ({ ...prev, [r.networkId]: r })), ctrl.signal, failed);
+        if (!signal.aborted) await runChecks(t, update, signal, failed);
       }
-      if (!ctrl.signal.aborted) setPhase("done");
-    } catch (e) {
-      if (ctrl.signal.aborted) return;
-      setPhase("idle");
-      const InputError = await engine().then((m) => m.InputError, () => null);
-      const isInput = !!InputError && e instanceof InputError;
-      setError(isInput ? (e as Error).message : "Couldn't resolve that name. Check your connection and try again.");
-      setErrorIsInput(isInput);
-    }
-  }, []);
+      if (!signal.aborted) patch(t, (w) => ({ ...w, state: "done" }));
+      return local;
+    },
+    [patch],
+  );
+
+  const run = useCallback(
+    async (raw: string, fresh = false) => {
+      abortRef.current?.abort();
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+      setError(null);
+      setErrorEntry(null);
+      setWallets([]);
+      setActive(0);
+      followRef.current = true;
+      setPhase("resolving");
+      try {
+        const { resolveInput, runChecks, InputError } = await engine();
+        const entries = splitInputs(raw);
+        if (entries.length > MAX_WALLETS) throw new InputError(TOO_MANY);
+        const resolved = await Promise.all(
+          (entries.length ? entries : [""]).map((entry) =>
+            resolveInput(entry).catch((e) => {
+              throw Object.assign(e as Error, { entry: entries.length > 1 ? entry : undefined });
+            }),
+          ),
+        );
+        if (ctrl.signal.aborted) return;
+        // The same wallet given twice (an address and its ENS name) is checked once.
+        const targets = resolved.filter((t, i) => resolved.findIndex((x) => sameWallet(x, t)) === i);
+        setWallets(targets.map((t) => ({ target: t, results: {}, cachedAt: null, startedAt: 0, state: "queued" })));
+        setPhase("checking");
+        const url = new URL(location.href);
+        url.searchParams.set("address", targets.map((t) => t.ens ?? t.address).join(","));
+        url.hash = "";
+        history.replaceState(null, "", url);
+        requestAnimationFrame(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+
+        let best = 0;
+        let bestUsd = 0;
+        for (let i = 0; i < targets.length; i++) {
+          if (ctrl.signal.aborted) return;
+          if (followRef.current) setActive(i);
+          const { usd } = summarize(await checkWallet(targets[i], fresh, ctrl.signal, runChecks));
+          if (usd > bestUsd) [best, bestUsd] = [i, usd];
+        }
+        if (ctrl.signal.aborted) return;
+        // Several wallets: end on the one with the most to claim, unless the visitor chose one.
+        if (followRef.current && targets.length > 1) setActive(best);
+        setPhase("done");
+      } catch (e) {
+        if (ctrl.signal.aborted) return;
+        setPhase("idle");
+        const InputError = await engine().then((m) => m.InputError, () => null);
+        const isInput = !!InputError && e instanceof InputError;
+        setError(isInput ? (e as Error).message : "Couldn't resolve that name. Check your connection and try again.");
+        setErrorIsInput(isInput);
+        setErrorEntry((e as { entry?: string }).entry ?? null);
+      }
+    },
+    [checkWallet],
+  );
+
+  /** Runs one wallet's checks again, live (the others keep their results). */
+  const recheck = useCallback(
+    async (t: Target) => {
+      abortRef.current?.abort();
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+      setPhase("checking");
+      try {
+        const { runChecks } = await engine();
+        await checkWallet(t, true, ctrl.signal, runChecks);
+      } finally {
+        if (!ctrl.signal.aborted) setPhase("done");
+      }
+    },
+    [checkWallet],
+  );
 
   // Keep this browser's short-lived cache up to date as checks complete (including manual retries),
   // so a reload or a reopened link mid-way doesn't start over.
+  const savedRef = useRef(new Map<string, Record<string, NetworkResult>>());
   useEffect(() => {
-    if (target && phase !== "idle" && phase !== "resolving")
-      writeCache(target.kind, target.address, Object.values(results), cachedAt ?? startedAtRef.current);
-  }, [phase, results, target, cachedAt]);
+    for (const w of wallets) {
+      const key = `${w.target.kind}:${w.target.address}`;
+      if (w.state === "queued" || savedRef.current.get(key) === w.results) continue;
+      savedRef.current.set(key, w.results);
+      writeCache(w.target.kind, w.target.address, Object.values(w.results), w.cachedAt ?? w.startedAt);
+    }
+  }, [wallets]);
 
   const retry = useCallback(
     async (id: string) => {
@@ -428,18 +532,18 @@ export function Checker() {
       const { checkSource, sourcesFor: engineSources } = await engine();
       const net = engineSources(target.kind).find((s) => s.id === id);
       if (!net) return;
-      setResults((prev) => ({ ...prev, [id]: { networkId: id, state: "running", findings: [], completed: 0 } }));
+      patch(target, (w) => ({ ...w, results: { ...w.results, [id]: { networkId: id, state: "running", findings: [], completed: 0 } } }));
       const r = await checkSource(net, target.address);
-      setResults((prev) => ({ ...prev, [id]: r }));
+      patch(target, (w) => ({ ...w, results: { ...w.results, [id]: r } }));
     },
-    [target],
+    [target, patch],
   );
 
   // Shareable links: ?address=0x… runs the check on load.
   useEffect(() => {
     const a = new URLSearchParams(location.search).get("address");
     if (a) {
-      setInput(a);
+      setInput(splitInputs(a).join(" "));
       run(a);
     }
     return () => abortRef.current?.abort();
@@ -458,6 +562,17 @@ export function Checker() {
   const errors = Object.values(results).filter((r) => r.state === "error").length;
   const completed = Object.values(results).reduce((s, r) => s + r.completed, 0);
   const busy = phase === "resolving" || phase === "checking";
+  /** The wallet on screen is still being checked (in a run of several, others may be). */
+  const walletBusy = busy && wallet?.state !== "done";
+  const several = wallets.length > 1;
+  const summaries = useMemo(() => wallets.map((w) => summarize(w.results)), [wallets]);
+  const grand = {
+    usd: summaries.reduce((s, x) => s + x.usd, 0),
+    stuck: summaries.reduce((s, x) => s + x.stuck, 0),
+    errors: summaries.reduce((s, x) => s + x.errors, 0),
+    done: wallets.filter((w) => w.state === "done").length,
+    withFinds: summaries.filter((x) => x.stuck > 0).length,
+  };
 
   const groups = useMemo(() => {
     const g = new Map<WithdrawalStatus, Finding[]>();
@@ -540,6 +655,16 @@ export function Checker() {
                 id="address"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                onPaste={(e) => {
+                  // A text field drops line breaks: a pasted list of addresses would be glued into one.
+                  const text = e.clipboardData.getData("text");
+                  if (!/[\r\n]/.test(text.trim())) return;
+                  e.preventDefault();
+                  const el = e.currentTarget;
+                  const start = el.selectionStart ?? el.value.length;
+                  const end = el.selectionEnd ?? el.value.length;
+                  setInput(splitInputs(`${el.value.slice(0, start)} ${text} ${el.value.slice(end)}`).join(" "));
+                }}
                 placeholder={fr ? "Collez une adresse Ethereum ou Solana, ou un nom ENS" : "Paste an Ethereum or Solana address, or ENS name"}
                 aria-label={fr ? "Adresse Ethereum ou Solana, ou nom ENS" : "Ethereum or Solana address, or ENS name"}
                 spellCheck={false}
@@ -553,7 +678,7 @@ export function Checker() {
                   type="button"
                   onClick={async () => {
                     try {
-                      const text = (await navigator.clipboard.readText()).trim();
+                      const text = splitInputs(await navigator.clipboard.readText()).join(" ");
                       if (text) {
                         setInput(text);
                         run(text);
@@ -579,7 +704,11 @@ export function Checker() {
 
             {error ? (
               <p role="alert" className="mt-4 flex items-center justify-center gap-2 text-[14px] text-red">
-                <Alert width={16} height={16} /> {fr ? (errorIsInput ? inputErrorFr(error) : "Impossible de trouver ce nom. Vérifiez votre connexion et réessayez.") : error}
+                <Alert width={16} height={16} className="shrink-0" />
+                <span className="min-w-0 break-words">
+                  {errorEntry && <span className="font-mono">{errorEntry.length > 20 ? shortAddress(errorEntry) : errorEntry}{fr ? " : " : ": "}</span>}
+                  {fr ? (errorIsInput ? inputErrorFr(error) : "Impossible de trouver ce nom. Vérifiez votre connexion et réessayez.") : error}
+                </span>
               </p>
             ) : (
               <p className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[13px] text-text-3">
@@ -598,6 +727,12 @@ export function Checker() {
                 </button>
               </p>
             )}
+            <p className="mt-2 text-[13px] text-text-3">
+              <T
+                en={`Several wallets? Paste up to ${MAX_WALLETS} addresses at once, separated by a space.`}
+                fr={`Plusieurs wallets ? Collez jusqu'à ${MAX_WALLETS} adresses d'un coup, séparées par un espace.`}
+              />
+            </p>
           </div>
         </div>
       </section>
@@ -606,8 +741,86 @@ export function Checker() {
       {target && phase !== "idle" && (
         <section ref={resultsRef} className="scroll-mt-16 bg-bg-alt" aria-live="polite">
           <div className="mx-auto max-w-[980px] px-4 py-14 sm:px-6 sm:py-20">
+            {/* Several wallets: the total, and one chip per wallet to open its details */}
+            {several && (
+              <div className="animate-fade-up mb-6 overflow-hidden rounded-3xl border border-line bg-surface shadow-soft">
+                <div className="p-6 sm:p-8">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-[14px] text-text-2">{fr ? `${wallets.length} adresses, tout additionné` : `${wallets.length} addresses, all together`}</p>
+                    <p className="flex items-center gap-2 text-[13px] text-text-3 tabular-nums">
+                      {busy && <Spinner className="text-accent" />}
+                      {grand.done}/{wallets.length} {fr ? "adresses vérifiées" : "addresses checked"}
+                    </p>
+                  </div>
+                  <div className="mt-6">
+                    {grand.stuck > 0 ? (
+                      <>
+                        <p className="text-[15px] font-medium text-orange">
+                          {fr
+                            ? `${grand.stuck} chose${grand.stuck > 1 ? "s" : ""} à réclamer sur ${grand.withFinds} adresse${grand.withFinds > 1 ? "s" : ""}`
+                            : `${grand.stuck} thing${grand.stuck > 1 ? "s" : ""} to claim on ${grand.withFinds} address${grand.withFinds > 1 ? "es" : ""}`}
+                        </p>
+                        <p className="mt-1 text-[44px] leading-none font-semibold tracking-[-0.03em] tabular-nums sm:text-[56px]">
+                          {grand.usd > 0 ? formatUsd(grand.usd, lang) : fr ? `${grand.stuck} à réclamer` : `${grand.stuck} to claim`}
+                        </p>
+                      </>
+                    ) : busy ? (
+                      <p className="text-[28px] font-semibold tracking-tight sm:text-[34px]">{fr ? "Analyse en cours…" : "Checking…"}</p>
+                    ) : grand.errors > 0 ? (
+                      <p className="text-[28px] font-semibold tracking-tight sm:text-[34px]">{fr ? "Vérification incomplète" : "Check incomplete"}</p>
+                    ) : (
+                      <p className="text-[28px] font-semibold tracking-tight sm:text-[34px]">
+                        {fr ? `Rien d'oublié sur ces ${wallets.length} adresses` : `Nothing left behind on these ${wallets.length} addresses`}
+                      </p>
+                    )}
+                  </div>
+                  <ul className="mt-6 flex flex-wrap gap-2">
+                    {wallets.map((w, i) => {
+                      const sum = summaries[i];
+                      const name = w.target.ens ?? shortAddress(w.target.address);
+                      return (
+                        <li key={`${w.target.kind}:${w.target.address}`}>
+                          <button
+                            type="button"
+                            aria-pressed={i === activeIndex}
+                            onClick={() => {
+                              followRef.current = false;
+                              setActive(i);
+                            }}
+                            className={`flex items-center gap-2 rounded-full border px-3.5 py-2 text-[14px] transition active:scale-[0.97] ${
+                              i === activeIndex ? "border-accent bg-accent-soft text-text" : "border-line bg-surface text-text-2 hover:bg-fill"
+                            }`}
+                          >
+                            <span className="font-mono">{name}</span>
+                            {w.state === "queued" ? (
+                              <Clock width={15} height={15} className="text-text-3" />
+                            ) : w.state === "checking" ? (
+                              <Spinner className="text-text-3" />
+                            ) : sum.stuck > 0 ? (
+                              <span className="rounded-full bg-orange-soft px-2 py-0.5 text-[12px] font-semibold text-orange tabular-nums">
+                                {sum.usd > 0 ? formatUsd(sum.usd, lang) : sum.stuck}
+                              </span>
+                            ) : sum.errors > 0 ? (
+                              <Alert width={16} height={16} className="text-orange" />
+                            ) : (
+                              <CheckCircle width={17} height={17} className="text-green" />
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <p className="mt-4 text-[13px] text-text-3">
+                    {fr ? "Choisissez une adresse pour voir son détail juste en dessous." : "Pick an address to see its details right below."}
+                  </p>
+                  {phase === "done" && <ShareResult data={{ usd: grand.usd, count: grand.stuck }} lang={lang} />}
+                </div>
+                {busy && <div className="shimmer h-0.5 w-full" />}
+              </div>
+            )}
+
             {/* Summary */}
-            <div className="animate-fade-up overflow-hidden rounded-3xl border border-line bg-surface shadow-soft">
+            <div key={`${target.kind}:${target.address}`} className="animate-fade-up overflow-hidden rounded-3xl border border-line bg-surface shadow-soft">
               <div className="p-6 sm:p-8">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-[14px] text-text-2">
@@ -615,14 +828,16 @@ export function Checker() {
                     {target.ens && <span className="font-mono text-text-3">{shortAddress(target.address)}</span>}
                   </div>
                   <div className="flex items-center gap-2 text-[13px] text-text-3 tabular-nums">
-                    {busy && <Spinner className="text-accent" />}
+                    {walletBusy && <Spinner className="text-accent" />}
                     {finished}/{sourcesFor(target.kind).length} {fr ? "vérifications faites" : "checks done"}
                   </div>
                 </div>
 
-                {busy && stuck.length === 0 ? (
+                {walletBusy && stuck.length === 0 ? (
                   <div className="mt-6">
-                    <p className="text-[28px] font-semibold tracking-tight sm:text-[34px]">{fr ? "Analyse en cours…" : "Checking…"}</p>
+                    <p className="text-[28px] font-semibold tracking-tight sm:text-[34px]">
+                      {wallet?.state === "queued" ? (fr ? "En attente de son tour…" : "Waiting for its turn…") : fr ? "Analyse en cours…" : "Checking…"}
+                    </p>
                     <p className="mt-2 text-[15px] text-text-2">
                       {fr
                         ? "On cherche les retraits inachevés, les transferts bloqués, les airdrops, les récompenses et les vieux tokens, puis on demande à chaque blockchain s'ils vous attendent encore."
@@ -644,7 +859,7 @@ export function Checker() {
                         ? "Une réclamation envoie toujours 100 % des fonds sur votre propre adresse, via l'app officielle. Personne ne peut le faire à votre place, et personne n'a besoin de votre phrase secrète. Ouvrez « Comment réclamer » sur chaque ligne pour les étapes. Chaque réclamation est une transaction ordinaire : vous ne payez que les frais de réseau, quelques centimes sur la plupart des réseaux et davantage sur Ethereum."
                         : 'Claiming always sends 100% of the funds to your own address, through the official app. Nobody else can do it for you, and nobody needs your seed phrase. Open "How to claim" on each line for the steps. Each claim is an ordinary transaction: you only pay the network fee, a few cents on most networks and more on Ethereum.'}
                     </p>
-                    {finished === sourcesFor(target.kind).length && <ShareResult data={{ usd: totalUsd, count: stuck.length }} lang={lang} />}
+                    {!several && finished === sourcesFor(target.kind).length && <ShareResult data={{ usd: totalUsd, count: stuck.length }} lang={lang} />}
                   </div>
                 ) : errors > 0 ? (
                   <div className="mt-6 flex items-start gap-4">
@@ -672,12 +887,12 @@ export function Checker() {
                             ? `All ${completed} withdrawal${completed > 1 ? "s" : ""} we found were completed.`
                             : `Nothing is waiting for this address in the ${finished} places we checked.`}{" "}
                       </p>
-                      {phase === "done" && <ShareResult data={{ usd: 0, count: 0 }} lang={lang} />}
+                      {!several && phase === "done" && <ShareResult data={{ usd: 0, count: 0 }} lang={lang} />}
                     </div>
                   </div>
                 )}
               </div>
-              {busy && <div className="shimmer h-0.5 w-full" />}
+              {walletBusy && <div className="shimmer h-0.5 w-full" />}
             </div>
 
             {/* Findings */}
@@ -705,7 +920,7 @@ export function Checker() {
                       {fr ? "Vérifié il y a" : "Checked"} {Math.max(1, Math.round((Date.now() - cachedAt) / 60_000))} min{fr ? "" : " ago"} ·
                       <button
                         type="button"
-                        onClick={() => run(target.ens ?? target.address, true)}
+                        onClick={() => recheck(target)}
                         className="font-medium text-link hover:underline"
                       >
                         {fr ? "Revérifier" : "Check again"}
@@ -717,7 +932,7 @@ export function Checker() {
                     </span>
                   ))}
               </div>
-              <NetworkGrid results={results} onRetry={retry} kind={target.kind} />
+              <NetworkGrid key={`${target.kind}:${target.address}`} results={results} onRetry={retry} kind={target.kind} />
               {Object.values(results).some((r) => r.state === "error") && (
                 <details className="mt-3 rounded-2xl border border-line bg-surface px-4 py-3 text-[13px] text-text-2">
                   <summary className="cursor-pointer font-medium text-text">{fr ? "Pourquoi certaines vérifications ont échoué ?" : "Why did some checks fail?"}</summary>
@@ -755,7 +970,7 @@ export function Checker() {
                   className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-5 py-2.5 text-[15px] font-medium text-text shadow-soft transition hover:-translate-y-0.5 hover:shadow-float active:scale-[0.97]"
                 >
                   <Search width={16} height={16} className="text-text-3" />
-                  {fr ? "Vérifier une autre adresse" : "Check another address"}
+                  {fr ? "Vérifier d'autres adresses" : "Check other addresses"}
                 </button>
               </div>
             )}

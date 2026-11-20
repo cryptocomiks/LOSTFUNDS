@@ -4,9 +4,12 @@ import { formatUnits } from "viem";
 export function formatAmount(amount: bigint, decimals: number, lang: "en" | "fr" = "en"): string {
   const n = Number(formatUnits(amount, decimals));
   if (n === 0) return "0";
-  if (n < 0.0001) return lang === "fr" ? "<0,0001" : "<0.0001";
+  const locale = lang === "fr" ? "fr-FR" : "en-US";
+  if (n < 1e-9) return lang === "fr" ? "<0,000000001" : "<0.000000001";
+  // Tiny amounts can be worth a lot (pool tokens): three significant digits instead of "<0.0001".
+  if (n < 0.0001) return n.toLocaleString(locale, { maximumSignificantDigits: 3, maximumFractionDigits: 12 });
   const digits = n >= 1000 ? 0 : n >= 1 ? 4 : 6;
-  return n.toLocaleString(lang === "fr" ? "fr-FR" : "en-US", { maximumFractionDigits: digits, maximumSignificantDigits: n >= 1000 ? undefined : 6 });
+  return n.toLocaleString(locale, { maximumFractionDigits: digits, maximumSignificantDigits: n >= 1000 ? undefined : 6 });
 }
 
 export function formatUsd(n: number, lang: "en" | "fr" = "en"): string {

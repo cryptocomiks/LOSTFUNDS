@@ -921,7 +921,7 @@ describe("Wallet kinds", () => {
   });
   test("an Ethereum address runs everything that is still open", () => {
     const evm = SOURCES.filter((s) => s.accepts.includes("evm"));
-    assert.equal(evm.length, 109);
+    assert.equal(evm.length, 117);
     // Airdrops past their deadline are no longer listed or run.
     const ended = evm.filter((s) => s.ends && s.ends <= Date.now() / 1000);
     assert.deepEqual(

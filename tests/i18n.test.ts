@@ -10,7 +10,10 @@ test("amounts are written the French way in French texts", () => {
   assert.equal(formatAmount(1234567890000000000000n, 18), "1,235");
   assert.equal(formatAmount(1234567890000000000000n, 18, "fr").replace(/\s/g, " "), "1 235");
   assert.equal(formatAmount(1500000000000000000n, 18, "fr"), "1,5");
-  assert.equal(formatAmount(1n, 18, "fr"), "<0,0001");
+  assert.equal(formatAmount(1n, 18, "fr"), "<0,000000001");
+  // Pool tokens: a tiny amount can be worth thousands, so it is written out.
+  assert.equal(formatAmount(25_300_000_000_000n, 18), "0.0000253");
+  assert.equal(formatAmount(25_300_000_000_000n, 18, "fr"), "0,0000253");
 });
 
 test("a finding carries its French texts next to the English ones", () => {

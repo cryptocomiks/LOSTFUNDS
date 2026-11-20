@@ -18,6 +18,7 @@ import { checkLegacy, LEGACY_LIST } from "./checks/legacy";
 import { checkLinea } from "./checks/linea";
 import { checkMerkl } from "./checks/merkl";
 import { checkCryptoPunks, checkFomo3d, CRYPTOPUNKS, FOMO3D } from "./checks/oldcontracts";
+import { checkUniFarms, UNI_FARMS } from "./checks/old-farms";
 import { checkOpenOrders, OPEN_ORDERS } from "./checks/openorders";
 import { checkOpStack } from "./checks/opstack";
 import { checkPolygon, POLYGON } from "./checks/polygon";
@@ -160,6 +161,7 @@ SOURCES.push(
   { id: KINTO.id, name: KINTO.name, group: "legacy", bridgeUrl: "Etherscan (KintoLeftOver → acceptAndClaim)", accepts: ["evm"], run: (user) => checkKinto(user as Address) },
   { id: CRYPTOPUNKS.id, name: CRYPTOPUNKS.name, group: "legacy", bridgeUrl: "Etherscan (CryptoPunksMarket)", accepts: ["evm"], run: (user) => checkCryptoPunks(user as Address) },
   { id: FOMO3D.id, name: FOMO3D.name, group: "legacy", bridgeUrl: "Etherscan (FoMo3D → withdraw)", accepts: ["evm"], run: (user) => checkFomo3d(user as Address) },
+  { id: UNI_FARMS.id, name: UNI_FARMS.name, group: "legacy", bridgeUrl: "Etherscan (StakingRewards → exit)", accepts: ["evm"], run: (user) => checkUniFarms(user as Address) },
   { id: SAFES.id, name: SAFES.name, group: "legacy", bridgeUrl: "app.safe.global", accepts: ["evm"], run: (user) => checkSafes(user as Address) },
 );
 

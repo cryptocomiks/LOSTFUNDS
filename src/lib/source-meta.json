@@ -817,6 +817,69 @@
   ]
  },
  {
+  "id": "ethena-unstake",
+  "name": "Ethena unstaking",
+  "group": "rewards",
+  "bridgeUrl": "app.ethena.fi",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "nft-marketplaces",
+  "name": "NFT marketplace balances",
+  "group": "rewards",
+  "bridgeUrl": "blur.io / foundation.app",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "stader-withdrawals",
+  "name": "Stader withdrawals",
+  "group": "rewards",
+  "bridgeUrl": "staderlabs.com/eth (Withdrawals)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "swell-withdrawals",
+  "name": "Swell withdrawals",
+  "group": "rewards",
+  "bridgeUrl": "app.swellnetwork.io (Withdraw)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "frax-redemptions",
+  "name": "Frax redemptions",
+  "group": "rewards",
+  "bridgeUrl": "app.frax.finance (frxETH → Redeem)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "meth-withdrawals",
+  "name": "Mantle mETH withdrawals",
+  "group": "rewards",
+  "bridgeUrl": "app.methprotocol.xyz (Unstake)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "kelp-withdrawals",
+  "name": "Kelp withdrawals",
+  "group": "rewards",
+  "bridgeUrl": "kerneldao.com/kelp (Unstake)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
   "id": "reclaim-rent",
   "name": "Empty token accounts",
   "group": "reclaim",
@@ -1037,6 +1100,15 @@
   "name": "FoMo3D",
   "group": "legacy",
   "bridgeUrl": "Etherscan (FoMo3D → withdraw)",
+  "accepts": [
+   "evm"
+  ]
+ },
+ {
+  "id": "uniswap-2020-farms",
+  "name": "Uniswap 2020 farms",
+  "group": "legacy",
+  "bridgeUrl": "Etherscan (StakingRewards → exit)",
   "accepts": [
    "evm"
   ]

@@ -6,6 +6,9 @@ import { checkSablier, SABLIER } from "./sablier";
 import { checkVeDex, VE_DEX } from "./aerodrome";
 import { checkUniswapV3, UNISWAP_V3 } from "./uniswap-v3";
 import { checkLivepeer, LIVEPEER } from "./livepeer";
+import { checkEthena, ETHENA } from "./ethena";
+import { checkNftMarkets, NFT_MARKETS } from "./nft-markets";
+import { checkFrax, checkKelp, checkMeth, checkStader, checkSwell, FRAX, KELP, METH, STADER, SWELL } from "./staking-withdrawals";
 import type { CheckOutput, FindingSource } from "./common";
 import { CONVEX, checkConvex } from "./convex";
 import { checkEigenRewards, checkEigenWithdrawals, EIGEN_REWARDS, EIGEN_WITHDRAWALS } from "./eigenlayer";
@@ -52,4 +55,11 @@ export const ETH_REWARD_SOURCES: CheckSource[] = [
   source(VE_DEX, "aerodrome.finance / velodrome.finance (Dash)", checkVeDex),
   source(UNISWAP_V3, "app.uniswap.org (your positions)", checkUniswapV3),
   source(LIVEPEER, "explorer.livepeer.org", checkLivepeer),
+  source(ETHENA, "app.ethena.fi", checkEthena),
+  source(NFT_MARKETS, "blur.io / foundation.app", checkNftMarkets),
+  source(STADER, "staderlabs.com/eth (Withdrawals)", checkStader),
+  source(SWELL, "app.swellnetwork.io (Withdraw)", checkSwell),
+  source(FRAX, "app.frax.finance (frxETH → Redeem)", checkFrax),
+  source(METH, "app.methprotocol.xyz (Unstake)", checkMeth),
+  source(KELP, "kerneldao.com/kelp (Unstake)", checkKelp),
 ];

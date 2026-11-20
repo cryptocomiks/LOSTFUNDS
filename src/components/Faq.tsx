@@ -70,8 +70,8 @@ const QUESTIONS: { q: [string, string]; a: [string, string] }[] = [
   {
     q: ["I have several wallets. Do I need to check each one?", "J'ai plusieurs wallets. Faut-il vérifier chacun ?"],
     a: [
-      "Yes. Each address has its own history, so check every one you have used, old ones included, and your Solana addresses too. Money you left on an exchange account (Binance, Coinbase, Kraken…) can't be seen here: it sits in the exchange's own wallets, so log in there to look.",
-      "Oui. Chaque adresse a son propre historique : vérifiez toutes celles que vous avez utilisées, même anciennes, ainsi que vos adresses Solana. L'argent laissé sur un compte d'exchange (Binance, Coinbase, Kraken…) ne se voit pas ici : il est dans les wallets de l'exchange, connectez-vous là-bas pour regarder.",
+      "Yes. Each address has its own history, so check every one you have used, old ones included, and your Solana addresses too. You can paste up to 10 addresses at once, separated by a space: they are checked one after the other, with a total for all of them and the details of each. Money you left on an exchange account (Binance, Coinbase, Kraken…) can't be seen here: it sits in the exchange's own wallets, so log in there to look.",
+      "Oui. Chaque adresse a son propre historique : vérifiez toutes celles que vous avez utilisées, même anciennes, ainsi que vos adresses Solana. Vous pouvez coller jusqu'à 10 adresses d'un coup, séparées par un espace : elles sont vérifiées l'une après l'autre, avec un total pour l'ensemble et le détail de chacune. L'argent laissé sur un compte d'exchange (Binance, Coinbase, Kraken…) ne se voit pas ici : il est dans les wallets de l'exchange, connectez-vous là-bas pour regarder.",
     ],
   },
   {
