@@ -10,7 +10,6 @@ import { HowItWorks } from "@/components/HowItWorks";
 import { Safety } from "@/components/Safety";
 import { ShowReel } from "@/components/ShowReel";
 import { Stats } from "@/components/Stats";
-import { Tip } from "@/components/Tip";
 import { Unclaimed } from "@/components/Unclaimed";
 
 export default function Home() {
@@ -27,7 +26,6 @@ export default function Home() {
         <Compare />
         <Guides />
         <Faq />
-        <Tip />
         <Safety />
       </main>
       <Footer />

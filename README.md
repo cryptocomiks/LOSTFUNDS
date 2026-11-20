@@ -113,5 +113,5 @@ A full check of an active address sends roughly 130–200 requests spread over ~
 
 ## Configure
 
-Edit `src/config/site.ts`: name, X link, tip addresses (sections with empty values are hidden).
+Edit `src/config/site.ts`: name, address, X link (the X icon is hidden while the link is empty).
 Networks and contract addresses live in `src/lib/networks.ts`, guide texts in `src/content/guides.ts`.
