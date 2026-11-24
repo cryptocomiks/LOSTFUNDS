@@ -92,12 +92,12 @@ function texts(cfg) {
     target: (label, value) =>
       `🔎 <b>${label}</b>\n<code>${esc(value)}</code>\n\n` +
       `1️⃣ Tap <b>Check this address</b>. 100+ sources are checked, it takes about a minute.\n` +
-      `2️⃣ Found something? Tap <b>How to claim</b> for the steps to follow.`,
+      `2️⃣ When it's done, I'll send you the summary right here, with the steps to claim.`,
     help:
       `ℹ️ <b>How it works</b>\n\n` +
       `1️⃣ Send a wallet address or an ENS name.\n` +
       `2️⃣ Tap <b>Check this address</b>: ${name} opens here in Telegram and checks 100+ sources.\n` +
-      `3️⃣ Each result says where to claim, on the project's own site.\n\n` +
+      `3️⃣ When the check ends, I send the summary in this chat. Each result says where to claim, on the project's own site.\n\n` +
       `<b>Commands</b>\n` +
       `🔍 /check <code>address</code> – check an address\n` +
       `✅ /claim – what to do when something is found\n` +
@@ -124,7 +124,8 @@ function texts(cfg) {
       `🛡 <b>${name}</b> is a free, read-only checker.\n\n` +
       `👀 It only reads public blockchain data for the address you give it.\n` +
       `🔌 It never connects to a wallet and never asks you to sign anything.\n` +
-      `🗑 This bot stores nothing: it only turns your address into a link to the site.\n` +
+      `🗑 This bot stores nothing. When a check opened from here ends, the app sends me the amounts found ` +
+      `(never the address) so I can sum them up in this chat.\n` +
       `✅ Claims are made by you, on each project's official site.\n\n` +
       `🚨 <b>Stay safe:</b> nobody from ${name} will ever message you first, ask for a seed phrase, ` +
       `a private key or a "recovery fee". Anyone who does is a scammer.`,

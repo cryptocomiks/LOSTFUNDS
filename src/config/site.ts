@@ -15,4 +15,6 @@ export const SITE = {
   twitter: "",
   /** The Telegram bot (bot/). Its icon in the header is hidden while this is empty. */
   telegram: "https://t.me/Fundscheckersbot",
+  /** The bot's own server (bot/ on Vercel). Opened from the bot, a finished check posts its totals there, and the bot writes them in the chat. Empty: no summary. */
+  telegramApi: "https://lostfunds-bot.vercel.app",
 };

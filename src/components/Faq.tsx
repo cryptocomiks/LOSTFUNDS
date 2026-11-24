@@ -35,8 +35,8 @@ const QUESTIONS: { q: [string, string]; a: [string, string] }[] = [
   {
     q: ["Do you keep my address?", "Gardez-vous mon adresse ?"],
     a: [
-      "No. Everything runs in your browser and goes straight to public blockchain nodes and the projects' own public APIs. Your last results are kept in your own browser for 10 minutes so a reload is instant, then they're deleted. We only count visits anonymously (Vercel Analytics, no cookies), and the address is removed before anything is counted.",
-      "Non. Tout tourne dans votre navigateur et interroge directement les nœuds publics des blockchains et les API publiques des projets. Vos derniers résultats restent 10 minutes dans votre navigateur pour qu'un rechargement soit instantané, puis ils sont effacés. On compte seulement les visites, de façon anonyme (Vercel Analytics, sans cookies), et l'adresse est retirée avant tout comptage.",
+      "No. Everything runs in your browser and goes straight to public blockchain nodes and the projects' own public APIs. Your last results are kept in your own browser for 10 minutes so a reload is instant, then they're deleted. We only count visits anonymously (Vercel Analytics, no cookies), and the address is removed before anything is counted. If you open the check from our Telegram bot, the amounts found (never the address) are sent to the bot when the check ends, so it can sum them up in your chat; they aren't stored.",
+      "Non. Tout tourne dans votre navigateur et interroge directement les nœuds publics des blockchains et les API publiques des projets. Vos derniers résultats restent 10 minutes dans votre navigateur pour qu'un rechargement soit instantané, puis ils sont effacés. On compte seulement les visites, de façon anonyme (Vercel Analytics, sans cookies), et l'adresse est retirée avant tout comptage. Si vous ouvrez la vérification depuis notre bot Telegram, les montants trouvés (jamais l'adresse) sont envoyés au bot à la fin, pour qu'il les résume dans votre discussion ; ils ne sont pas conservés.",
     ],
   },
   {
