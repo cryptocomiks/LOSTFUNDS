@@ -46,7 +46,7 @@ if (base) {
   await call("setWebhook", {
     url: `${base.replace(/\/+$/, "")}/api/webhook`,
     secret_token: secret,
-    allowed_updates: ["message", "inline_query"],
+    allowed_updates: ["message", "inline_query", "callback_query"],
     drop_pending_updates: true,
   });
   const info = await call("getWebhookInfo");

@@ -33,9 +33,22 @@ describe("parseTarget", () => {
 describe("messages", () => {
   test("/start welcomes with a Mini App button", () => {
     const [c] = handleUpdate(msg("/start"));
-    assert.equal(c.method, "sendMessage");
+    assert.equal(c.method, "sendPhoto");
+    assert.equal(c.params.photo, `${SITE}/og.png`);
+    assert.ok(c.params.caption.length <= 1024);
     assert.equal(c.params.chat_id, 7);
     assert.deepEqual(buttons(c)[0].web_app, { url: `${SITE}/` });
+  });
+  test("how to claim: by command, and by the button under a reply", () => {
+    const [byCommand] = handleUpdate(msg("/claim"));
+    assert.match(byCommand.params.text, /official site/);
+    const [reply] = handleUpdate(msg(EVM));
+    assert.ok(buttons(reply).some((b) => b.callback_data === "claim"));
+    const [ack, steps] = handleUpdate({ callback_query: { id: "c1", data: "claim", message: { chat: { id: 7, type: "private" } } } });
+    assert.deepEqual(ack, { method: "answerCallbackQuery", params: { callback_query_id: "c1" } });
+    assert.equal(steps.params.text, byCommand.params.text);
+    assert.equal(handleUpdate({ callback_query: { id: "c2", data: "other" } }).length, 1);
+    for (const c of [byCommand, reply]) assert.ok(c.params.text.length <= 4096);
   });
   test("an address opens the check for it", () => {
     for (const text of [EVM, `/check ${EVM}`, `/start ${EVM}`, `/check@Fundscheckersbot ${EVM}`]) {
