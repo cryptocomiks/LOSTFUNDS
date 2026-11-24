@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { SITE } from "@/config/site";
 import { T } from "@/lib/i18n";
-import { Logo, XLogo } from "./icons";
+import { Logo, TelegramLogo, XLogo } from "./icons";
+import { inTelegram } from "./TelegramMiniApp";
 import { LangToggle } from "./LangToggle";
 
 /** The page's sections, in order. */
@@ -31,6 +32,9 @@ function focusAddressSoon(id: string) {
 export function Header() {
   const [active, setActive] = useState("top");
   const [open, setOpen] = useState(false);
+  // Opened from the Telegram bot: a link back to the bot would be pointless.
+  const [inBot, setInBot] = useState(false);
+  useEffect(() => setInBot(inTelegram()), []);
   const bar = useRef<HTMLDivElement>(null);
 
   // Highlight the section in the middle of the screen.
@@ -99,6 +103,11 @@ export function Header() {
           {SITE.twitter && (
             <a href={SITE.twitter} target="_blank" rel="noopener noreferrer" className={link(false)} aria-label="X (Twitter)">
               <XLogo width={15} height={15} />
+            </a>
+          )}
+          {SITE.telegram && !inBot && (
+            <a href={SITE.telegram} target="_blank" rel="noopener noreferrer" className={link(false)} aria-label="Telegram bot" title="Telegram bot">
+              <TelegramLogo width={16} height={16} />
             </a>
           )}
           <LangToggle />
