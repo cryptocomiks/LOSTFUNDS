@@ -13,4 +13,6 @@ export const SITE = {
     "Unfinished bridge withdrawals, unclaimed airdrops, rewards and old deposits: check any Ethereum or Solana address in seconds. Free, read-only, no wallet connection.",
   /** e.g. "https://x.com/yourhandle" */
   twitter: "",
+  /** The Telegram bot (bot/). Its icon in the header is hidden while this is empty. */
+  telegram: "https://t.me/Fundscheckersbot",
 };

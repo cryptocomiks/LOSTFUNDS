@@ -74,6 +74,12 @@ export const XLogo = (p: P) => (
   </svg>
 );
 
+export const TelegramLogo = (p: P) => (
+  <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor" aria-hidden {...p}>
+    <path d="M21.94 4.3 18.9 19.1c-.23 1.03-.83 1.28-1.68.8l-4.64-3.42-2.24 2.16c-.25.25-.46.46-.93.46l.33-4.72 8.59-7.76c.37-.33-.08-.52-.58-.19L7.13 13.1l-4.57-1.43c-1-.31-1.01-1 .21-1.47L20.65 3.3c.83-.3 1.55.2 1.29 1Z" />
+  </svg>
+);
+
 export const Chevron = (p: P) => (
   <svg {...base(p)}>
     <path d="m6 9 6 6 6-6" />

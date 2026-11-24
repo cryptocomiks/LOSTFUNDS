@@ -8,7 +8,9 @@ in the user's own Telegram, exactly as in a browser.
 | In Telegram | What happens |
 | --- | --- |
 | Menu button "Check" | Opens the site as a Mini App |
-| `/start`, `/help`, `/about`, `/guides` | Texts, with a button to the site |
+| `/start` | The site's banner with the welcome text and a button to the site |
+| `/help`, `/about`, `/guides` | Texts, with a button to the site |
+| `/claim`, or the "How to claim" button under a reply | The steps to follow once something is found |
 | An address or a name, `/check 0x…`, `t.me/Fundscheckersbot?start=0x…` | A "Check this address" button → `/?address=…` |
 | A transaction hash, anything else | A short explanation |
 | Groups | Commands only; plain links (Telegram has no Mini App buttons in groups) |
