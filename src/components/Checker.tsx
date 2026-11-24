@@ -378,7 +378,8 @@ export function Checker() {
       setPhase("checking");
       const url = new URL(location.href);
       url.searchParams.set("address", resolved.ens ?? resolved.address);
-      url.hash = "";
+      // Inside Telegram the hash carries the Mini App's launch data: Telegram's script still needs it.
+      if (!url.hash.startsWith("#tgWebApp")) url.hash = "";
       history.replaceState(null, "", url);
       requestAnimationFrame(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
 
@@ -435,9 +436,11 @@ export function Checker() {
     [target],
   );
 
-  // Shareable links: ?address=0x… runs the check on load.
+  // Shareable links: ?address=0x… runs the check on load. So does a Telegram Mini App link
+  // (t.me/<bot>?startapp=0x…), which passes the address as tgWebAppStartParam.
   useEffect(() => {
-    const a = new URLSearchParams(location.search).get("address");
+    const q = new URLSearchParams(location.search);
+    const a = q.get("address") ?? q.get("tgWebAppStartParam");
     if (a) {
       setInput(a);
       run(a);

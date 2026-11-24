@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { SITE } from "@/config/site";
 import { SiteAnalytics } from "@/components/SiteAnalytics";
+import { TelegramMiniApp } from "@/components/TelegramMiniApp";
 import { LANG_SCRIPT } from "@/lib/i18n";
 import "./globals.css";
 
@@ -64,6 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-dvh">
         {children}
         <SiteAnalytics />
+        <TelegramMiniApp />
       </body>
     </html>
   );
