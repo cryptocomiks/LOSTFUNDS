@@ -12,6 +12,9 @@ export const DEFAULTS = {
   botUsername: "Fundscheckersbot",
 };
 
+/** A wallet with a small unclaimed balance (Maker SCD vault, 2019), to show what a result looks like. */
+export const DEMO_ADDRESS = "0x302bdfc4c45454a0d8544e7395a6cba8cd7a0c23";
+
 const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
 /** Byte length of a base58 string, or -1 if it isn't base58. */
@@ -65,14 +68,22 @@ function texts(cfg) {
   const name = cfg.siteName;
   return {
     welcome:
-      `👋 <b>Welcome to ${name}</b>\n\n` +
-      `💸 I find the crypto you forgot to claim:\n` +
-      `🌉 unfinished bridge withdrawals\n` +
-      `🪂 unclaimed airdrops\n` +
+      `👋 <b>Welcome to ${name}!</b>\n\n` +
+      `💰 <b>Is money still waiting for you?</b>\n` +
+      `Over $180 million sits forgotten in old Ethereum apps alone. Some of it may be yours.\n\n` +
+      `I look for:\n` +
+      `🌉 bridge withdrawals you never finished\n` +
+      `🪂 airdrops you never claimed\n` +
       `🎁 rewards and staking payouts\n` +
       `🏦 deposits left in old apps\n\n` +
-      `👇 <b>Send me an Ethereum or Solana address, or an ENS name</b>, and I'll open the check for it.\n\n` +
-      `🔒 Free and read-only. No wallet connection, and I will never ask for a seed phrase or a private key.`,
+      `💡 <b>Example:</b> a wallet that opened a Maker vault in 2019 still has ~0.016 ETH waiting there. ` +
+      `Its owner probably has no idea.\n\n` +
+      `👇 <b>Your turn:</b> paste an Ethereum or Solana address, or an ENS name like <code>vitalik.eth</code>.\n\n` +
+      `⚡️ 100+ sources, about a minute\n` +
+      `🔒 Free, read-only, no wallet connection, never a seed phrase`,
+    demo:
+      `✨ <b>Example wallet</b> (a stranger's, picked from public data)\n<code>${DEMO_ADDRESS}</code>\n\n` +
+      `Tap the button to see what a result looks like. Then paste your own address 👇`,
     askAddress: "✍️ Send me an Ethereum or Solana address, or an ENS name (for example <code>vitalik.eth</code>).",
     notAddress:
       "🤔 That doesn't look like a wallet address.\n\nSend an Ethereum address (<code>0x…</code>), " +
@@ -190,6 +201,7 @@ function onMessage(cfg, msg) {
   const isPrivate = msg.chat.type === "private";
   const T = texts(cfg);
   const home = [[openButton(`🚀 Open ${cfg.siteName}`, `${cfg.siteUrl}/`, isPrivate)], [claimButton, shareButton(cfg)]];
+  const start = [[{ text: "✨ Try with an example", callback_data: "demo" }], ...home];
 
   const m = text.match(/^\/([a-z_]+)(?:@(\w+))?(?:\s+([\s\S]*))?$/i);
   if (m) {
@@ -200,7 +212,7 @@ function onMessage(cfg, msg) {
     switch (command.toLowerCase()) {
       case "start":
         // Deep links: t.me/<bot>?start=<address>
-        return arg ? [targetReply(cfg, chatId, parseTarget(arg), isPrivate)] : [welcome(cfg, chatId, home)];
+        return arg ? [targetReply(cfg, chatId, parseTarget(arg), isPrivate)] : [welcome(cfg, chatId, start)];
       case "check":
         return arg ? [targetReply(cfg, chatId, parseTarget(arg), isPrivate)] : [send(chatId, T.askAddress)];
       case "help":
@@ -225,6 +237,10 @@ function onMessage(cfg, msg) {
 function onCallback(cfg, q) {
   const calls = [{ method: "answerCallbackQuery", params: { callback_query_id: q.id } }];
   const chat = q.message?.chat;
+  if (q.data === "demo" && chat)
+    calls.push(
+      send(chat.id, texts(cfg).demo, [[openButton("🔍 See the example result", checkUrl(cfg, DEMO_ADDRESS), chat.type === "private")], [claimButton]]),
+    );
   if (q.data === "claim" && chat) calls.push(send(chat.id, texts(cfg).claim, [[guidesButton(cfg, chat.type === "private")]]));
   return calls;
 }

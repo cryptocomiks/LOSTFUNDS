@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import handler from "../api/webhook.js";
-import { handleUpdate, parseTarget, profileCalls } from "../lib/bot.js";
+import { DEMO_ADDRESS, handleUpdate, parseTarget, profileCalls } from "../lib/bot.js";
 
 const EVM = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
 const SOL = "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU";
@@ -37,7 +37,10 @@ describe("messages", () => {
     assert.equal(c.params.photo, `${SITE}/og.png`);
     assert.ok(c.params.caption.length <= 1024);
     assert.equal(c.params.chat_id, 7);
-    assert.deepEqual(buttons(c)[0].web_app, { url: `${SITE}/` });
+    assert.equal(buttons(c)[0].callback_data, "demo");
+    assert.deepEqual(buttons(c)[1].web_app, { url: `${SITE}/` });
+    const [, demo] = handleUpdate({ callback_query: { id: "d1", data: "demo", message: { chat: { id: 7, type: "private" } } } });
+    assert.equal(buttons(demo)[0].web_app.url, `${SITE}/?address=${DEMO_ADDRESS}`);
   });
   test("how to claim: by command, and by the button under a reply", () => {
     const [byCommand] = handleUpdate(msg("/claim"));
