@@ -12,9 +12,15 @@ in the user's own Telegram, exactly as in a browser.
 | `/help`, `/about`, `/guides` | Texts, with a button to the site |
 | `/claim`, or the "How to claim" button under a reply | The steps to follow once something is found |
 | An address or a name, `/check 0x…`, `t.me/Fundscheckersbot?start=0x…` | A "Check this address" button → `/?address=…` |
+| A check opened from the bot ends | The bot writes the summary in the chat: total, what was found, "How to claim" |
 | A transaction hash, anything else | A short explanation |
 | Groups | Commands only; plain links (Telegram has no Mini App buttons in groups) |
 | `@Fundscheckersbot 0x…` in any chat (inline mode) | Posts a link to the check. Needs `/setinline` in @BotFather |
+
+The summary: when a check ends inside Telegram, the site posts the amounts found (never the address) to
+`api/result.js` with Telegram's signed launch data; `lib/result.js` verifies the signature, which names the
+user, and builds the message. Nothing is logged, and only anonymous totals are kept (see Statistics). The bot's address is `telegramApi` in
+`src/config/site.ts`.
 
 `lib/bot.js` is the whole behaviour as a pure function (update in, Bot API calls out), `api/webhook.js`
 is the Vercel function Telegram calls. No dependencies.
@@ -43,6 +49,20 @@ Mini App** with `https://www.fundscheckers.com/` to get an "Open" button on the 
 
 The token is a password: it lives in Vercel's environment variables only, never in the repository.
 If it leaks, `/revoke` in @BotFather gives a new one.
+
+## Statistics for the owner (`/stats`)
+
+Optional. `/stats` shows the number of users (total, today, 7 and 30 days) and what they did. Only the
+owner sees it.
+
+1. Vercel → the bot's project → **Storage** → **Create Database** → **Upstash for Redis** (free plan) →
+   connect it to the project. It adds `KV_REST_API_URL` and `KV_REST_API_TOKEN` by itself.
+2. Send `/id` to the bot, and add what it answers as `ADMIN_ID` in the project's Environment Variables.
+3. Redeploy (Deployments → ⋯ → Redeploy).
+
+Users are counted with HyperLogLog: the database holds an estimate of how many distinct users there
+were, never the list of who they are, and no address or message. Counting starts when the database is
+connected; without it the bot works the same and counts nothing (`lib/stats.js`).
 
 ## Test
 

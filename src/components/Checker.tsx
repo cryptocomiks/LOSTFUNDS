@@ -14,6 +14,7 @@ import { UNCLAIMED } from "@/lib/unclaimed";
 import { CountUp } from "./CountUp";
 import { bridgeFr, SOURCE_FR, sourceName } from "@/lib/sourceFr";
 import { ShareResult } from "./ShareResult";
+import { sendSummaryToChat } from "./TelegramMiniApp";
 import {
   Alert,
   ArrowRight,
@@ -461,6 +462,23 @@ export function Checker() {
   const errors = Object.values(results).filter((r) => r.state === "error").length;
   const completed = Object.values(results).reduce((s, r) => s + r.completed, 0);
   const busy = phase === "resolving" || phase === "checking";
+
+  // Opened from the Telegram bot: once the check is over, the bot sums it up in the chat.
+  useEffect(() => {
+    if (phase !== "done" || !target) return;
+    sendSummaryToChat(
+      target.address,
+      stuck.map((f) => ({
+        what: `${formatAmount(f.asset.amount, f.asset.decimals)} ${f.asset.symbol}`,
+        where: f.networkName,
+        usd: f.asset.usd,
+        later: f.status === "waiting",
+      })),
+      errors,
+    );
+    // Sent once, with the results as they are when the check ends.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, target]);
 
   const groups = useMemo(() => {
     const g = new Map<WithdrawalStatus, Finding[]>();
