@@ -124,7 +124,7 @@ function texts(cfg) {
       `🛡 <b>${name}</b> is a free, read-only checker.\n\n` +
       `👀 It only reads public blockchain data for the address you give it.\n` +
       `🔌 It never connects to a wallet and never asks you to sign anything.\n` +
-      `🗑 This bot stores nothing. When a check opened from here ends, the app sends me the amounts found ` +
+      `🗑 This bot keeps no address and no message, only anonymous usage counts. When a check opened from here ends, the app sends me the amounts found ` +
       `(never the address) so I can sum them up in this chat.\n` +
       `✅ Claims are made by you, on each project's official site.\n\n` +
       `🚨 <b>Stay safe:</b> nobody from ${name} will ever message you first, ask for a seed phrase, ` +
@@ -222,6 +222,9 @@ function onMessage(cfg, msg) {
         return [send(chatId, T.claim, [[guidesButton(cfg, isPrivate)]])];
       case "guides":
         return [send(chatId, T.guides, [[guidesButton(cfg, isPrivate)]])];
+      case "id":
+        // The owner needs their own id once, for ADMIN_ID (/stats).
+        return isPrivate && msg.from?.id ? [send(chatId, `🆔 Your Telegram ID: <code>${msg.from.id}</code>`)] : [];
       case "about":
         return [send(chatId, T.about, home)];
       default:
